@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flag of Palestine, drawn as a vector (no emoji). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="20dp"
+    android:viewportWidth="30"
+    android:viewportHeight="20">
+    <path android:fillColor="#FF000000" android:pathData="M0 0h30v6.67H0z" />
+    <path android:fillColor="#FFFFFFFF" android:pathData="M0 6.67h30v6.66H0z" />
+    <path android:fillColor="#FF007A3D" android:pathData="M0 13.33h30V20H0z" />
+    <path android:fillColor="#FFCE1126" android:pathData="M0 0L11 10L0 20z" />
+</vector>

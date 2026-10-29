@@ -6,27 +6,35 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.ConversationEntity
 import dev.saged.barq.data.db.MessageDao
+import dev.saged.barq.data.db.MessageEntity
 import dev.saged.barq.data.db.TemplateDao
 import dev.saged.barq.data.db.TemplateEntity
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.sim.SimInfo
 import dev.saged.barq.data.sim.SimRepository
+import dev.saged.barq.di.AppScope
 import dev.saged.barq.notifications.Notifier
+import dev.saged.barq.sms.SendEngine
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -38,23 +46,48 @@ data class SmsCount(val parts: Int, val remaining: Int)
 @HiltViewModel
 class ThreadViewModel @Inject constructor(
     savedState: SavedStateHandle,
-    private val conversations: ConversationDao,
-    messageDao: MessageDao,
+    private val conversationDao: ConversationDao,
+    private val messageDao: MessageDao,
     templateDao: TemplateDao,
-    private val repository: MessageRepository,
+    private val conversations: ConversationRepository,
+    private val engine: SendEngine,
     private val notifier: Notifier,
-    settingsRepository: SettingsRepository,
-    simRepository: SimRepository,
+    private val settingsRepository: SettingsRepository,
+    private val simRepository: SimRepository,
+    @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
     val threadId: Long = savedState.get<Long>("threadId") ?: -1L
 
-    val conversation: StateFlow<ConversationEntity?> =
-        conversations.observe(threadId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    /** A message to jump to (opened from search), or -1. */
+    val focusId: Long = savedState.get<Long>("focus") ?: -1L
 
-    val messages = Pager(PagingConfig(pageSize = 50, prefetchDistance = 30, enablePlaceholders = false)) {
-        messageDao.thread(threadId)
-    }.flow.cachedIn(viewModelScope)
+    /** Position of [focusId] in the list (newest first), -1 when there is none. */
+    val focusIndex = MutableStateFlow(-1)
+
+    val conversation: StateFlow<ConversationEntity?> =
+        conversationDao.observe(threadId).stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /**
+     * Messages, newest first. When jumping to a search result the list starts around it and uses
+     * placeholders, so it can scroll straight to a message thousands of lines back.
+     */
+    val messages: Flow<PagingData<MessageEntity>> = flow {
+        var initialKey: Int? = null
+        if (focusId > 0) {
+            val target = messageDao.get(focusId)
+            if (target != null && target.threadId == threadId) {
+                val position = messageDao.positionInThread(threadId, target.date, target.id)
+                focusIndex.value = position
+                initialKey = (position - 20).coerceAtLeast(0)
+            }
+        }
+        val config = PagingConfig(
+            pageSize = 50, prefetchDistance = 30, initialLoadSize = 100,
+            enablePlaceholders = initialKey != null,
+        )
+        emitAll(Pager(config, initialKey = initialKey) { messageDao.thread(threadId) }.flow)
+    }.cachedIn(viewModelScope)
 
     val templates: StateFlow<List<TemplateEntity>> =
         templateDao.observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -62,33 +95,47 @@ class ThreadViewModel @Inject constructor(
     val settings: StateFlow<AppSettings> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 
-    val sims: List<SimInfo> = simRepository.activeSims()
+    val sims = MutableStateFlow<List<SimInfo>>(emptyList())
     val subId = MutableStateFlow(-1)
     val text = MutableStateFlow("")
     val count = MutableStateFlow(SmsCount(0, 0))
 
     init {
         viewModelScope.launch {
-            val conv = conversations.get(threadId)
+            val conv = conversationDao.get(threadId)
             text.value = conv?.draft.orEmpty()
             updateCount(text.value)
-            val s = settingsRepository.current()
-            subId.value = when {
-                conv != null && conv.subId >= 0 && sims.any { it.subId == conv.subId } -> conv.subId
-                s.defaultSubId >= 0 && sims.any { it.subId == s.defaultSubId } -> s.defaultSubId
-                else -> sims.firstOrNull()?.subId ?: -1
-            }
+            refreshSimsNow()
             markRead()
         }
         // Drafts are saved quietly while typing.
         viewModelScope.launch {
-            text.drop(1).debounce(500).collect { repository.setDraft(threadId, it) }
+            text.drop(1).debounce(500).collect { conversations.setDraft(threadId, it) }
         }
+    }
+
+    private suspend fun refreshSimsNow() {
+        val list = simRepository.activeSims()
+        sims.value = list
+        if (list.none { it.subId == subId.value }) {
+            val conv = conversation.value ?: conversationDao.get(threadId)
+            val def = settingsRepository.current().defaultSubId
+            subId.value = when {
+                conv != null && conv.subId >= 0 && list.any { it.subId == conv.subId } -> conv.subId
+                def >= 0 && list.any { it.subId == def } -> def
+                else -> list.firstOrNull()?.subId ?: -1
+            }
+        }
+    }
+
+    /** Re-read on every resume, so a SIM appears right after the phone permission is granted. */
+    fun refreshSims() {
+        viewModelScope.launch { refreshSimsNow() }
     }
 
     fun markRead() {
         viewModelScope.launch {
-            repository.markRead(listOf(threadId))
+            conversations.markRead(listOf(threadId))
             notifier.cancel(threadId)
         }
     }
@@ -111,10 +158,11 @@ class ThreadViewModel @Inject constructor(
     }
 
     fun cycleSim() {
-        if (sims.size < 2) return
-        val i = sims.indexOfFirst { it.subId == subId.value }
-        subId.value = sims[(i + 1).mod(sims.size)].subId
-        viewModelScope.launch { repository.setSubId(threadId, subId.value) }
+        val list = sims.value
+        if (list.size < 2) return
+        val i = list.indexOfFirst { it.subId == subId.value }
+        subId.value = list[(i + 1).mod(list.size)].subId
+        viewModelScope.launch { conversations.setSubId(threadId, subId.value) }
     }
 
     fun send(scheduledAt: Long = 0) {
@@ -122,39 +170,52 @@ class ThreadViewModel @Inject constructor(
         if (body.isEmpty()) return
         onTextChange("")
         viewModelScope.launch {
-            repository.queueToThread(threadId, body, subId.value, scheduledAt)
-            repository.setDraft(threadId, null)
+            engine.sendToThread(threadId, body, subId.value.takeIf { it >= 0 }, scheduledAt)
         }
     }
 
-    fun resend(id: Long) = viewModelScope.launch { repository.resend(id) }
-    fun deleteMessage(id: Long) = viewModelScope.launch { repository.deleteMessage(id) }
-    fun cancelScheduled(id: Long) = viewModelScope.launch { repository.cancelScheduled(id) }
-    fun setCategory(category: Category) = viewModelScope.launch { repository.setCategoryForSender(threadId, category) }
+    fun resend(id: Long) = viewModelScope.launch { engine.resend(id) }
+    fun deleteMessage(id: Long) = viewModelScope.launch { conversations.deleteMessage(id) }
+    fun cancelScheduled(id: Long) = viewModelScope.launch { engine.cancelScheduled(id) }
+    fun setCategory(category: Category) = viewModelScope.launch { conversations.setCategoryForSender(threadId, category) }
+    fun openNotificationSettings() = viewModelScope.launch { notifier.openConversationSettings(threadId) }
 
     fun togglePin() = viewModelScope.launch {
-        conversation.value?.let { repository.setPinned(listOf(threadId), !it.pinned) }
+        conversation.value?.let { conversations.setPinned(listOf(threadId), !it.pinned) }
     }
 
     fun toggleMute() = viewModelScope.launch {
-        conversation.value?.let { repository.setMuted(listOf(threadId), !it.muted) }
+        conversation.value?.let { conversations.setMuted(listOf(threadId), !it.muted) }
     }
 
     fun archive(done: () -> Unit) = viewModelScope.launch {
-        repository.setArchived(listOf(threadId), true)
+        conversations.setArchived(listOf(threadId), true)
         done()
     }
 
     fun delete(done: () -> Unit) = viewModelScope.launch {
-        repository.delete(listOf(threadId))
+        conversations.delete(listOf(threadId))
         done()
     }
 
     fun block(done: () -> Unit) = viewModelScope.launch {
-        repository.block(listOf(threadId))
+        conversations.block(listOf(threadId))
         done()
     }
 
     /** Waits for the conversation row (used when a thread is opened before it exists). */
-    suspend fun awaitConversation(): ConversationEntity? = conversations.observe(threadId).first()
+    suspend fun awaitConversation(): ConversationEntity? = conversation.first()
+
+    /**
+     * Leaving the screen: the draft is saved at once (no waiting for the typing pause), and a
+     * conversation opened from another app is removed if it was left empty.
+     */
+    override fun onCleared() {
+        val last = text.value
+        appScope.launch {
+            conversations.setDraft(threadId, last)
+            conversations.dropIfEmpty(threadId)
+        }
+        super.onCleared()
+    }
 }

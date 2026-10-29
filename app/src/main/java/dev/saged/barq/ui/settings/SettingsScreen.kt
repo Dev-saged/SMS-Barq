@@ -15,6 +15,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AlarmOn
 import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Backup
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.Bolt
@@ -37,7 +41,9 @@ import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SwipeLeft
 import androidx.compose.material.icons.outlined.SwipeRight
 import androidx.compose.material.icons.outlined.Upload
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,6 +66,7 @@ import dev.saged.barq.BuildConfig
 import dev.saged.barq.R
 import dev.saged.barq.data.backup.BackupManager
 import dev.saged.barq.data.settings.AppSettings
+import dev.saged.barq.data.update.UpdateChecker
 import dev.saged.barq.data.settings.BackupFrequency
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.settings.SwipeAction
@@ -79,10 +86,37 @@ class SettingsViewModel @Inject constructor(
     val repo: SettingsRepository,
     private val backup: BackupManager,
     private val scheduler: ScheduleManager,
+    private val updates: UpdateChecker,
     simRepository: SimRepository,
 ) : ViewModel() {
     val settings = repo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
     val sims = simRepository.activeSims()
+
+    /** Settings found in an imported backup, waiting for the user's yes/no. */
+    val pendingSettings = kotlinx.coroutines.flow.MutableStateFlow<AppSettings?>(null)
+
+    /** Result of the last "check for updates" (null = nothing to show). */
+    val update = kotlinx.coroutines.flow.MutableStateFlow<UpdateChecker.Result?>(null)
+    val checking = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    fun checkUpdates() {
+        if (checking.value) return
+        checking.value = true
+        viewModelScope.launch {
+            update.value = updates.check()
+            checking.value = false
+        }
+    }
+
+    fun clearUpdate() {
+        update.value = null
+    }
+
+    fun applyPendingSettings() {
+        val s = pendingSettings.value ?: return
+        pendingSettings.value = null
+        viewModelScope.launch { backup.applySettings(s) }
+    }
 
     fun update(block: suspend SettingsRepository.() -> Unit) = viewModelScope.launch { repo.block() }
 
@@ -94,7 +128,10 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun import(uri: Uri, done: (Int?) -> Unit) = viewModelScope.launch {
-        done(runCatching { backup.import(uri).imported }.getOrNull())
+        val result = runCatching { backup.import(uri) }.getOrNull()
+        done(result?.imported)
+        // The backup carries settings too: ask before replacing the current ones.
+        if (result?.settings != null) pendingSettings.value = result.settings
     }
 
     fun setBackupFolder(uri: Uri) {
@@ -117,6 +154,9 @@ private enum class Dialog { THEME, FONT, DATE, SIM, SPEED, SWIPE_START, SWIPE_EN
 fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val context = LocalContext.current
     val s by vm.settings.collectAsStateWithLifecycle()
+    val pendingSettings by vm.pendingSettings.collectAsStateWithLifecycle()
+    val update by vm.update.collectAsStateWithLifecycle()
+    val checking by vm.checking.collectAsStateWithLifecycle()
     var dialog by remember { mutableStateOf<Dialog?>(null) }
 
     val exportedMsg = stringResource(R.string.export_done)
@@ -150,6 +190,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         p to java.text.SimpleDateFormat(p, java.util.Locale.getDefault()).format(java.util.Date())
     }
     val speedLabels = listOf(
+        0L to stringResource(R.string.speed_max),
         100L to stringResource(R.string.speed_fast),
         250L to stringResource(R.string.speed_balanced),
         800L to stringResource(R.string.speed_safe),
@@ -243,6 +284,14 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                     Icons.Outlined.SmartToy, stringResource(R.string.auto_reply_title),
                     stringResource(if (s.autoReplyEnabled) R.string.on else R.string.off),
                 ) { open(Routes.AUTO_REPLY) }
+                RowDivider()
+                ClickRow(Icons.Outlined.Groups, stringResource(R.string.groups_title), stringResource(R.string.groups_sub)) {
+                    open(Routes.GROUPS)
+                }
+                RowDivider()
+                ClickRow(Icons.Outlined.BarChart, stringResource(R.string.stats_title), stringResource(R.string.stats_sub)) {
+                    open(Routes.STATS)
+                }
             }
         }
         item {
@@ -284,21 +333,59 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         item {
             SettingsGroup(stringResource(R.string.group_about)) {
                 ClickRow(Icons.Outlined.Info, stringResource(R.string.app_name), stringResource(R.string.version_value, BuildConfig.VERSION_NAME)) {}
+                RowDivider()
+                ClickRow(
+                    Icons.Outlined.SystemUpdate, stringResource(R.string.check_updates),
+                    stringResource(if (checking) R.string.checking else R.string.check_updates_sub),
+                ) { vm.checkUpdates() }
+                RowDivider()
+                ClickRow(Icons.Outlined.BugReport, stringResource(R.string.crash_log_title), stringResource(R.string.crash_log_sub)) {
+                    open(Routes.CRASHES)
+                }
             }
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(stringResource(R.string.developer_line), style = MaterialTheme.typography.titleSmall)
-                Text(
-                    stringResource(R.string.copyright_line),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
+            AboutCard()
+        }
+    }
+
+    if (pendingSettings != null) {
+        AlertDialog(
+            onDismissRequest = { vm.pendingSettings.value = null },
+            title = { Text(stringResource(R.string.restore_settings_title)) },
+            text = { Text(stringResource(R.string.restore_settings_text)) },
+            confirmButton = { TextButton(onClick = vm::applyPendingSettings) { Text(stringResource(R.string.restore_settings_yes)) } },
+            dismissButton = { TextButton(onClick = { vm.pendingSettings.value = null }) { Text(stringResource(R.string.restore_settings_no)) } },
+        )
+    }
+    when (val u = update) {
+        is UpdateChecker.Result.Available -> AlertDialog(
+            onDismissRequest = vm::clearUpdate,
+            title = { Text(stringResource(R.string.update_available_title)) },
+            text = { Text(stringResource(R.string.update_available_text, u.build)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.clearUpdate()
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.apkUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                    }
+                }) { Text(stringResource(R.string.update_download)) }
+            },
+            dismissButton = { TextButton(onClick = vm::clearUpdate) { Text(stringResource(R.string.later)) } },
+        )
+        is UpdateChecker.Result.UpToDate -> {
+            val msg = stringResource(R.string.update_none)
+            androidx.compose.runtime.LaunchedEffect(u) {
+                toast(msg)
+                vm.clearUpdate()
             }
         }
+        UpdateChecker.Result.Failed -> {
+            val msg = stringResource(R.string.update_failed)
+            androidx.compose.runtime.LaunchedEffect(u) {
+                toast(msg)
+                vm.clearUpdate()
+            }
+        }
+        null -> Unit
     }
 
     when (dialog) {

@@ -7,15 +7,20 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
+import dev.saged.barq.data.db.BatchCounts
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.ConversationEntity
 import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.data.db.MessageEntity
+import dev.saged.barq.data.db.SearchHit
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.settings.SwipeAction
+import dev.saged.barq.domain.TextNorm
+import dev.saged.barq.notifications.Notifier
+import dev.saged.barq.sms.SendEngine
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -28,18 +33,26 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val OTP_FRESH_MS = 15 * 60 * 1000L
 
+/** The bulk-send card on top of the inbox. */
+data class BulkUi(val batchId: Long, val counts: BatchCounts, val preparing: Boolean, val paused: Boolean)
+
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class InboxViewModel @Inject constructor(
-    private val conversations: ConversationDao,
-    messages: MessageDao,
-    private val repository: MessageRepository,
+    conversationDao: ConversationDao,
+    private val messages: MessageDao,
+    private val conversations: ConversationRepository,
+    private val engine: SendEngine,
+    private val notifier: Notifier,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
@@ -50,15 +63,25 @@ class InboxViewModel @Inject constructor(
 
     private val pagingConfig = PagingConfig(pageSize = 40, prefetchDistance = 20, enablePlaceholders = false)
 
+    private val debouncedQuery = query.debounce(180).map { it.trim() }.distinctUntilChanged()
+
     val conversationsPaged: Flow<PagingData<ConversationEntity>> =
-        combine(filter, query.debounce(180).distinctUntilChanged()) { f, q -> f to q.trim() }
-            .flatMapLatest { (f, q) -> Pager(pagingConfig) { conversations.inbox(f?.name, q) }.flow }
+        combine(filter, debouncedQuery) { f, q -> f to q }
+            .flatMapLatest { (f, q) -> Pager(pagingConfig) { conversationDao.inbox(f?.name, q) }.flow }
             .cachedIn(viewModelScope)
+
+    /** Messages matching the search, from the full-text index (instant even with 100k messages). */
+    val messageHits: StateFlow<List<SearchHit>> = debouncedQuery
+        .mapLatest { q ->
+            val match = TextNorm.ftsQuery(q) ?: return@mapLatest emptyList<SearchHit>()
+            runCatching { messages.search(match, 150) }.getOrDefault(emptyList())
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val settings: StateFlow<AppSettings> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 
-    val spamCount: StateFlow<Int> = conversations.spamCount().stateIn(viewModelScope, SharingStarted.Lazily, 0)
+    val spamCount: StateFlow<Int> = conversationDao.spamCount().stateIn(viewModelScope, SharingStarted.Lazily, 0)
 
     private val ticker = flow {
         while (true) {
@@ -73,8 +96,28 @@ class InboxViewModel @Inject constructor(
             m?.takeIf { it.id != dismissed && now - it.date < OTP_FRESH_MS }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Progress of the last bulk send, until the user closes the card. */
+    val bulk: StateFlow<BulkUi?> = settings
+        .map { it.lastBatchId }
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            if (id == 0L) flowOf(null)
+            else combine(engine.observeBatch(id), engine.preparing, engine.paused) { counts, preparing, paused ->
+                BulkUi(id, counts, preparing, paused == id)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
     fun dismissOtp(id: Long) {
         dismissedOtp.value = id
+    }
+
+    /** The code was copied from the card: its notification goes away and the message is read. */
+    fun onOtpCopied(message: MessageEntity) {
+        viewModelScope.launch {
+            conversations.markRead(listOf(message.threadId))
+            notifier.cancel(message.threadId)
+        }
     }
 
     fun toggleSelection(threadId: Long) {
@@ -91,27 +134,34 @@ class InboxViewModel @Inject constructor(
         if (ids.isNotEmpty()) viewModelScope.launch { block(ids) }
     }
 
-    fun pinSelected(pin: Boolean) = onSelected { repository.setPinned(it, pin) }
-    fun muteSelected(mute: Boolean) = onSelected { repository.setMuted(it, mute) }
-    fun archiveSelected() = onSelected { repository.setArchived(it, true) }
-    fun readSelected() = onSelected { repository.markRead(it) }
-    fun deleteSelected() = onSelected { repository.delete(it) }
-    fun blockSelected() = onSelected { repository.block(it) }
+    fun pinSelected(pin: Boolean) = onSelected { conversations.setPinned(it, pin) }
+    fun muteSelected(mute: Boolean) = onSelected { conversations.setMuted(it, mute) }
+    fun archiveSelected() = onSelected { conversations.setArchived(it, true) }
+    fun readSelected() = onSelected { conversations.markRead(it) }
+    fun deleteSelected() = onSelected { conversations.delete(it) }
+    fun blockSelected() = onSelected { conversations.block(it) }
 
     fun swipe(action: SwipeAction, conversation: ConversationEntity) {
         val ids = listOf(conversation.threadId)
         viewModelScope.launch {
             when (action) {
-                SwipeAction.ARCHIVE -> repository.setArchived(ids, true)
-                SwipeAction.DELETE -> repository.delete(ids)
-                SwipeAction.READ -> repository.markRead(ids)
-                SwipeAction.PIN -> repository.setPinned(ids, !conversation.pinned)
-                SwipeAction.MUTE -> repository.setMuted(ids, !conversation.muted)
+                SwipeAction.ARCHIVE -> conversations.setArchived(ids, true)
+                SwipeAction.DELETE -> conversations.delete(ids)
+                SwipeAction.READ -> conversations.markRead(ids)
+                SwipeAction.PIN -> conversations.setPinned(ids, !conversation.pinned)
+                SwipeAction.MUTE -> conversations.setMuted(ids, !conversation.muted)
                 SwipeAction.NONE -> Unit
             }
         }
     }
 
-    fun undoArchive(threadId: Long) = viewModelScope.launch { repository.setArchived(listOf(threadId), false) }
-    fun undoDelete(threadId: Long) = viewModelScope.launch { repository.restore(listOf(threadId)) }
+    fun undoArchive(threadId: Long) = viewModelScope.launch { conversations.setArchived(listOf(threadId), false) }
+    fun undoDelete(threadId: Long) = viewModelScope.launch { conversations.restore(listOf(threadId)) }
+
+    // Bulk card
+    fun pauseBulk(id: Long) = engine.pauseBatch(id)
+    fun resumeBulk() = engine.resumeBatch()
+    fun cancelBulk(id: Long) = viewModelScope.launch { engine.cancelBatch(id) }
+    fun resendFailed(id: Long) = viewModelScope.launch { engine.resendFailed(id) }
+    fun dismissBulk() = viewModelScope.launch { engine.dismissBatch() }
 }

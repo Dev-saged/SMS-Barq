@@ -10,7 +10,7 @@ import androidx.work.WorkerParameters
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.backup.BackupManager
 import dev.saged.barq.data.settings.BackupFrequency
 import dev.saged.barq.data.settings.SettingsRepository
@@ -33,13 +33,14 @@ class MaintenanceScheduler @Inject constructor(@ApplicationContext private val c
 class MaintenanceWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted params: WorkerParameters,
-    private val repository: MessageRepository,
+    private val repository: ConversationRepository,
     private val backup: BackupManager,
     private val settings: SettingsRepository,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
         runCatching { repository.purgeRecycleBin() }
+        runCatching { repository.purgeEmpty() }
 
         // Temporary MMS PDUs older than a day.
         val day = 24 * 60 * 60 * 1000L

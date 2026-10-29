@@ -49,6 +49,10 @@ data class AppSettings(
     val backupTreeUri: String? = null,
     val lastBackupAt: Long = 0,
     val onboardingDone: Boolean = false,
+    /** Last bulk send, shown as a progress card until dismissed (0 = none). Not backed up. */
+    val lastBatchId: Long = 0,
+    /** Bulk-send explanation (Android asks once to allow many messages) was shown. */
+    val bulkIntroShown: Boolean = false,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -83,6 +87,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val backupTreeUri = stringPreferencesKey("backup_tree_uri")
         val lastBackupAt = longPreferencesKey("last_backup_at")
         val onboardingDone = booleanPreferencesKey("onboarding_done")
+        val lastBatchId = longPreferencesKey("last_batch_id")
+        val bulkIntroShown = booleanPreferencesKey("bulk_intro_shown")
     }
 
     private inline fun <reified T : Enum<T>> Preferences.enumOf(key: Preferences.Key<String>, default: T): T =
@@ -117,6 +123,8 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             backupTreeUri = p[K.backupTreeUri],
             lastBackupAt = p[K.lastBackupAt] ?: d.lastBackupAt,
             onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
+            lastBatchId = p[K.lastBatchId] ?: d.lastBatchId,
+            bulkIntroShown = p[K.bulkIntroShown] ?: d.bulkIntroShown,
         )
     }
 
@@ -154,4 +162,35 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     }
     suspend fun setLastBackupAt(v: Long) = set(K.lastBackupAt, v)
     suspend fun setOnboardingDone(v: Boolean) = set(K.onboardingDone, v)
+    suspend fun setLastBatchId(v: Long) = set(K.lastBatchId, v)
+    suspend fun setBulkIntroShown(v: Boolean) = set(K.bulkIntroShown, v)
+
+    /** Applies settings restored from a backup (everything the user chose, nothing technical). */
+    suspend fun restore(s: AppSettings) {
+        context.dataStore.edit {
+            it[K.themeMode] = s.themeMode.name
+            it[K.dynamicColor] = s.dynamicColor
+            it[K.fontScale] = s.fontScale
+            it[K.datePattern] = s.datePattern
+            it[K.use24h] = s.use24h
+            it[K.deliveryReports] = s.deliveryReports
+            it[K.showCounter] = s.showCounter
+            it[K.mmsEnabled] = s.mmsEnabled
+            it[K.spamFilter] = s.spamFilter
+            it[K.recycleBin] = s.recycleBin
+            it[K.swipeStart] = s.swipeStart.name
+            it[K.swipeEnd] = s.swipeEnd.name
+            it[K.defaultSubId] = s.defaultSubId
+            it[K.sendDelayMs] = s.sendDelayMs
+            it[K.arEnabled] = s.autoReplyEnabled
+            it[K.arMode] = s.autoReplyMode.name
+            it[K.arText] = s.autoReplyText
+            it[K.arContactsOnly] = s.autoReplyContactsOnly
+            it[K.arCooldown] = s.autoReplyCooldownMin
+            it[K.arWindow] = s.autoReplyWindow
+            it[K.arFrom] = s.autoReplyFromMin
+            it[K.arTo] = s.autoReplyToMin
+            it[K.backupFrequency] = s.backupFrequency.name
+        }
+    }
 }

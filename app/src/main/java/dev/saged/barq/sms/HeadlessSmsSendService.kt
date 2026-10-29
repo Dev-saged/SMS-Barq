@@ -4,7 +4,6 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import dagger.hilt.android.AndroidEntryPoint
-import dev.saged.barq.data.MessageRepository
 import dev.saged.barq.di.AppScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -14,7 +13,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class HeadlessSmsSendService : Service() {
 
-    @Inject lateinit var repository: MessageRepository
+    @Inject lateinit var engine: SendEngine
     @Inject @field:AppScope lateinit var scope: CoroutineScope
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -25,7 +24,8 @@ class HeadlessSmsSendService : Service() {
         if (!text.isNullOrBlank() && !address.isNullOrBlank()) {
             val recipients = address.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }
             scope.launch {
-                repository.queueOutgoing(recipients, text, -1)
+                // Same SIM rules as everywhere else (conversation SIM → Barq default → phone default).
+                runCatching { engine.sendNew(recipients, text, subId = null, allowService = false) }
                 stopSelf(startId)
             }
         } else stopSelf(startId)

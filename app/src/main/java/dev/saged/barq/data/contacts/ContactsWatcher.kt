@@ -1,6 +1,6 @@
 package dev.saged.barq.data.contacts
 
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.di.AppScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -16,7 +16,7 @@ import javax.inject.Singleton
 @Singleton
 class ContactsWatcher @Inject constructor(
     private val contacts: ContactsRepository,
-    private val repository: dagger.Lazy<MessageRepository>,
+    private val repository: dagger.Lazy<ConversationRepository>,
     @AppScope private val scope: CoroutineScope,
 ) {
     private var pending: Job? = null
@@ -28,7 +28,7 @@ class ContactsWatcher @Inject constructor(
             pending?.cancel()
             pending = scope.launch {
                 delay(1_500) // contacts apps write in bursts
-                repository.get().refreshNames()
+                repository.get().refreshNames(rebuildIndex = true)
             }
         }
     }

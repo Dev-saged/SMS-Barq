@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import dev.saged.barq.R
 import dev.saged.barq.data.db.Box as MsgBox
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationEntity
+import dev.saged.barq.data.db.sortTime
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.ui.theme.LocalBarqColors
 
@@ -71,6 +73,7 @@ fun ConversationRow(
     val yesterday = stringResource(R.string.yesterday)
     val draft = conversation.draft
     val failed = conversation.lastBox == MsgBox.FAILED
+    val pending = conversation.lastBox == MsgBox.QUEUED || conversation.lastBox == MsgBox.OUTBOX
     val snippet = rememberWithNames(conversation.snippet)
 
     Column(
@@ -126,7 +129,7 @@ fun ConversationRow(
                         }
                     }
                     Text(
-                        text = TimeFormat.short(conversation.date, settings, yesterday),
+                        text = TimeFormat.short(conversation.sortTime, settings, yesterday),
                         style = MaterialTheme.typography.labelMedium,
                         color = if (unread) scheme.primary else scheme.onSurfaceVariant,
                         fontWeight = if (unread) FontWeight.SemiBold else FontWeight.Normal,
@@ -138,10 +141,15 @@ fun ConversationRow(
                 Spacer(Modifier.height(4.dp))
                 // Line 2: last message | unread badge / pin
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (failed) {
+                    if (failed && draft == null) {
                         Icon(
                             Icons.Outlined.ErrorOutline, null, Modifier.padding(end = 6.dp).size(16.dp),
                             tint = scheme.error,
+                        )
+                    } else if (pending && draft == null) {
+                        Icon(
+                            Icons.Outlined.Schedule, null, Modifier.padding(end = 6.dp).size(15.dp),
+                            tint = scheme.primary,
                         )
                     }
                     Text(

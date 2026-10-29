@@ -46,24 +46,32 @@ class OtpWidget : GlanceAppWidget() {
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val latest = runCatching { context.barq.messageDao().latestOtp() }.getOrNull()
         val code = latest?.otp
-        val name = latest?.address.orEmpty()
+        // Saved contact name instead of the raw number.
+        val name = latest?.address?.let { addr ->
+            runCatching { context.barq.contacts().lookup(addr)?.name }.getOrNull() ?: addr
+        }.orEmpty()
+        val threadId = latest?.threadId ?: -1L
         val time = latest?.date?.let { SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it)) }.orEmpty()
         provideContent {
             GlanceTheme {
-                Content(context, code, name, time)
+                Content(context, code, name, time, threadId)
             }
         }
     }
 
     @Composable
-    private fun Content(context: Context, code: String?, sender: String, time: String) {
+    private fun Content(context: Context, code: String?, sender: String, time: String, threadId: Long) {
         val base = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.primaryContainer)
             .cornerRadius(24.dp)
             .padding(14.dp)
         val modifier = if (code != null) {
-            base.clickable(actionRunCallback<CopyOtpAction>(actionParametersOf(CopyOtpAction.CODE to code)))
+            base.clickable(
+                actionRunCallback<CopyOtpAction>(
+                    actionParametersOf(CopyOtpAction.CODE to code, CopyOtpAction.THREAD to threadId)
+                )
+            )
         } else base
         Column(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -108,10 +116,20 @@ class CopyOtpAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
         val code = parameters[CODE] ?: return
         NotificationActionReceiver.copyToClipboard(context, code)
+        // Copied: its notification goes away and the message counts as read.
+        val threadId = parameters[THREAD] ?: -1L
+        if (threadId >= 0) {
+            runCatching {
+                val entry = context.barq
+                entry.conversations().markRead(listOf(threadId))
+                entry.notifier().cancel(threadId)
+            }
+        }
     }
 
     companion object {
         val CODE = ActionParameters.Key<String>("code")
+        val THREAD = ActionParameters.Key<Long>("thread")
     }
 }
 

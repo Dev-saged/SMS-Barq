@@ -1,7 +1,6 @@
 package dev.saged.barq.domain
 
 import dev.saged.barq.data.BlockList
-import dev.saged.barq.data.MessageRepository
 import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.db.AutoReplyDao
 import dev.saged.barq.data.db.AutoReplyLogEntity
@@ -11,6 +10,7 @@ import dev.saged.barq.data.db.isIncoming
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.AutoReplyMode
 import dev.saged.barq.data.settings.SettingsRepository
+import dev.saged.barq.sms.SendEngine
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -29,7 +29,7 @@ class AutoReplyEngine @Inject constructor(
     private val dao: AutoReplyDao,
     private val contacts: ContactsRepository,
     private val blockList: BlockList,
-    private val repository: dagger.Lazy<MessageRepository>,
+    private val engine: dagger.Lazy<SendEngine>,
 ) {
     suspend fun maybeReply(message: MessageEntity) {
         val s = settings.current()
@@ -47,7 +47,7 @@ class AutoReplyEngine @Inject constructor(
 
         val reply = pickReply(message.body, s) ?: return
         dao.logReply(AutoReplyLogEntity(key, now))
-        repository.get().queueOutgoing(listOf(address), reply, message.subId, autoReply = true)
+        engine.get().sendAutoReply(address, reply, message.subId)
     }
 
     suspend fun pickReply(incoming: String, s: AppSettings): String? {

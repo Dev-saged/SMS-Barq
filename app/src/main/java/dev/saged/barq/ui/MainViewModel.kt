@@ -8,12 +8,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.SyncManager
 import dev.saged.barq.data.contacts.ContactsWatcher
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
-import dev.saged.barq.sms.SendQueue
+import dev.saged.barq.sms.SendEngine
+import dev.saged.barq.util.CrashLog
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,8 +27,8 @@ class MainViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settingsRepository: SettingsRepository,
     private val sync: SyncManager,
-    private val repository: MessageRepository,
-    private val sendQueue: SendQueue,
+    private val conversations: ConversationRepository,
+    private val engine: SendEngine,
     private val contactsWatcher: ContactsWatcher,
 ) : ViewModel() {
 
@@ -39,6 +40,9 @@ class MainViewModel @Inject constructor(
     private val _isDefault = MutableStateFlow(isDefaultSmsApp())
     val isDefault: StateFlow<Boolean> = _isDefault
 
+    /** True once after a crash: the inbox offers to open the crash log. */
+    val crashPending = MutableStateFlow(CrashLog.hasUnseenCrash())
+
     fun isDefaultSmsApp(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             context.getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_SMS) == true
@@ -46,12 +50,15 @@ class MainViewModel @Inject constructor(
             Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
         }
 
-    /** Every time the app comes to the foreground: pick up new history, resume the send queue. */
+    /**
+     * Every time the app comes to the foreground: pick up messages other apps wrote (cheap when
+     * there are none) and resume the send queue.
+     */
     fun onAppVisible() {
         _isDefault.value = isDefaultSmsApp()
         viewModelScope.launch {
             sync.sync()
-            if (_isDefault.value) sendQueue.kick()
+            if (_isDefault.value) engine.kick()
         }
     }
 
@@ -59,9 +66,18 @@ class MainViewModel @Inject constructor(
         _isDefault.value = isDefaultSmsApp()
         contactsWatcher.start()
         viewModelScope.launch {
-            repository.refreshNames()
+            conversations.refreshNames(rebuildIndex = true)
             sync.sync()
         }
+    }
+
+    /** The conversation for a number opened from another app (contacts, call log, sms: link). */
+    suspend fun conversationFor(address: String, draft: String?): Long =
+        conversations.openOrCreate(address, draft)
+
+    fun dismissCrash() {
+        CrashLog.markSeen()
+        crashPending.value = false
     }
 
     fun finishOnboarding() {

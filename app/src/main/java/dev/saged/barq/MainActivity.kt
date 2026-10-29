@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,12 +18,14 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.saged.barq.data.contacts.ContactsRepository
+import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.ui.BarqNavHost
 import dev.saged.barq.ui.components.LocalContacts
 import dev.saged.barq.ui.MainViewModel
 import dev.saged.barq.ui.Routes
 import dev.saged.barq.ui.theme.BarqTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -75,10 +78,21 @@ class MainActivity : ComponentActivity() {
         val threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1)
         when {
             threadId >= 0 -> pendingRoute.value = Routes.thread(threadId)
-            intent.action == Intent.ACTION_SENDTO || (intent.action == Intent.ACTION_SEND && intent.data != null) -> {
+            intent.action == Intent.ACTION_SENDTO ||
+                (intent.action == Intent.ACTION_VIEW && intent.data?.scheme in SMS_SCHEMES) ||
+                (intent.action == Intent.ACTION_SEND && intent.data != null) -> {
                 val to = intent.data?.let(::recipientsFrom).orEmpty()
                 val body = intent.getStringExtra("sms_body") ?: intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
-                pendingRoute.value = Routes.compose(to, body)
+                val recipients = PhoneUtils.splitAddresses(to)
+                if (recipients.size == 1) {
+                    // "Message" from contacts or the call log: straight into that person's conversation.
+                    lifecycleScope.launch {
+                        val tid = runCatching { viewModel.conversationFor(recipients.first(), body) }.getOrNull()
+                        pendingRoute.value = if (tid != null) Routes.thread(tid) else Routes.compose(to, body)
+                    }
+                } else {
+                    pendingRoute.value = Routes.compose(to, body)
+                }
             }
             intent.action == Intent.ACTION_SEND && intent.type == "text/plain" -> {
                 pendingRoute.value = Routes.compose("", intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty())
@@ -91,5 +105,6 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_THREAD_ID = "thread_id"
+        private val SMS_SCHEMES = setOf("sms", "smsto", "mms", "mmsto")
     }
 }

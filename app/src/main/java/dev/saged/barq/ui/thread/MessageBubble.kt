@@ -24,11 +24,15 @@ import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SmartToy
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +69,7 @@ import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.notifications.NotificationActionReceiver
 import dev.saged.barq.ui.components.TimeFormat
 import dev.saged.barq.ui.components.rememberWithNames
+import dev.saged.barq.sms.SendErrors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -98,8 +103,9 @@ private fun linkify(text: String): AnnotatedString {
 fun MessageBubble(
     message: MessageEntity,
     settings: AppSettings,
+    highlighted: Boolean,
     onLongPress: () -> Unit,
-    onFailedClick: () -> Unit,
+    onResend: () -> Unit,
     onCancelScheduled: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
@@ -119,11 +125,30 @@ fun MessageBubble(
     // RTL: start = right side. Incoming on the start side, mine on the end side.
     val shape = if (incoming) RoundedCornerShape(20.dp, 20.dp, 20.dp, 6.dp)
     else RoundedCornerShape(20.dp, 20.dp, 6.dp, 20.dp)
+    val failed = message.box == MsgBox.FAILED
+    // A message opened from search flashes briefly.
+    val flash by animateColorAsState(
+        if (highlighted) scheme.tertiaryContainer else scheme.background.copy(alpha = 0f),
+        tween(450), label = "flash",
+    )
 
     Column(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 3.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(flash)
+            .padding(horizontal = 12.dp, vertical = 3.dp),
         horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
     ) {
+      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Failed: a clear red mark beside the bubble (towards the middle of the screen).
+        if (failed) {
+            Icon(
+                Icons.Filled.Error,
+                contentDescription = stringResource(R.string.send_failed_short),
+                tint = scheme.error,
+                modifier = Modifier.size(22.dp),
+            )
+        }
         Column(
             modifier = Modifier
                 .widthIn(max = 300.dp)
@@ -131,7 +156,7 @@ fun MessageBubble(
                 .background(container)
                 .then(if (scheduled) Modifier.border(1.5.dp, scheme.primary, shape) else Modifier)
                 .combinedClickable(
-                    onClick = { if (message.box == MsgBox.FAILED) onFailedClick() },
+                    onClick = { if (failed) onResend() },
                     onLongClick = onLongPress,
                 )
                 .padding(horizontal = 14.dp, vertical = 9.dp),
@@ -161,7 +186,8 @@ fun MessageBubble(
                 if (!incoming && !scheduled) StatusIcon(message, content.copy(alpha = 0.85f))
             }
         }
-        if (!incoming) OutgoingFooter(message, scheduled, settings, onCancelScheduled)
+      }
+        if (!incoming) OutgoingFooter(message, scheduled, settings, onCancelScheduled, onResend)
     }
 }
 
@@ -177,8 +203,18 @@ private fun StatusIcon(message: MessageEntity, tint: androidx.compose.ui.graphic
 }
 
 @Composable
-private fun OutgoingFooter(message: MessageEntity, scheduled: Boolean, settings: AppSettings, onCancel: () -> Unit) {
+private fun OutgoingFooter(
+    message: MessageEntity,
+    scheduled: Boolean,
+    settings: AppSettings,
+    onCancel: () -> Unit,
+    onResend: () -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
+    if (message.box == MsgBox.FAILED) {
+        FailedFooter(message, onResend)
+        return
+    }
     val parts = remember(message.body) {
         runCatching { SmsMessage.calculateLength(message.body, false)[0] }.getOrDefault(1)
     }
@@ -324,5 +360,40 @@ fun DayHeader(text: String) {
                 .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(horizontal = 12.dp, vertical = 4.dp),
         )
+    }
+}
+
+/** Why it failed, in plain Arabic, with a visible "Resend" button. */
+@Composable
+private fun FailedFooter(message: MessageEntity, onResend: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.padding(top = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            stringResource(SendErrors.reason(message.errorCode)),
+            style = MaterialTheme.typography.labelSmall,
+            color = scheme.error,
+            modifier = Modifier.widthIn(max = 220.dp),
+        )
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(scheme.errorContainer)
+                .clickable(onClick = onResend)
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Icon(Icons.Outlined.Refresh, null, tint = scheme.onErrorContainer, modifier = Modifier.size(15.dp))
+            Text(
+                stringResource(R.string.resend),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = scheme.onErrorContainer,
+            )
+        }
     }
 }

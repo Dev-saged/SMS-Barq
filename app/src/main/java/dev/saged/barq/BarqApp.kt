@@ -11,6 +11,7 @@ import dev.saged.barq.data.db.TemplateEntity
 import dev.saged.barq.di.AppScope
 import dev.saged.barq.domain.AutoReplyEngine
 import dev.saged.barq.notifications.Notifier
+import dev.saged.barq.util.CrashLog
 import dev.saged.barq.work.MaintenanceScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -35,6 +36,8 @@ class BarqApp : Application(), Configuration.Provider {
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
+        // First, so even a crash while starting up is recorded.
+        CrashLog.install(this)
         super.onCreate()
         notifier.createChannels()
         maintenance.ensureScheduled()

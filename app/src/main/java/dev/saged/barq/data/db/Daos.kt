@@ -14,22 +14,28 @@ import kotlinx.coroutines.flow.Flow
 interface ConversationDao {
 
     /**
-     * Main inbox. [category] null = "all" (spam excluded). [query] empty = no search.
+     * Main inbox. [category] null = "all" (spam excluded). [query] empty = no filter; otherwise
+     * conversations whose name or number match (message texts are searched by the FTS index).
+     * A conversation with a newer draft is ordered by the draft time.
      */
     @Query(
         """
         SELECT * FROM conversations
         WHERE deleted = 0 AND archived = 0
+          AND (date > 0 OR draft IS NOT NULL)
           AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
           AND (:query = '' OR displayName LIKE '%' || :query || '%'
-               OR addresses LIKE '%' || :query || '%'
-               OR threadId IN (SELECT threadId FROM messages WHERE body LIKE '%' || :query || '%'))
-        ORDER BY pinned DESC, date DESC
+               OR addresses LIKE '%' || :query || '%')
+        ORDER BY pinned DESC,
+                 (CASE WHEN draft IS NOT NULL AND draftAt > date THEN draftAt ELSE date END) DESC
         """
     )
     fun inbox(category: String?, query: String): PagingSource<Int, ConversationEntity>
 
-    @Query("SELECT * FROM conversations WHERE deleted = 0 AND archived = 1 ORDER BY date DESC")
+    @Query(
+        """SELECT * FROM conversations WHERE deleted = 0 AND archived = 1
+           ORDER BY (CASE WHEN draft IS NOT NULL AND draftAt > date THEN draftAt ELSE date END) DESC"""
+    )
     fun archived(): PagingSource<Int, ConversationEntity>
 
     @Query("SELECT * FROM conversations WHERE deleted = 1 ORDER BY deletedAt DESC")
@@ -53,8 +59,14 @@ interface ConversationDao {
     @Query("SELECT * FROM conversations")
     suspend fun all(): List<ConversationEntity>
 
+    @Query("SELECT * FROM conversations WHERE threadId IN (:ids)")
+    suspend fun byIds(ids: List<Long>): List<ConversationEntity>
+
     @Upsert
     suspend fun upsert(conversation: ConversationEntity)
+
+    @Upsert
+    suspend fun upsertAll(conversations: List<ConversationEntity>)
 
     @Query("UPDATE conversations SET pinned = :pinned WHERE threadId IN (:ids)")
     suspend fun setPinned(ids: List<Long>, pinned: Boolean)
@@ -71,8 +83,15 @@ interface ConversationDao {
     @Query("UPDATE conversations SET category = :category, categoryLocked = :locked WHERE threadId = :threadId")
     suspend fun setCategory(threadId: Long, category: Category, locked: Boolean)
 
-    @Query("UPDATE conversations SET draft = :draft WHERE threadId = :threadId")
-    suspend fun setDraft(threadId: Long, draft: String?)
+    @Query("UPDATE conversations SET draft = :draft, draftAt = :draftAt WHERE threadId = :threadId")
+    suspend fun setDraft(threadId: Long, draft: String?, draftAt: Long)
+
+    /** Conversations opened from another app that never got a message or a draft. */
+    @Query(
+        """SELECT threadId FROM conversations WHERE date = 0 AND draft IS NULL
+           AND threadId NOT IN (SELECT DISTINCT threadId FROM messages)"""
+    )
+    suspend fun emptyIds(): List<Long>
 
     @Query("UPDATE conversations SET subId = :subId WHERE threadId = :threadId")
     suspend fun setSubId(threadId: Long, subId: Int)
@@ -114,8 +133,36 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY date DESC, id DESC LIMIT 1")
     suspend fun latest(threadId: Long): MessageEntity?
 
+    /** Latest message that should represent the conversation (future scheduled ones excluded). */
+    @Query(
+        """SELECT * FROM messages WHERE threadId = :threadId AND NOT (box = 6 AND scheduledAt > 0)
+           ORDER BY date DESC, id DESC LIMIT 1"""
+    )
+    suspend fun latestVisible(threadId: Long): MessageEntity?
+
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND box = 1 ORDER BY date DESC LIMIT 1")
     suspend fun latestIncoming(threadId: Long): MessageEntity?
+
+    /** Position of a message in [thread] (newest first) — used to jump to a search result. */
+    @Query(
+        """SELECT COUNT(*) FROM messages WHERE threadId = :threadId
+           AND (date > :date OR (date = :date AND id > :id))"""
+    )
+    suspend fun positionInThread(threadId: Long, date: Long, id: Long): Int
+
+    @Query(
+        """
+        SELECT m.id AS id, m.threadId AS threadId, m.address AS address, m.body AS body, m.date AS date,
+               m.box AS box, c.displayName AS displayName, c.addresses AS addresses, c.category AS category
+        FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        JOIN conversations c ON c.threadId = m.threadId
+        WHERE messages_fts MATCH :match AND c.deleted = 0 AND NOT (m.box = 6 AND m.scheduledAt > 0)
+        ORDER BY m.date DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun search(match: String, limit: Int): List<SearchHit>
 
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND read = 0 AND box = 1 ORDER BY date ASC")
     suspend fun unread(threadId: Long): List<MessageEntity>
@@ -138,11 +185,55 @@ interface MessageDao {
     @Query("UPDATE messages SET providerId = :providerId WHERE id = :id")
     suspend fun setProviderId(id: Long, providerId: Long)
 
+    /** Messages ready to go. [pausedBatch] (when not 0) is skipped while the user paused it. */
     @Query(
         """SELECT * FROM messages WHERE box = 6 AND (scheduledAt = 0 OR scheduledAt <= :now)
+           AND (:pausedBatch = 0 OR batchId != :pausedBatch)
            ORDER BY scheduledAt ASC, id ASC LIMIT :limit"""
     )
-    suspend fun dueQueued(now: Long, limit: Int): List<MessageEntity>
+    suspend fun dueQueued(now: Long, limit: Int, pausedBatch: Long): List<MessageEntity>
+
+    @Query(
+        """SELECT COUNT(*) AS total,
+                  COALESCE(SUM(CASE WHEN box = 2 THEN 1 ELSE 0 END), 0) AS sent,
+                  COALESCE(SUM(CASE WHEN box = 5 THEN 1 ELSE 0 END), 0) AS failed,
+                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending
+           FROM messages WHERE batchId = :batchId"""
+    )
+    fun observeBatch(batchId: Long): Flow<BatchCounts>
+
+    @Query(
+        """SELECT COUNT(*) AS total,
+                  COALESCE(SUM(CASE WHEN box = 2 THEN 1 ELSE 0 END), 0) AS sent,
+                  COALESCE(SUM(CASE WHEN box = 5 THEN 1 ELSE 0 END), 0) AS failed,
+                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending
+           FROM messages WHERE batchId = :batchId"""
+    )
+    suspend fun batchCounts(batchId: Long): BatchCounts
+
+    @Query("SELECT * FROM messages WHERE batchId = :batchId AND box = 5")
+    suspend fun failedInBatch(batchId: Long): List<MessageEntity>
+
+    @Query("SELECT DISTINCT threadId FROM messages WHERE batchId = :batchId")
+    suspend fun threadsInBatch(batchId: Long): List<Long>
+
+    /** Cancelling a bulk send: what has not gone out yet is marked failed (can be resent later). */
+    @Query("UPDATE messages SET box = 5, errorCode = :code WHERE batchId = :batchId AND box = 6")
+    suspend fun cancelBatch(batchId: Long, code: Int): Int
+
+    @Query("SELECT address || '|' || date FROM messages")
+    suspend fun allKeys(): List<String>
+
+    @Query("SELECT date, box, subId, body FROM messages WHERE date >= :from AND isMms = 0 AND box IN (1, 2, 5)")
+    suspend fun statRows(from: Long): List<StatRow>
+
+    @Query(
+        """SELECT m.threadId AS threadId, c.displayName AS name, c.addresses AS addresses, COUNT(*) AS count
+           FROM messages m JOIN conversations c ON c.threadId = m.threadId
+           WHERE m.date >= :from AND c.deleted = 0 AND m.box IN (1, 2)
+           GROUP BY m.threadId ORDER BY count DESC LIMIT :limit"""
+    )
+    suspend fun topThreads(from: Long, limit: Int): List<TopThread>
 
     @Query("SELECT * FROM messages WHERE box = 6 AND scheduledAt > :now")
     suspend fun futureScheduled(now: Long): List<MessageEntity>
@@ -186,6 +277,50 @@ interface MessageDao {
 
     @Query("SELECT DISTINCT threadId FROM messages")
     suspend fun threadIds(): List<Long>
+}
+
+data class StatRow(val date: Long, val box: Int, val subId: Int, val body: String)
+
+data class TopThread(val threadId: Long, val name: String, val addresses: String, val count: Int)
+
+@Dao
+interface GroupDao {
+    @Query(
+        """SELECT g.id AS id, g.name AS name, g.createdAt AS createdAt,
+                  (SELECT COUNT(*) FROM send_group_members m WHERE m.groupId = g.id) AS members
+           FROM send_groups g ORDER BY g.name COLLATE NOCASE ASC"""
+    )
+    fun observe(): Flow<List<SendGroupWithCount>>
+
+    @Query("SELECT * FROM send_groups ORDER BY name COLLATE NOCASE ASC")
+    suspend fun all(): List<SendGroupEntity>
+
+    @Query("SELECT * FROM send_groups WHERE id = :id")
+    fun observeGroup(id: Long): Flow<SendGroupEntity?>
+
+    @Insert
+    suspend fun insert(group: SendGroupEntity): Long
+
+    @Query("UPDATE send_groups SET name = :name WHERE id = :id")
+    suspend fun rename(id: Long, name: String)
+
+    @Query("DELETE FROM send_groups WHERE id = :id")
+    suspend fun deleteGroup(id: Long)
+
+    @Query("SELECT * FROM send_group_members WHERE groupId = :groupId ORDER BY name COLLATE NOCASE ASC, address ASC")
+    fun observeMembers(groupId: Long): Flow<List<SendGroupMemberEntity>>
+
+    @Query("SELECT * FROM send_group_members WHERE groupId = :groupId")
+    suspend fun members(groupId: Long): List<SendGroupMemberEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addMembers(members: List<SendGroupMemberEntity>)
+
+    @Query("DELETE FROM send_group_members WHERE groupId = :groupId AND address = :address")
+    suspend fun removeMember(groupId: Long, address: String)
+
+    @Query("DELETE FROM send_group_members WHERE groupId = :groupId")
+    suspend fun clearMembers(groupId: Long)
 }
 
 @Dao

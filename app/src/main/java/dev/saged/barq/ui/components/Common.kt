@@ -120,6 +120,14 @@ fun rememberWithNames(text: String): String {
     return remember(text, version) { contacts.withNames(text) }
 }
 
+/** Saved contact name for an address (or the address itself), safe on the main thread. */
+@Composable
+fun rememberContactName(address: String): String {
+    val contacts = LocalContacts.current ?: return address
+    val version = contactsVersion()
+    return remember(address, version) { contacts.cachedName(address) }
+}
+
 /** Contact photo when there is one; otherwise an initial letter, or a category icon for services. */
 @Composable
 fun Avatar(

@@ -250,4 +250,119 @@
     <string name="messages_button">الرسائل</string>
     <string name="open_contact">جهة الاتصال</string>
     <string name="add_contact">إضافة لجهات الاتصال</string>
+
+    <!-- 1.2.0: bulk sending -->
+    <string name="channel_sending">الإرسال الجاري</string>
+    <string name="channel_conversation_desc">نغمة واهتزاز خاصان بهذه المحادثة</string>
+    <string name="notif_summary">رسائل جديدة في %1$d محادثات</string>
+    <string name="bulk_preparing">جارٍ تجهيز الإرسال الجماعي…</string>
+    <string name="bulk_sending_title">جارٍ الإرسال %1$d من %2$d</string>
+    <string name="bulk_paused_title">متوقف مؤقتاً %1$d من %2$d</string>
+    <string name="bulk_counts">أُرسلت %1$d · فشلت %2$d · متبقية %3$d</string>
+    <string name="bulk_pause">إيقاف مؤقت</string>
+    <string name="bulk_resume">متابعة</string>
+    <string name="bulk_cancel">إلغاء الإرسال</string>
+    <string name="bulk_done_title">انتهى الإرسال الجماعي</string>
+    <string name="bulk_done_text">أُرسلت %1$d · فشلت %2$d</string>
+    <string name="bulk_resend_failed">إعادة إرسال الفاشلة</string>
+    <string name="bulk_intro_title">قبل الإرسال الجماعي</string>
+    <string name="bulk_intro_text">سيصل كل مستلم رسالة SMS منفصلة، وتُرسل بالخلفية مع شريط تقدّم وإمكانية الإيقاف والإلغاء.
+
+قد يسألك أندرويد مرة واحدة عن السماح بإرسال عدد كبير من الرسائل: اختر «السماح دائماً».
+
+الإرسال السريع جداً لأعداد كبيرة قد يجعل شركة الاتصالات توقف الشريحة مؤقتاً.</string>
+    <string name="scheduled_many">تمت جدولة %1$d رسالة</string>
+    <string name="add_more_hint">اكتب اسماً أو رقماً لإضافة مستلم آخر.</string>
+    <string name="speed_max">أقصى سرعة (قد يحظر المشغّل الشريحة مؤقتاً)</string>
+
+    <!-- 1.2.0: why a message failed -->
+    <string name="err_cancelled">أُلغي قبل الإرسال</string>
+    <string name="err_rejected">رفض الهاتف إرسالها (تحقق من الرقم والشريحة)</string>
+    <string name="err_radio_off">الهاتف بوضع الطيران أو الشبكة مطفأة</string>
+    <string name="err_no_service">لا توجد تغطية</string>
+    <string name="err_format">تعذّر تجهيز الرسالة</string>
+    <string name="err_limit">تجاوزت حد الإرسال المسموح من النظام</string>
+    <string name="err_fdn">الرقم غير مسموح (أرقام الاتصال الثابتة)</string>
+    <string name="err_short_code">الإرسال لهذا الرقم القصير غير مسموح</string>
+    <string name="err_network">رفضت الشبكة الرسالة</string>
+    <string name="err_smsc">رقم مركز الرسائل في الشريحة غير صحيح</string>
+    <string name="err_generic">تعذّر الإرسال (قد يكون الرصيد غير كافٍ أو رفضت الشبكة)</string>
+    <string name="err_unknown">تعذّر الإرسال</string>
+
+    <!-- 1.2.0: inbox, search, thread -->
+    <string name="archive_action">أرشفة</string>
+    <string name="search_conversations">المحادثات</string>
+    <string name="search_messages">الرسائل (%1$d)</string>
+    <string name="crash_banner">حصل عطل في برق. افتح السجل وانسخه لإرساله للمطوّر.</string>
+    <string name="conversation_notifications">إشعارات هذه المحادثة</string>
+    <string name="contacts_search_hint">ابحث في جهات الاتصال</string>
+
+    <!-- 1.2.0: groups -->
+    <string name="groups_title">مجموعات الإرسال</string>
+    <string name="groups_sub">قوائم أرقام محفوظة للإرسال بضغطة</string>
+    <string name="groups_hint">أنشئ مجموعة (مثل «العائلة» أو «الزبائن») وأرسل لها من «رسالة جديدة» بضغطة واحدة.</string>
+    <string name="group_new">مجموعة جديدة</string>
+    <string name="group_name">اسم المجموعة</string>
+    <string name="group_members_count">%1$d رقم</string>
+    <string name="group_from_contacts">من جهات الاتصال</string>
+    <string name="group_paste">لصق أرقام</string>
+    <string name="group_paste_hint">رقم في كل سطر أو مفصولة بفاصلة</string>
+    <string name="group_rename">تغيير الاسم</string>
+    <string name="group_empty">لا يوجد أرقام بعد</string>
+    <string name="group_delete">حذف المجموعة</string>
+    <string name="group_delete_confirm">حذف هذه المجموعة؟ الرسائل لا تتأثر.</string>
+    <string name="group_picked">تم اختيار %1$d</string>
+    <string name="group_chip">%1$s · %2$d</string>
+
+    <!-- 1.2.0: statistics -->
+    <string name="stats_title">الإحصائيات</string>
+    <string name="stats_sub">رسائلك وأجزاء SMS المستهلكة</string>
+    <string name="stats_today">اليوم</string>
+    <string name="stats_week">7 أيام</string>
+    <string name="stats_month">هذا الشهر</string>
+    <string name="stats_in_out">وارد %1$d · صادر %2$d</string>
+    <string name="stats_last_7">آخر 7 أيام</string>
+    <string name="stats_received">واردة</string>
+    <string name="stats_sent">صادرة</string>
+    <string name="stats_parts">أجزاء SMS المستهلكة هذا الشهر</string>
+    <string name="stats_parts_value">%1$d جزء</string>
+    <string name="stats_failed">نسبة الفشل هذا الشهر: %1$d%%</string>
+    <string name="stats_top">أكثر من تراسلهم هذا الشهر</string>
+    <string name="stats_messages">%1$d رسالة</string>
+    <string name="stats_none">لا توجد بيانات بعد</string>
+
+    <!-- 1.2.0: crash log, updates, backup -->
+    <string name="crash_log_title">سجل الأعطال</string>
+    <string name="crash_log_sub">انسخه وأرسله للمطوّر عند أي مشكلة</string>
+    <string name="crash_log_hint">يُحفظ هنا سبب أي عطل على هاتفك فقط، بدون إنترنت. انسخ السجل وأرسله للمطوّر ليعرف المشكلة بالضبط.</string>
+    <string name="crash_log_empty">لا توجد أعطال مسجّلة</string>
+    <string name="crash_log_copied">تم نسخ السجل</string>
+    <string name="crash_fatal">عطل</string>
+    <string name="crash_warning">تحذير</string>
+    <string name="share">مشاركة</string>
+    <string name="check_updates">فحص التحديثات</string>
+    <string name="check_updates_sub">يستخدم الإنترنت فقط عند الضغط هنا</string>
+    <string name="checking">جارٍ الفحص…</string>
+    <string name="update_available_title">نسخة جديدة متوفرة</string>
+    <string name="update_available_text">البناء رقم %1$d جاهز للتنزيل. نزّله وثبّته فوق النسخة الحالية، ورسائلك تبقى كما هي.</string>
+    <string name="update_download">تنزيل</string>
+    <string name="update_none">لديك آخر نسخة</string>
+    <string name="update_failed">تعذّر الفحص، تأكد من الاتصال بالإنترنت</string>
+    <string name="later">لاحقاً</string>
+    <string name="restore_settings_title">استعادة الإعدادات؟</string>
+    <string name="restore_settings_text">النسخة الاحتياطية تحتوي على إعداداتك أيضاً. هل تريد استبدال الإعدادات الحالية بها؟</string>
+    <string name="restore_settings_yes">استبدال</string>
+    <string name="restore_settings_no">إبقاء الحالية</string>
+
+    <!-- 1.2.0: about card -->
+    <string name="about_design_dev">تصميم وتطوير</string>
+    <string name="about_name">المهندس ساجد العبادلة</string>
+    <string name="about_contact">تواصل معي</string>
+    <string name="about_rights">© 2026 ساجد العبادلة — جميع الحقوق محفوظة</string>
+    <string name="made_in_gaza">صُنع بكل حب من فلسطين — غزة</string>
+    <string name="social_whatsapp">واتساب</string>
+    <string name="social_instagram">إنستغرام</string>
+    <string name="social_facebook">فيسبوك</string>
+    <string name="social_x">إكس</string>
+    <string name="social_github">غيت هب</string>
 </resources>

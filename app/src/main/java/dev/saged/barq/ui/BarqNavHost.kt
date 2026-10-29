@@ -8,6 +8,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import dev.saged.barq.util.CrashLog
+import dev.saged.barq.ui.settings.CrashLogScreen
+import dev.saged.barq.ui.settings.GroupScreen
+import dev.saged.barq.ui.settings.GroupsScreen
+import dev.saged.barq.ui.settings.GroupPickerScreen
+import dev.saged.barq.ui.settings.StatsScreen
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,7 +35,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 object Routes {
     const val ONBOARDING = "onboarding"
     const val INBOX = "inbox"
-    const val THREAD = "thread/{threadId}"
+    const val THREAD = "thread/{threadId}?focus={focus}"
     const val COMPOSE = "compose?to={to}&body={body}"
     const val ARCHIVE = "folder/archive"
     const val BIN = "folder/bin"
@@ -39,8 +45,16 @@ object Routes {
     const val TEMPLATES = "templates"
     const val AUTO_REPLY = "autoreply"
     const val CONTACT = "contact/{threadId}"
+    const val CRASHES = "crashes"
+    const val STATS = "stats"
+    const val GROUPS = "groups"
+    const val GROUP = "group/{groupId}"
+    const val GROUP_PICK = "group/{groupId}/pick"
 
     fun thread(id: Long) = "thread/$id"
+    fun threadAt(id: Long, messageId: Long) = "thread/$id?focus=$messageId"
+    fun group(id: Long) = "group/$id"
+    fun groupPick(id: Long) = "group/$id/pick"
     fun contact(id: Long) = "contact/$id"
     fun compose(to: String = "", body: String = "") = "compose?to=${Uri.encode(to)}&body=${Uri.encode(body)}"
 }
@@ -63,6 +77,11 @@ fun BarqNavHost(
     }
 
     val back: () -> Unit = { nav.popBackStack() }
+
+    // The crash log records which screen was open.
+    LaunchedEffect(nav) {
+        nav.currentBackStackEntryFlow.collect { CrashLog.currentScreen = it.destination.route ?: "-" }
+    }
 
     NavHost(
         navController = nav,
@@ -88,11 +107,16 @@ fun BarqNavHost(
                 openBin = { nav.navigate(Routes.BIN) },
                 openSettings = { nav.navigate(Routes.SETTINGS) },
                 openContact = { nav.navigate(Routes.contact(it)) },
+                openThreadAt = { thread, message -> nav.navigate(Routes.threadAt(thread, message)) },
+                openCrashLog = { nav.navigate(Routes.CRASHES) },
             )
         }
         composable(
             Routes.THREAD,
-            arguments = listOf(navArgument("threadId") { type = NavType.LongType }),
+            arguments = listOf(
+                navArgument("threadId") { type = NavType.LongType },
+                navArgument("focus") { type = NavType.LongType; defaultValue = -1L },
+            ),
         ) {
             ThreadScreen(
                 onBack = back,
@@ -143,5 +167,20 @@ fun BarqNavHost(
         composable(Routes.RULES) { RulesScreen(onBack = back) }
         composable(Routes.TEMPLATES) { TemplatesScreen(onBack = back) }
         composable(Routes.AUTO_REPLY) { AutoReplyScreen(onBack = back) }
+        composable(Routes.CRASHES) { CrashLogScreen(onBack = back) }
+        composable(Routes.STATS) { StatsScreen(onBack = back, openThread = { nav.navigate(Routes.thread(it)) }) }
+        composable(Routes.GROUPS) { GroupsScreen(onBack = back, openGroup = { nav.navigate(Routes.group(it)) }) }
+        composable(
+            Routes.GROUP,
+            arguments = listOf(navArgument("groupId") { type = NavType.LongType }),
+        ) {
+            GroupScreen(onBack = back, pickContacts = { nav.navigate(Routes.groupPick(it)) })
+        }
+        composable(
+            Routes.GROUP_PICK,
+            arguments = listOf(navArgument("groupId") { type = NavType.LongType }),
+        ) {
+            GroupPickerScreen(onBack = back)
+        }
     }
 }

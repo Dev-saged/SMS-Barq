@@ -44,7 +44,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
@@ -58,7 +58,7 @@ import javax.inject.Inject
 @HiltViewModel
 class FolderViewModel @Inject constructor(
     private val dao: ConversationDao,
-    private val repository: MessageRepository,
+    private val repository: ConversationRepository,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val config = PagingConfig(pageSize = 40, enablePlaceholders = false)

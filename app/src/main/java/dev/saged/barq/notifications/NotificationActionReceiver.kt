@@ -17,29 +17,37 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         val threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1)
+        val batchId = intent.getLongExtra(EXTRA_BATCH_ID, 0)
         val entry = context.barq
         when (intent.action) {
             ACTION_COPY_OTP -> {
                 val code = intent.getStringExtra(EXTRA_VALUE) ?: return
                 copyToClipboard(context, code)
                 goAsync {
-                    entry.repository().markRead(listOf(threadId))
+                    entry.conversations().markRead(listOf(threadId))
                     entry.notifier().cancel(threadId)
                 }
             }
             ACTION_MARK_READ -> goAsync {
-                entry.repository().markRead(listOf(threadId))
+                entry.conversations().markRead(listOf(threadId))
                 entry.notifier().cancel(threadId)
             }
             ACTION_REPLY -> {
                 val text = RemoteInput.getResultsFromIntent(intent)?.getCharSequence(KEY_REPLY)?.toString()
                 if (text.isNullOrBlank() || threadId < 0) return
                 goAsync {
-                    val repo = entry.repository()
-                    repo.markRead(listOf(threadId))
-                    repo.queueToThread(threadId, text, -1)
+                    entry.conversations().markRead(listOf(threadId))
+                    // subId = null → the conversation's SIM, then Barq's default SIM.
+                    entry.engine().sendToThread(threadId, text, subId = null)
                     entry.notifier().cancel(threadId)
                 }
+            }
+            ACTION_BATCH_PAUSE -> if (batchId != 0L) entry.engine().pauseBatch(batchId)
+            ACTION_BATCH_RESUME -> entry.engine().resumeBatch()
+            ACTION_BATCH_CANCEL -> if (batchId != 0L) goAsync { entry.engine().cancelBatch(batchId) }
+            ACTION_BATCH_RESEND -> if (batchId != 0L) goAsync {
+                entry.notifier().cancelBulkFinished()
+                entry.engine().resendFailed(batchId)
             }
             ACTION_DISMISS -> Unit
         }
@@ -50,7 +58,12 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val ACTION_MARK_READ = "dev.saged.barq.MARK_READ"
         const val ACTION_REPLY = "dev.saged.barq.REPLY"
         const val ACTION_DISMISS = "dev.saged.barq.DISMISS"
+        const val ACTION_BATCH_PAUSE = "dev.saged.barq.BATCH_PAUSE"
+        const val ACTION_BATCH_RESUME = "dev.saged.barq.BATCH_RESUME"
+        const val ACTION_BATCH_CANCEL = "dev.saged.barq.BATCH_CANCEL"
+        const val ACTION_BATCH_RESEND = "dev.saged.barq.BATCH_RESEND"
         const val EXTRA_THREAD_ID = "thread_id"
+        const val EXTRA_BATCH_ID = "batch_id"
         const val EXTRA_VALUE = "value"
         const val KEY_REPLY = "reply_text"
 

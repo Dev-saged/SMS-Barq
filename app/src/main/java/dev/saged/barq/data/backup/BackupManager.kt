@@ -5,7 +5,8 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
-import dev.saged.barq.data.MessageRepository
+import dev.saged.barq.data.ConversationRepository
+import dev.saged.barq.data.ProviderLock
 import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.db.AutoReplyRuleEntity
 import dev.saged.barq.data.db.BarqDatabase
@@ -15,6 +16,13 @@ import dev.saged.barq.data.db.Box
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.CategoryRuleEntity
 import dev.saged.barq.data.db.MessageEntity
+import dev.saged.barq.data.db.SendGroupEntity
+import dev.saged.barq.data.db.SendGroupMemberEntity
+import dev.saged.barq.data.settings.AppSettings
+import dev.saged.barq.data.settings.AutoReplyMode
+import dev.saged.barq.data.settings.BackupFrequency
+import dev.saged.barq.data.settings.SwipeAction
+import dev.saged.barq.data.settings.ThemeMode
 import dev.saged.barq.data.db.TemplateEntity
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.telephony.TelephonyProvider
@@ -22,7 +30,6 @@ import dev.saged.barq.domain.Classifier
 import dev.saged.barq.domain.OtpDetector
 import dev.saged.barq.domain.PhoneUtils
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
@@ -64,10 +71,44 @@ data class BackupRule(val sender: String, val category: String)
 @Serializable
 data class BackupAutoReply(val keywords: String, val reply: String, val enabled: Boolean = true)
 
+/** Settings the user chose (technical state like the backup folder is not included). */
+@Serializable
+data class BackupSettings(
+    val themeMode: String = ThemeMode.SYSTEM.name,
+    val dynamicColor: Boolean = true,
+    val fontScale: Float = 1f,
+    val datePattern: String = "dd/MM/yyyy",
+    val use24h: Boolean = true,
+    val deliveryReports: Boolean = false,
+    val showCounter: Boolean = true,
+    val mmsEnabled: Boolean = false,
+    val spamFilter: Boolean = true,
+    val recycleBin: Boolean = true,
+    val swipeStart: String = SwipeAction.ARCHIVE.name,
+    val swipeEnd: String = SwipeAction.DELETE.name,
+    val defaultSubId: Int = -1,
+    val sendDelayMs: Long = 250,
+    val autoReplyEnabled: Boolean = false,
+    val autoReplyMode: String = AutoReplyMode.FIXED.name,
+    val autoReplyText: String = "",
+    val autoReplyContactsOnly: Boolean = false,
+    val autoReplyCooldownMin: Int = 60,
+    val autoReplyWindow: Boolean = false,
+    val autoReplyFromMin: Int = 22 * 60,
+    val autoReplyToMin: Int = 7 * 60,
+    val backupFrequency: String = BackupFrequency.OFF.name,
+)
+
+@Serializable
+data class BackupGroupMember(val address: String, val name: String? = null)
+
+@Serializable
+data class BackupGroup(val name: String, val members: List<BackupGroupMember> = emptyList())
+
 @Serializable
 data class BackupFile(
     val format: String = "barq-backup",
-    val version: Int = 1,
+    val version: Int = 2,
     val createdAt: Long = 0,
     val blockedNumbers: List<String> = emptyList(),
     val blockedKeywords: List<String> = emptyList(),
@@ -76,9 +117,48 @@ data class BackupFile(
     val autoReplyRules: List<BackupAutoReply> = emptyList(),
     val conversations: List<BackupConversation> = emptyList(),
     val messages: List<BackupMessage> = emptyList(),
+    val groups: List<BackupGroup> = emptyList(),
+    val settings: BackupSettings? = null,
 )
 
-data class ImportResult(val imported: Int, val skipped: Int)
+/** [settings] is set when the file carries settings: the screen asks before applying them. */
+data class ImportResult(val imported: Int, val skipped: Int, val settings: AppSettings? = null)
+
+private inline fun <reified T : Enum<T>> enumOr(name: String, default: T): T =
+    runCatching { enumValueOf<T>(name) }.getOrDefault(default)
+
+fun AppSettings.toBackup() = BackupSettings(
+    themeMode.name, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled,
+    spamFilter, recycleBin, swipeStart.name, swipeEnd.name, defaultSubId, sendDelayMs, autoReplyEnabled,
+    autoReplyMode.name, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow,
+    autoReplyFromMin, autoReplyToMin, backupFrequency.name,
+)
+
+fun BackupSettings.toSettings(base: AppSettings) = base.copy(
+    themeMode = enumOr(themeMode, base.themeMode),
+    dynamicColor = dynamicColor,
+    fontScale = fontScale,
+    datePattern = datePattern,
+    use24h = use24h,
+    deliveryReports = deliveryReports,
+    showCounter = showCounter,
+    mmsEnabled = mmsEnabled,
+    spamFilter = spamFilter,
+    recycleBin = recycleBin,
+    swipeStart = enumOr(swipeStart, base.swipeStart),
+    swipeEnd = enumOr(swipeEnd, base.swipeEnd),
+    defaultSubId = defaultSubId,
+    sendDelayMs = sendDelayMs,
+    autoReplyEnabled = autoReplyEnabled,
+    autoReplyMode = enumOr(autoReplyMode, base.autoReplyMode),
+    autoReplyText = autoReplyText.ifBlank { base.autoReplyText },
+    autoReplyContactsOnly = autoReplyContactsOnly,
+    autoReplyCooldownMin = autoReplyCooldownMin,
+    autoReplyWindow = autoReplyWindow,
+    autoReplyFromMin = autoReplyFromMin,
+    autoReplyToMin = autoReplyToMin,
+    backupFrequency = enumOr(backupFrequency, base.backupFrequency),
+)
 
 /** JSON export/import of messages + Barq settings lists, and automatic scheduled backups. */
 @Singleton
@@ -86,7 +166,8 @@ class BackupManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: BarqDatabase,
     private val provider: TelephonyProvider,
-    private val repository: MessageRepository,
+    private val conversations: ConversationRepository,
+    private val lock: ProviderLock,
     private val contacts: ContactsRepository,
     private val settings: SettingsRepository,
 ) {
@@ -97,7 +178,12 @@ class BackupManager @Inject constructor(
         var count = 0
         out.bufferedWriter(Charsets.UTF_8).use { w ->
             val blocks = db.blocks()
-            w.write("{\"format\":\"barq-backup\",\"version\":1,\"createdAt\":${System.currentTimeMillis()}")
+            w.write("{\"format\":\"barq-backup\",\"version\":2,\"createdAt\":${System.currentTimeMillis()}")
+            w.write(",\"settings\":" + json.encodeToString(settings.current().toBackup()))
+            val groupDao = db.groups()
+            w.write(",\"groups\":" + json.encodeToString(groupDao.all().map { g ->
+                BackupGroup(g.name, groupDao.members(g.id).map { BackupGroupMember(it.address, it.name) })
+            }))
             w.write(",\"blockedNumbers\":" + json.encodeToString(blocks.numbersOnce().map { it.number }))
             w.write(",\"blockedKeywords\":" + json.encodeToString(blocks.keywordsOnce().map { it.keyword }))
             w.write(",\"rules\":" + json.encodeToString(db.rules().all().map { BackupRule(it.sender, it.category.name) }))
@@ -130,21 +216,26 @@ class BackupManager @Inject constructor(
         val backup = context.contentResolver.openInputStream(uri)?.use { json.decodeFromStream<BackupFile>(it) }
             ?: return@withContext ImportResult(0, 0)
         restoreLists(backup)
+        restoreGroups(backup)
         var imported = 0
         var skipped = 0
         val rules = db.rules().all()
         val spamFilter = settings.current().spamFilter
         val touched = HashSet<Long>()
         val messages = db.messages()
-        val resolver = repository.threadResolver()
+        val resolver = conversations.threadResolver()
+        // Fast duplicate check: one read of (number|time) keys; the text is compared only on a match.
+        val keys = messages.allKeys().toHashSet()
         backup.messages.chunked(PAGE).forEach { chunk ->
-            repository.providerLock.withLock {
+            lock.withLock {
                 val toInsert = ArrayList<MessageEntity>(chunk.size)
                 chunk.forEach { m ->
-                    if (messages.countSame(m.address, m.date, m.body) > 0) {
+                    val key = m.address + "|" + m.date
+                    if (key in keys && messages.countSame(m.address, m.date, m.body) > 0) {
                         skipped++
                         return@forEach
                     }
+                    keys += key
                     val box = if (m.box == Box.INBOX || m.box == Box.SENT) m.box else Box.FAILED
                     val threadId = resolver.resolve(m.address)
                     val providerId = provider.insertSms(
@@ -167,10 +258,10 @@ class BackupManager @Inject constructor(
                 db.withTransaction { messages.insertAll(toInsert) }
             }
         }
-        touched.forEach { repository.refreshConversation(it) }
-        repository.mergeDuplicateConversations()
+        conversations.refreshMany(touched)
+        conversations.mergeDuplicateConversations()
         restoreConversationFlags(backup)
-        ImportResult(imported, skipped)
+        ImportResult(imported, skipped, backup.settings?.toSettings(settings.current()))
     }
 
     private suspend fun restoreLists(b: BackupFile) {
@@ -195,9 +286,23 @@ class BackupManager @Inject constructor(
         }
     }
 
+    /** Groups are merged by name: members are added, nothing is removed. */
+    private suspend fun restoreGroups(b: BackupFile) {
+        if (b.groups.isEmpty()) return
+        val dao = db.groups()
+        val existing = dao.all()
+        b.groups.filter { it.name.isNotBlank() }.forEach { g ->
+            val id = existing.firstOrNull { it.name == g.name }?.id ?: dao.insert(SendGroupEntity(name = g.name))
+            dao.addMembers(g.members.map { SendGroupMemberEntity(groupId = id, address = it.address, name = it.name) })
+        }
+    }
+
+    /** Applies settings from a backup after the user agreed. */
+    suspend fun applySettings(s: AppSettings) = settings.restore(s)
+
     private suspend fun restoreConversationFlags(b: BackupFile) {
         val dao = db.conversations()
-        val resolver = repository.threadResolver()
+        val resolver = conversations.threadResolver()
         b.conversations.forEach { c ->
             val threadId = resolver.resolve(c.addresses)
             val conv = dao.get(threadId) ?: return@forEach

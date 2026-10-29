@@ -58,7 +58,7 @@ class MmsDownloadedReceiver : BroadcastReceiver() {
             if (from.isBlank()) return@goAsync
 
             val text = conf.parts.filter { it.isText }.joinToString("\n") { it.text() }.trim()
-            val dir = entry.repository().attachmentDir()
+            val dir = entry.incoming().attachmentDir()
             val attachments = conf.parts
                 .filter { !it.isText && !it.contentType.contains("smil") && it.data.isNotEmpty() }
                 .mapIndexed { i, part ->

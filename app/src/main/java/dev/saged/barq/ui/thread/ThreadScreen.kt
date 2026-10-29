@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsOff
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
@@ -61,6 +62,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,8 +79,12 @@ import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.saged.barq.notifications.ActiveThread
 import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import dev.saged.barq.R
 import dev.saged.barq.data.db.Box as MsgBox
@@ -102,8 +109,12 @@ fun ThreadScreen(
     val text by vm.text.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val subId by vm.subId.collectAsStateWithLifecycle()
+    val sims by vm.sims.collectAsStateWithLifecycle()
+    val focusIndex by vm.focusIndex.collectAsStateWithLifecycle()
     val pagingItems = vm.messages.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
+    var highlightId by remember { mutableStateOf(-1L) }
+    var focusDone by remember { mutableStateOf(false) }
 
     var menu by remember { mutableStateOf(false) }
     var showSchedule by remember { mutableStateOf(false) }
@@ -118,10 +129,32 @@ fun ThreadScreen(
     val today = stringResource(R.string.today)
     val yesterday = stringResource(R.string.yesterday)
 
-    // New messages arrive at index 0 — keep the view pinned to the bottom when already there.
-    LaunchedEffect(pagingItems.itemCount) {
-        if (listState.firstVisibleItemIndex <= 1) listState.animateScrollToItem(0)
+    // While this conversation is on screen, new messages here are read at once (no notification).
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        ActiveThread.set(vm.threadId)
+        vm.refreshSims()
         vm.markRead()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { ActiveThread.clear(vm.threadId) }
+    DisposableEffect(Unit) { onDispose { ActiveThread.clear(vm.threadId) } }
+
+    // New messages arrive at index 0 — follow them when already at the bottom. Only a really new
+    // message counts (loading older pages while scrolling up changes nothing here).
+    val newestId = if (pagingItems.itemCount > 0) pagingItems.peek(0)?.id else null
+    LaunchedEffect(newestId) {
+        if (newestId == null) return@LaunchedEffect
+        if (focusIndex < 0 && listState.firstVisibleItemIndex <= 1) listState.animateScrollToItem(0)
+        vm.markRead()
+    }
+
+    // Opened from a search result: jump to that message and flash it.
+    LaunchedEffect(focusIndex, pagingItems.itemCount) {
+        if (focusDone || focusIndex < 0 || pagingItems.itemCount <= focusIndex) return@LaunchedEffect
+        focusDone = true
+        listState.scrollToItem(focusIndex)
+        highlightId = vm.focusId
+        delay(2_200)
+        highlightId = -1L
     }
 
     Scaffold(
@@ -184,6 +217,11 @@ fun ThreadScreen(
                                 onClick = { menu = false; vm.toggleMute() },
                             )
                             DropdownMenuItem(
+                                text = { Text(stringResource(R.string.conversation_notifications)) },
+                                leadingIcon = { Icon(Icons.Outlined.NotificationsActive, null) },
+                                onClick = { menu = false; vm.openNotificationSettings() },
+                            )
+                            DropdownMenuItem(
                                 text = { Text(stringResource(R.string.set_category)) },
                                 leadingIcon = { Icon(Icons.Outlined.Category, null) },
                                 onClick = { menu = false; showCategory = true },
@@ -217,7 +255,7 @@ fun ThreadScreen(
                     count = count,
                     showCounter = settings.showCounter,
                     templates = templates.map { it.text },
-                    simLabel = vm.sims.takeIf { it.size > 1 }?.firstOrNull { it.subId == subId }?.let { "SIM ${it.slot + 1}" },
+                    simLabel = sims.takeIf { it.size > 1 }?.firstOrNull { it.subId == subId }?.let { "SIM ${it.slot + 1}" },
                     onText = vm::onTextChange,
                     onTemplate = vm::insertTemplate,
                     onSim = vm::cycleSim,
@@ -248,7 +286,11 @@ fun ThreadScreen(
             reverseLayout = true,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            items(count = pagingItems.itemCount, key = pagingItems.itemKey { it.id }) { index ->
+            items(
+                count = pagingItems.itemCount,
+                key = pagingItems.itemKey { it.id },
+                contentType = pagingItems.itemContentType { "message" },
+            ) { index ->
                 val m = pagingItems[index] ?: return@items
                 val older = if (index + 1 < pagingItems.itemCount) pagingItems.peek(index + 1) else null
                 Column {
@@ -259,8 +301,9 @@ fun ThreadScreen(
                         MessageBubble(
                             message = m,
                             settings = settings,
+                            highlighted = m.id == highlightId,
                             onLongPress = { messageMenu = m },
-                            onFailedClick = { vm.resend(m.id) },
+                            onResend = { vm.resend(m.id) },
                             onCancelScheduled = { vm.cancelScheduled(m.id) },
                         )
                         MessageMenu(

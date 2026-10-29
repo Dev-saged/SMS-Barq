@@ -27,6 +27,7 @@ object AppModule {
     fun database(@ApplicationContext context: Context): BarqDatabase =
         Room.databaseBuilder(context, BarqDatabase::class.java, "barq.db")
             .setJournalMode(androidx.room.RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
+            .addMigrations(*BarqDatabase.ALL_MIGRATIONS)
             .build()
 
     @Provides fun conversationDao(db: BarqDatabase) = db.conversations()
@@ -35,6 +36,7 @@ object AppModule {
     @Provides fun ruleDao(db: BarqDatabase) = db.rules()
     @Provides fun templateDao(db: BarqDatabase) = db.templates()
     @Provides fun autoReplyDao(db: BarqDatabase) = db.autoReply()
+    @Provides fun groupDao(db: BarqDatabase) = db.groups()
 
     /** Long-lived scope for work that must outlive a screen (receivers, sync). */
     @Provides

@@ -35,6 +35,8 @@ android {
         versionCode = baseVersionCode + (ciRunNumber ?: 0)
         versionName = project.property("VERSION_NAME") as String
         vectorDrawables.useSupportLibrary = true
+        // Lets the app tell which GitHub build it is (in-app update check).
+        buildConfigField("int", "BASE_VERSION_CODE", baseVersionCode.toString())
     }
 
     signingConfigs {

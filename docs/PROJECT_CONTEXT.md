@@ -1,7 +1,7 @@
 # برق (Barq) — ملف تعريف المشروع الكامل
 
 > هذا الملف مرجع شامل للمشروع. إذا فتحت محادثة جديدة، أرفق هذا الملف أو الصقه وقل: «هذا مشروعي برق، كمّل عليه».
-> آخر تحديث: 29 أكتوبر 2026 (23:15) · الإصدار المثبّت 1.1.0 · **المرحلة الثالثة 1.2.0 مخططة وبانتظار التنفيذ (القسم 11)**
+> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.2.0 (المرحلة الثالثة) منفّذ في الكود وبانتظار البناء الأول على GitHub** (القسم 11)
 > المستودع: **github.com/Dev-saged/SMS-Barq** (الفرع `main`)
 
 ---
@@ -29,6 +29,8 @@
 - **رمز OTP لا يُحذف تلقائياً**، يُكتشف ويُنسخ فقط.
 - **الرد التلقائي اختياري**، يفعّله المستخدم وقت الحاجة: رد ثابت أو ذكي.
 - **حُذفت عمداً**: كلمة مرور التطبيق والحماية، خصوصية شاشة القفل، الأحرف المبسّطة، الإرسال بزر Enter، تحويل الرسائل إلى MMS، شاشات الشراء والتبرع.
+- **بدون إنترنت**، والاستثناء الوحيد (1.2.0، بموافقة المالك): زر «فحص التحديثات» يتصل بـ GitHub **فقط عند ضغط المستخدم**، ولا يوجد أي فحص بالخلفية.
+- **ممنوع الإيموجي نهائياً** في التطبيق. كل الأيقونات Vector مرسومة يدوياً.
 
 ---
 
@@ -68,6 +70,22 @@
 - **Material You** وثيم فاتح وداكن وحسب النظام
 - **البحث** في الاسم والرقم ونص الرسائل
 
+### مزايا المرحلة الثالثة (1.2.0)
+- **محرك إرسال واحد** (`SendEngine`) لكل طرق الإرسال، و**الشريحة الصحيحة دائماً**: المختارة ← شريحة المحادثة ← الافتراضية في برق ← النظام (حتى للرد من الإشعار وشاشة المكالمة).
+- **إرسال جماعي قوي**: تسجيل آلاف الرسائل بالطابور بالخلفية بدون تعليق، خدمة بالمقدّمة مع **إشعار تقدّم حي** (أُرسلت / فشلت / متبقية) و**إيقاف مؤقت / متابعة / إلغاء**، وبطاقة تقدّم في الوارد، و**«إعادة إرسال الفاشلة»**. سرعة جديدة **«أقصى سرعة»** (الرسالة التالية فور تأكيد المودم).
+- **الرسالة الفاشلة**: أيقونة خطأ حمراء بجانبها، **سبب الفشل بالعربي** (لا تغطية، وضع الطيران، رصيد…)، وزر **«إعادة الإرسال»** ظاهر.
+- **زر «رسالة» من جهات الاتصال وسجل المكالمات** يفتح المحادثة مباشرة (أو محادثة فارغة جديدة)، والنص المرسل من التطبيق الآخر يوضع كمسودة.
+- **كل جهات الاتصال** في «رسالة جديدة» (بلا حد)، بحث فوري بالاسم والرقم (أ/إ/آ، ة/ه، ى/ي، أرقام هندية)، **فواصل أحرف ثابتة** و**شريط أحرف تفاعلي** (فقاعة حرف متحركة، تكبير موجي، اهتزاز خفيف).
+- **المسودة** ترفع المحادثة لأعلى القائمة بوقتها، ومسحها يرجعها لمكانها، وتُحفظ فوراً عند الخروج.
+- **بحث فوري حقيقي (FTS4)** بين كل الرسائل مع تمييز الكلمة، والضغط ينقلك لمكان الرسالة داخل المحادثة مع وميض.
+- **إشعارات أذكى**: صورة الشخص، تجميع مع ملخص، إشعار الرمز يختفي بعد نسخه (من أي مكان)، **نغمة خاصة لكل محادثة**، اختصارات «المحادثات» في أندرويد 11+، ولا إشعار والمحادثة مفتوحة أمامك.
+- **مجموعات إرسال محفوظة** (إنشاء، لصق أرقام، اختيار من الجهات) تظهر كأزرار في «رسالة جديدة».
+- **إحصائيات**: اليوم/7 أيام/الشهر، رسم أسبوعي، أجزاء SMS المستهلكة لكل شريحة، نسبة الفشل، أكثر 5 أشخاص.
+- **سجل أعطال** داخل التطبيق (نسخ/مشاركة/مسح) + بطاقة تنبيه بعد أي عطل.
+- **الإعدادات والمجموعات مع النسخة الاحتياطية** (صيغة version 2) مع سؤال قبل استبدال الإعدادات.
+- **بطاقة المطوّر الجديدة** (تصميم وتطوير، أزرار التواصل، صُنع في غزة، الإصدار) و**فحص التحديثات** عند الطلب.
+- إصلاحات: سحب ثم «تراجع» بدون شريط عالق، إلغاء التثبيت/الكتم جماعياً، الرسالة المجدولة لا تغيّر ترتيب المحادثة، بطاقة الرمز والويدجت بأسماء الجهات، تطبيق أخف عند الفتح (بدون وميض صور)، الشرائح تظهر فور منح الإذن.
+
 ---
 
 ## 3. التصميم (الواجهة)
@@ -100,6 +118,11 @@
 | رسالة جديدة | `ui/compose/ComposeScreen.kt` | مستلمون متعددون، اقتراحات جهات الاتصال، لصق قائمة أرقام |
 | الإعدادات | `ui/settings/SettingsScreen.kt` | المظهر، الرسائل، الحماية، الأدوات، السحب، النسخ، حول |
 | الأدوات | `ui/settings/ToolsScreens.kt` | المحظورات، قواعد التصنيف، القوالب، الرد التلقائي |
+| صفحة الشخص | `ui/contact/ContactScreen.kt` | صورة كبيرة، الاسم، الرقم (لمسة تنسخه)، زر اتصال، جهة الاتصال |
+| المجموعات | `ui/settings/GroupsScreens.kt` | قائمة المجموعات، مجموعة واحدة، منتقي الجهات |
+| سجل الأعطال والإحصائيات | `ui/settings/CrashAndStatsScreens.kt` | السجل (نسخ/مشاركة/مسح)، الإحصائيات برسم Canvas |
+| بطاقة المطوّر | `ui/settings/AboutCard.kt` | تصميم وتطوير، أزرار التواصل، صُنع في غزة، الإصدار |
+| مكونات مشتركة | `ui/components/ContactList.kt` · `AlphabetBar.kt` | قائمة الجهات بالأقسام، شريط الأحرف التفاعلي |
 
 ---
 
@@ -150,30 +173,39 @@ Barq/
         ├── MainActivity.kt            # Compose host + نوايا sms:/smsto:/share/إشعار
         ├── di/  AppModule.kt (Room/DAOs/AppScope) · BarqEntryPoint.kt
         ├── data/
-        │   ├── db/ Entities.kt · Daos.kt · BarqDatabase.kt
-        │   ├── MessageRepository.kt   # القلب: وارد/صادر/حالات/حذف/أرشفة/قواعد
+        │   ├── db/ Entities.kt · Daos.kt · BarqDatabase.kt (Migration1To2)
+        │   ├── ConversationRepository.kt  # المحادثات: الملخص، العلامات، المسودات، السلة، الدمج، فتح رقم
+        │   ├── IncomingRepository.kt      # تخزين الوارد SMS/MMS
+        │   ├── OutgoingRepository.kt      # صفوف الصادر وحالاتها، إعادة الإرسال، إلغاء دفعة
+        │   ├── ProviderLock.kt            # قفل واحد لكل كتابة على مزوّد النظام
         │   ├── SyncManager.kt         # استيراد سجل الهاتف (دفعات 500) + مزامنة تزايدية
+        │   ├── update/UpdateChecker.kt   # فحص التحديثات عند الضغط فقط
         │   ├── BlockList.kt
         │   ├── telephony/TelephonyProvider.kt   # قراءة وكتابة content://sms
         │   ├── contacts/ContactsRepository.kt    # أسماء مع ذاكرة مؤقتة + بحث
         │   ├── sim/SimRepository.kt
         │   ├── settings/SettingsRepository.kt    # DataStore → AppSettings
         │   └── backup/BackupManager.kt           # تصدير/استيراد/نسخ تلقائي
-        ├── domain/ OtpDetector.kt · Classifier.kt · PhoneUtils.kt · AutoReplyEngine.kt
+        ├── domain/ OtpDetector.kt · Classifier.kt · PhoneUtils.kt · AutoReplyEngine.kt · TextNorm.kt (تطبيع عربي للبحث)
         ├── sms/
         │   ├── SmsDeliverReceiver.kt  # SMS_DELIVER
         │   ├── IncomingProcessor.kt   # تخزين ← إشعار ← ويدجت ← رد تلقائي
-        │   ├── SendQueue.kt + SendQueueWorker.kt  # طابور الإرسال
+        │   ├── SendEngine.kt          # المدخل الوحيد للإرسال (الشريحة، فردي/جماعي، إعادة، إلغاء)
+        │   ├── SendDrainer.kt         # المكان الوحيد الذي يسلّم الرسائل للمودم (قفل يمنع التكرار)
+        │   ├── BulkSendService.kt     # خدمة بالمقدّمة للإرسال الجماعي مع إشعار تقدّم
+        │   ├── SendTracker.kt         # انتظار تأكيد المودم + BulkState (تحضير/إيقاف مؤقت)
+        │   ├── SendErrors.kt          # رمز الخطأ ← سبب عربي
+        │   ├── SendQueue.kt + SendQueueWorker.kt  # عامل Expedited للرسائل الفردية
         │   ├── SmsSender.kt           # sendTextMessage / sendMultipartTextMessage
         │   ├── SmsStatusReceiver.kt   # sent / delivered
         │   ├── ScheduleManager.kt     # AlarmManager للجدولة
         │   ├── SystemReceivers.kt     # ScheduledAlarmReceiver, BootReceiver
         │   └── HeadlessSmsSendService.kt  # الرد من شاشة المكالمة
         ├── mms/ MmsPdu.kt (محلّل مكتوب خصيصاً) · MmsReceivers.kt (WAP push، تنزيل، تأكيد)
-        ├── notifications/ Notifier.kt · NotificationActionReceiver.kt
+        ├── notifications/ Notifier.kt · NotificationActionReceiver.kt · ActiveThread.kt
         ├── widget/ OtpWidget.kt (Glance + CopyOtpAction + Receiver)
         ├── work/ Maintenance.kt (كل 6 ساعات: نسخ تلقائي، تنظيف السلة والملفات المؤقتة)
-        ├── util/ Receivers.kt · SmsManagers.kt
+        ├── util/ Receivers.kt · SmsManagers.kt · CrashLog.kt
         └── ui/
             ├── BarqNavHost.kt (Routes) · MainViewModel.kt
             ├── theme/Theme.kt
@@ -181,11 +213,13 @@ Barq/
             ├── onboarding/ · inbox/ · thread/ · compose/ · settings/
 ```
 
-### قاعدة البيانات (Room، الإصدار 1، الملف `barq.db`، وضع WAL)
+### قاعدة البيانات (Room، **الإصدار 2**، الملف `barq.db`، وضع WAL)
 | الجدول | الحقول المهمة |
 |---|---|
-| `conversations` | threadId (PK)، addresses، displayName، snippet، date، unreadCount، category، categoryLocked، pinned، archived، muted، deleted، deletedAt، draft، subId، lastFromMe، lastBox |
-| `messages` | id، providerId (unique)، threadId، address، body، date، dateSent، box، read، deliveryStatus، subId، otp، category، isMms، attachments (JSON)، subject، scheduledAt، errorCode، autoReply |
+| `conversations` | threadId (PK)، addresses، displayName، snippet، date، unreadCount، category، categoryLocked، pinned، archived، muted، deleted، deletedAt، draft، subId، lastFromMe، lastBox، **draftAt** |
+| `messages` | id، providerId (unique)، threadId، address، body، date، dateSent، box، read، deliveryStatus، subId، otp، category، isMms، attachments (JSON)، subject، scheduledAt، errorCode، autoReply، **batchId** (مفهرس)، **searchText** |
+| `messages_fts` | FTS4 بمحتوى خارجي على `searchText` (مُطبَّع عربياً + جذور «ال/بال/وال…»)، يتحدّث بمحفّزات Room |
+| `send_groups` / `send_group_members` | id، name، createdAt / (groupId، address) PK، name |
 | `blocked_numbers` / `blocked_keywords` | number / keyword |
 | `category_rules` | sender (unique) ← category |
 | `templates` | text، position |
@@ -194,33 +228,44 @@ Barq/
 
 - **قيم `box`** (مطابقة لـ Telephony): `INBOX=1`, `SENT=2`, `OUTBOX=4`, `FAILED=5`, `QUEUED=6`
 - **قيم `deliveryStatus`:** `NONE=-1`, `PENDING=32`, `DELIVERED=0`, `FAILED=64`
+- **رموز خطأ خاصة ببرق** (`SendError`): `CANCELLED=-100` (أُلغي من الإرسال الجماعي)، `REJECTED=-101` (رفض الهاتف قبل المودم).
+- **`Migration1To2`** (في `BarqDatabase.kt`): يضيف الحقول الجديدة، يملأ `searchText` لكل الرسائل القديمة بنفس كود Kotlin (`TextNorm.indexText`)، ينشئ `messages_fts` ومحفّزاته ثم `rebuild`، وينشئ جدولي المجموعات. لا يضيع أي شيء. **ممنوع `fallbackToDestructiveMigration`.**
 - **أي تغيير في الجداول** يحتاج رفع `version` وكتابة Migration في `BarqDatabase.kt`.
 
 ### دورة حياة الرسالة
-- **الوارد:** `SmsDeliverReceiver` ← `IncomingProcessor.onSms` ← `MessageRepository.onIncomingSms`، وفيها: فحص الحظر ← كشف OTP ← التصنيف ← الكتابة في المزوّد وفي Room ← `refreshConversation`. بعدها: إشعار (إلا للسبام والمكتوم) ← تحديث الويدجت ← الرد التلقائي.
-- **الصادر:** الواجهة ← `queueOutgoing` (صف `QUEUED`؛ والجماعي داخل معاملة واحدة) ← `SendQueue.kick()` (WorkManager بسياسة `APPEND_OR_REPLACE`) ← `SendQueueWorker` يأخذ دفعات من 50، ولكل رسالة: `markOutbox` ← `SmsSender.send` ← تأخير حسب السرعة المختارة. يعيد تشغيل نفسه بعد 8 دقائق إذا بقي في الطابور شيء. النتيجة تصل إلى `SmsStatusReceiver`، والجزء الأخير يحدد النجاح وأي جزء فاشل يُفشل الرسالة.
+- **الوارد:** `SmsDeliverReceiver` ← `IncomingProcessor.onSms` ← `IncomingRepository.onIncomingSms`، وفيها: فحص الحظر ← كشف OTP ← التصنيف ← الكتابة في المزوّد وفي Room ← `ConversationRepository.refresh`. بعدها: إن كانت المحادثة مفتوحة على الشاشة (`ActiveThread`) تُعلَّم مقروءة بدون إشعار، وإلا إشعار (إلا للسبام والمكتوم) ← تحديث الويدجت ← الرد التلقائي (عبر `SendEngine.sendAutoReply`).
+- **ملخص المحادثة:** الرسائل المجدولة للمستقبل لا تغيّر وقت المحادثة ولا آخر رسالة (`latestVisible`). الترتيب: `pinned DESC` ثم الأحدث من (وقت آخر رسالة، وقت المسودة).
+- **فتح رقم من تطبيق آخر:** `MainActivity` (SENDTO/VIEW/SEND بـ sms:) ← مستلم واحد ← `ConversationRepository.openOrCreate` ← `thread/{id}`. المحادثة الفارغة (`date = 0`) تُحذف عند الخروج إن بقيت بلا رسالة ولا مسودة.
+- **الصادر (1.2.0):** كل الواجهات ← `SendEngine` (يختار الشريحة) ← `OutgoingRepository.enqueue` (صفوف `QUEUED` بمعاملة واحدة، وتحديث المحادثات على دفعات).
+  - **فردي:** `SendQueue.kick()` ← `SendQueueWorker` (**Expedited**، يعمل والتطبيق مغلق) ← `SendDrainer.drain()`.
+  - **جماعي (أكثر من مستلم):** يُرجع فوراً، `batchId` = وقت البدء، يُحفظ في `lastBatchId`، تبدأ `BulkSendService` (foreground، نوع dataSync) وتنتظر انتهاء التحضير ثم `SendDrainer.drain()`، مع إشعار تقدّم وأزرار إيقاف/متابعة/إلغاء، وإشعار نهاية مع «إعادة إرسال الفاشلة».
+  - **`SendDrainer`**: قفل `tryLock` فلا يعمل اثنان معاً؛ لكل رسالة: تأكد أنها ما زالت `QUEUED` ← `markOutbox` ← `SmsSender.send` ← تأخير حسب السرعة، أو في «أقصى سرعة» انتظار تأكيد المودم (`SendTracker`، مهلة 20 ثانية). الدفعة الموقوفة مؤقتاً تُتخطى.
+  - النتيجة تصل إلى `SmsStatusReceiver`: الجزء الأخير يحدد النجاح وأي جزء فاشل يُفشل الرسالة؛ إشعار الفشل الفردي فيه السبب بالعربي (الجماعي له ملخص واحد).
 - **المجدول:** صف `QUEUED` مع `scheduledAt` ← `ScheduleManager.schedule` (منبّه دقيق إن سُمح به) ← `ScheduledAlarmReceiver` ← `kick()`. `BootReceiver` يعيد ضبط المنبّهات، ويحوّل الرسائل العالقة في `OUTBOX` إلى `FAILED`.
 - **MMS (إن كان مفعّلاً):** `MmsWapPushReceiver` يحلل m-notification.ind ← `downloadMultimediaMessage` إلى ملف عبر FileProvider ← `MmsDownloadedReceiver` يحلل m-retrieve.conf ويحفظ المرفقات في `files/attachments` ← `onMms` ← يرسل m-notifyresp.ind للتأكيد. رسائل MMS **لا تُكتب** في `content://mms`. إن كان معطّلاً يظهر إشعار تنبيه فقط.
 
 ### الإشعارات
-- **القنوات:** `messages` و`otp` (أهمية عالية)، و`status` (فشل الإرسال وتنبيه MMS)
-- إشعار واحد لكل محادثة بنمط MessagingStyle، وأزراره: **نسخ الرمز**، **رد** (RemoteInput)، **تحديد كمقروء**
+- **القنوات:** `messages` و`otp` (أهمية عالية)، `status` (فشل الإرسال، نهاية الجماعي، تنبيه MMS)، `sending` (تقدّم الإرسال، منخفضة)، و`conv_<threadId>` (قناة خاصة لمحادثة عند طلب المستخدم «إشعارات هذه المحادثة»).
+- إشعار واحد لكل محادثة بنمط MessagingStyle مع صورة الجهة واختصار طويل الأمد (`thread_<id>`)، ضمن مجموعة `barq_messages` مع ملخص عند محادثتين فأكثر. أزراره: **نسخ الرمز**، **رد** (RemoteInput)، **تحديد كمقروء**.
+- أزرار الإرسال الجماعي في `NotificationActionReceiver`: `BATCH_PAUSE` / `BATCH_RESUME` / `BATCH_CANCEL` / `BATCH_RESEND`.
 
 ### الإعدادات (`AppSettings` في DataStore)
-themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled, spamFilter, recycleBin, swipeStart, swipeEnd, defaultSubId, sendDelayMs, autoReplyEnabled, autoReplyMode, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow, autoReplyFromMin, autoReplyToMin, backupFrequency, backupTreeUri, lastBackupAt, onboardingDone
+themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled, spamFilter, recycleBin, swipeStart, swipeEnd, defaultSubId, sendDelayMs (0 = أقصى سرعة)، autoReplyEnabled, autoReplyMode, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow, autoReplyFromMin, autoReplyToMin, backupFrequency, backupTreeUri, lastBackupAt, onboardingDone, **lastBatchId** (بطاقة آخر إرسال جماعي)، **bulkIntroShown**
 
 ### صيغة النسخة الاحتياطية (JSON)
 ```json
-{ "format":"barq-backup", "version":1, "createdAt":0,
+{ "format":"barq-backup", "version":2, "createdAt":0,
+  "settings":{ ...كل إعدادات المستخدم عدا المجلد ووقت آخر نسخة والترحيب... },
+  "groups":[{"name":"","members":[{"address":"","name":""}]}],
   "blockedNumbers":[], "blockedKeywords":[], "rules":[{"sender":"","category":""}],
   "templates":[], "autoReplyRules":[{"keywords":"","reply":"","enabled":true}],
   "conversations":[{"addresses":"","pinned":false,"archived":false,"muted":false,"category":"","categoryLocked":false}],
   "messages":[{"address":"","body":"","date":0,"dateSent":0,"box":1,"read":true,"subId":-1}] }
 ```
-الاستيراد يتجاهل الرسائل المكررة (نفس الرقم والتاريخ والنص).
+الاستيراد يقبل النسختين 1 و2، ويتجاهل الرسائل المكررة (فحص سريع بمفتاح «الرقم|الوقت» ثم النص عند التطابق). المجموعات تُدمج بالاسم. إن كانت فيها إعدادات يسأل المستخدم قبل استبدال الحالية.
 
 ### الأذونات
-READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PHONE_STATE، POST_NOTIFICATIONS، SCHEDULE_EXACT_ALARM، RECEIVE_BOOT_COMPLETED، INTERNET (لتنزيل MMS فقط عبر النظام).
+READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PHONE_STATE، POST_NOTIFICATIONS، SCHEDULE_EXACT_ALARM، RECEIVE_BOOT_COMPLETED، **FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC** (الإرسال الجماعي)، INTERNET (تنزيل MMS عبر النظام، وفحص التحديثات عند الضغط فقط).
 
 **متطلبات دور الرسائل الافتراضي (كلها موجودة في المانيفست):** SMS_DELIVER، WAP_PUSH_DELIVER، نشاط SENDTO لـ sms/smsto/mms/mmsto، وخدمة RESPOND_VIA_MESSAGE.
 
@@ -245,7 +290,7 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 
 ## 6. حالة المشروع والتحقق
 
-- ✅ الكود كامل، حوالي 7,500 سطر Kotlin في 45 ملفاً.
+- ✅ الكود كامل، حوالي 12,000 سطر Kotlin في 73 ملفاً (بعد المرحلة الثالثة).
 - ✅ 26 اختبار وحدة تنجح محلياً: OTP، التصنيف، مطابقة الأرقام وتوحيد الصيغ، استبدال الأرقام بالأسماء، محلّل MMS.
 - ✅ كل الملفات خالية من أخطاء الصياغة، وخطوة فك الـ zip في البناء مجرّبة.
 - ✅ المشروع مرفوع على `Dev-saged/SMS-Barq`، وخطوة فك الـ zip في GitHub Actions نجحت، وأسرار التوقيع الأربعة مضافة وتعمل.
@@ -258,8 +303,9 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | 1ب | مراجعة استباقية | متغيرات Paging باسم `items` تتعارض مع دالة `items()` داخل LazyColumn، واستيراد `decodeFromString` ناقص | إعادة التسمية إلى `pagingItems` + إضافة الاستيراد | ✅ أُصلح |
 | 2 | البناء الكامل (1.0.0) | لا أخطاء | — | ✅ **نجح البناء وثُبّت التطبيق على Galaxy S21+ (SM-G996B/DS) وعمل** |
 | 3 | المرحلة الثانية (1.1.0) | لا أخطاء | تحسينات جهات الاتصال والقائمة (القسم 8) | ✅ **نجح البناء #3** (7m 16s)، والـ APK في إصدار `latest-build` |
+| 4 | المرحلة الثالثة (1.2.0) | — | 31 نقطة (القسم 11)، قاعدة البيانات 2، محرك إرسال جديد | ⏳ بانتظار البناء. فُحصت صياغة كل ملفات Kotlin بمترجم Kotlin 2.0 محلياً (بدون أخطاء صياغة)، وفُحص SQL الترحيل والبحث على SQLite، لكن البناء الكامل يجري على GitHub فقط |
 
-> **الخطوة التالية:** تنفيذ المرحلة الثالثة 1.2.0 (القسم 11 والملف `docs/PHASE3_PLAN.md`) عند كلمة «ابدأ» من المالك. إن فشل أي بناء، نزّل السجل (Actions ← العملية ← ⋯ ← Download log archive)، وأرسله للذكاء الاصطناعي مع هذا الملف.
+> **الخطوة التالية:** ارفع `Barq-project.zip` (1.2.0) وشغّل البناء. إن فشل، نزّل السجل (Actions ← العملية ← ⋯ ← Download log archive)، وأرسله للذكاء الاصطناعي مع هذا الملف، وصلّح **كل** الأخطاء دفعة واحدة. بعد التثبيت: افتح التطبيق مرة ليجري ترحيل قاعدة البيانات، وإن حصل أي عطل انسخ «سجل الأعطال» من الإعدادات.
 >
 > **مكان التنزيل:** `github.com/Dev-saged/SMS-Barq/releases` ← إصدار **latest-build** (عليه شارة Pre-release) ← Assets ← `Barq-latest.apk`. أو من صفحة البناء ← Artifacts.
 - ⚠️ لم تُختبر بعد على الجهاز: استقبال MMS (يختلف باختلاف المشغّل) والشريحتين.
@@ -321,9 +367,9 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 - **تغيير المعرّف أو الإصدار:** `gradle.properties` ← `APP_ID`، `VERSION_NAME`، `VERSION_CODE`
 - **إضافة نص للواجهة:** كل النصوص في `res/values/strings.xml` (عربي)
 
-## 11. المرحلة الثالثة (1.2.0): مخططة وبانتظار «ابدأ»
+## 11. المرحلة الثالثة (1.2.0): منفّذة في الكود
 
-> الخطة التفصيلية الكاملة (الأسباب والحلول وملاحظات التنفيذ لكل نقطة): **`docs/PHASE3_PLAN.md`**. لم يُنفَّذ منها شيء في الكود بعد.
+> الخطة التفصيلية (السبب والحل لكل نقطة): **`docs/PHASE3_PLAN.md`**. **كل النقاط الـ 31 المعتمدة نُفّذت** في هذه النسخة، وتنتظر البناء الأول (القسم 6، صف 4).
 
 ### ملخص النقاط المعتمدة
 | # | النقطة | النوع |
@@ -360,7 +406,28 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 - **لا مكتبات جديدة.** Compose وAndroid فقط.
 - **غير مختار:** «بناء أذكى» و«اختبارات جديدة». الاختبارات الحالية يجب أن تبقى ناجحة.
 - **حقيقة تقنية:** إرسال 1000 SMS عبر الشبكة في ثانية مستحيل على أي هاتف. الهدف: تسجيل 1000 رسالة بالطابور بأقل من ثانية بدون تعليق، والإرسال الفعلي بأقصى سرعة يسمح بها المودم.
-- **`build.yml`** سيحتاج تعديلاً صغيراً للنقطة 31، ويُلصق يدوياً لأن ملف الـ workflow لا يتحدث من الـ zip.
+- **`build.yml` لم يتغيّر.** فحص التحديثات يقرأ «(build N)» الموجود أصلاً في نص إصدار `latest-build`، ويقارنه بـ `VERSION_CODE - BASE_VERSION_CODE` (حقل BuildConfig جديد).
+
+### أين نُفّذت كل نقطة
+| النقاط | الملفات الأساسية |
+|---|---|
+| 1، 4، 21، 22، 23 | `sms/SendEngine.kt`، `SendDrainer.kt`، `BulkSendService.kt`، `SendQueue(Worker).kt`، `SendTracker.kt`، `SendErrors.kt`، `data/OutgoingRepository.kt`، `ui/thread/MessageBubble.kt`، `ui/inbox/InboxScreen.kt` (BulkCard) |
+| 2 | `notifications/ActiveThread.kt`، `sms/IncomingProcessor.kt`، `ui/thread/ThreadScreen.kt` |
+| 3، 17 | `data/contacts/ContactsRepository.kt` (فهرس + قائمة مرتبة، `rebuild` يرفع الإصدار مرة واحدة عند التغيير فقط)، `data/SyncManager.kt`، `ui/components/ContactList.kt`، `AlphabetBar.kt`، `ui/compose/ComposeScreen.kt` |
+| 5 | `ui/inbox/InboxScreen.kt` (OtpCard)، `widget/OtpWidget.kt`، `ui/components/Common.kt` (`rememberContactName`) |
+| 6، 18 | `ui/inbox/InboxScreen.kt` (SelectionTopBar، SwipeableRow بحالة غير محفوظة) |
+| 7، 19 | `data/ConversationRepository.kt` (`latestVisible`، `setDraft`)، `data/db/Daos.kt` (الترتيب)، `ui/components/ConversationRow.kt` (`sortTime`) |
+| 8، 29 | `notifications/Notifier.kt` |
+| 9، 10 | `ui/thread/ThreadScreen.kt`، `ThreadViewModel.kt`، `ComposeScreen.kt` (`LifecycleEventEffect`) |
+| 16 | `MainActivity.kt`، `ConversationRepository.openOrCreate`، المانيفست (VIEW sms:) |
+| 20 | `ui/settings/AboutCard.kt`، `res/drawable/ic_social_*.xml`، `ic_flag_ps.xml`، `ic_heart.xml`، `ic_star.xml` |
+| 24 | `domain/TextNorm.kt`، `data/db/Entities.kt` (`MessageFts`)، `Daos.search`، `ui/inbox/InboxViewModel.kt` |
+| 25 | `@Immutable` على الكيانات، `contentType` في كل القوائم |
+| 26 | `util/CrashLog.kt`، `BarqApp.kt`، `ui/settings/CrashAndStatsScreens.kt` |
+| 27 | `data/db` (`SendGroupEntity`، `GroupDao`)، `ui/settings/GroupsScreens.kt` |
+| 28 | `data/backup/BackupManager.kt`، `SettingsRepository.restore` |
+| 30 | `ui/settings/CrashAndStatsScreens.kt` (`StatsViewModel`) |
+| 31 | `data/update/UpdateChecker.kt`، `app/build.gradle.kts` (`BASE_VERSION_CODE`) |
 
 ### حسابات المالك (لبطاقة المطوّر وREADME)
 | المنصة | الحساب | الرابط |

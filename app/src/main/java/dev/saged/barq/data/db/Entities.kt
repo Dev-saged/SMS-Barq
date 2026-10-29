@@ -1,8 +1,12 @@
 package dev.saged.barq.data.db
 
+import androidx.compose.runtime.Immutable
+import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Fts4
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import dev.saged.barq.domain.TextNorm
 import kotlinx.serialization.Serializable
 
 /** Message categories used for the inbox filters. */
@@ -24,9 +28,19 @@ object DeliveryStatus {
     const val FAILED = 64
 }
 
+/** Error codes Barq sets itself (the radio uses positive codes). */
+object SendError {
+    /** The user cancelled a bulk send before this message went out. */
+    const val CANCELLED = -100
+    /** Android refused the message before it reached the radio (bad number, no SIM…). */
+    const val REJECTED = -101
+}
+
+@Immutable
 @Serializable
 data class Attachment(val mime: String, val path: String, val name: String? = null)
 
+@Immutable
 @Entity(
     tableName = "conversations",
     indices = [Index(value = ["deleted", "archived", "category", "pinned", "date"])]
@@ -51,8 +65,14 @@ data class ConversationEntity(
     val subId: Int = -1,
     val lastFromMe: Boolean = false,
     val lastBox: Int = Box.INBOX,
+    /** When the draft was last changed (0 = no draft). Drafts lift the conversation to the top. */
+    @ColumnInfo(defaultValue = "0") val draftAt: Long = 0,
 )
 
+/** Time shown in the list and used for ordering: the newer of the last message and the draft. */
+val ConversationEntity.sortTime: Long get() = if (draft != null) maxOf(date, draftAt) else date
+
+@Immutable
 @Entity(
     tableName = "messages",
     indices = [
@@ -60,6 +80,7 @@ data class ConversationEntity(
         Index(value = ["providerId"], unique = true),
         Index(value = ["box", "scheduledAt"]),
         Index(value = ["otp"]),
+        Index(value = ["batchId"]),
     ]
 )
 data class MessageEntity(
@@ -83,7 +104,16 @@ data class MessageEntity(
     val scheduledAt: Long = 0,
     val errorCode: Int = 0,
     val autoReply: Boolean = false,
+    /** Bulk send this message belongs to (0 = a normal message). */
+    @ColumnInfo(defaultValue = "0") val batchId: Long = 0,
+    /** Normalised body for the full-text index (see [TextNorm]). */
+    @ColumnInfo(defaultValue = "''") val searchText: String = TextNorm.indexText(body),
 )
+
+/** Full-text index over [MessageEntity.searchText]; Room keeps it in sync with triggers. */
+@Fts4(contentEntity = MessageEntity::class)
+@Entity(tableName = "messages_fts")
+data class MessageFts(val searchText: String)
 
 /** Kept outside the entity so Room never tries to map it to a column. */
 val MessageEntity.isIncoming: Boolean get() = box == Box.INBOX
@@ -124,3 +154,40 @@ data class AutoReplyRuleEntity(
 data class AutoReplyLogEntity(@PrimaryKey val address: String, val lastAt: Long)
 
 data class CategoryCount(val category: Category, val count: Int)
+
+/** A saved list of numbers to send to in one tap. */
+@Entity(tableName = "send_groups")
+data class SendGroupEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val name: String,
+    val createdAt: Long = System.currentTimeMillis(),
+)
+
+@Entity(tableName = "send_group_members", primaryKeys = ["groupId", "address"])
+data class SendGroupMemberEntity(
+    val groupId: Long,
+    val address: String,
+    val name: String? = null,
+)
+
+data class SendGroupWithCount(val id: Long, val name: String, val createdAt: Long, val members: Int)
+
+/** Progress of one bulk send. */
+data class BatchCounts(val total: Int = 0, val sent: Int = 0, val failed: Int = 0, val pending: Int = 0)
+
+/** Outside the class so Room only maps the four counted columns. */
+val BatchCounts.done: Int get() = sent + failed
+val BatchCounts.finished: Boolean get() = total > 0 && pending == 0
+
+/** A message found by search, with its conversation name. */
+data class SearchHit(
+    val id: Long,
+    val threadId: Long,
+    val address: String,
+    val body: String,
+    val date: Long,
+    val box: Int,
+    val displayName: String,
+    val addresses: String,
+    val category: Category,
+)

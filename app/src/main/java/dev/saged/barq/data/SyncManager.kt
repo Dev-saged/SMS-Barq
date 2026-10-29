@@ -20,7 +20,6 @@ import dev.saged.barq.domain.PhoneUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -35,7 +34,8 @@ class SyncManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val db: BarqDatabase,
     private val provider: TelephonyProvider,
-    private val repository: MessageRepository,
+    private val conversations: ConversationRepository,
+    private val lock: ProviderLock,
     private val contacts: ContactsRepository,
     private val settings: SettingsRepository,
 ) {
@@ -75,7 +75,7 @@ class SyncManager @Inject constructor(
             return thread
         }
         try {
-            repository.providerLock.withLock {
+            lock.withLock {
                 val after = messages.maxProviderId() ?: 0L
                 provider.readSmsAfter(after, PAGE) { page ->
                     val entities = page.map { it.toEntity(canonicalThread(it), rules, spamFilter) }
@@ -85,9 +85,12 @@ class SyncManager @Inject constructor(
                     _progress.value = Progress(running = true, imported = imported)
                 }
             }
-            touched.forEach { repository.refreshConversation(it) }
-            repository.mergeDuplicateConversations()
-            repository.refreshNames()
+            // Nothing new (the usual case when the app is opened): no extra work at all.
+            if (imported > 0) {
+                conversations.refreshMany(touched)
+                conversations.mergeDuplicateConversations()
+                conversations.refreshNames(rebuildIndex = false)
+            }
         } finally {
             _progress.value = Progress(running = false, imported = imported)
         }

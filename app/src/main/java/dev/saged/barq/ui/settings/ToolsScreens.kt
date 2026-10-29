@@ -123,7 +123,7 @@ class ToolsViewModel @Inject constructor(
 // ---------------------------------------------------------------------------------- shared
 
 @Composable
-private fun ListCard(title: String, subtitle: String? = null, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit) {
+internal fun ListCard(title: String, subtitle: String? = null, onClick: (() -> Unit)? = null, trailing: @Composable () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -146,12 +146,12 @@ private fun ListCard(title: String, subtitle: String? = null, onClick: (() -> Un
 }
 
 @Composable
-private fun RemoveButton(onClick: () -> Unit) {
+internal fun RemoveButton(onClick: () -> Unit) {
     IconButton(onClick = onClick) { Icon(Icons.Outlined.Close, stringResource(R.string.remove)) }
 }
 
 @Composable
-private fun EmptyHint(text: String) {
+internal fun EmptyHint(text: String) {
     Text(
         text,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -161,7 +161,7 @@ private fun EmptyHint(text: String) {
 }
 
 @Composable
-private fun AddFab(label: String, onClick: () -> Unit) {
+internal fun AddFab(label: String, onClick: () -> Unit) {
     ExtendedFloatingActionButton(
         onClick = onClick,
         icon = { Icon(Icons.Outlined.Add, null) },
@@ -173,7 +173,7 @@ private fun AddFab(label: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun TextInputDialog(
+internal fun TextInputDialog(
     title: String,
     label: String,
     initial: String = "",
