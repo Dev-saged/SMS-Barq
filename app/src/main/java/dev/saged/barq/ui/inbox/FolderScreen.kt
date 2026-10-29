@@ -90,7 +90,7 @@ fun FolderScreen(
     openThread: (Long) -> Unit,
     vm: FolderViewModel = hiltViewModel(),
 ) {
-    val items = (if (bin) vm.bin else vm.archived).collectAsLazyPagingItems()
+    val pagingItems = (if (bin) vm.bin else vm.archived).collectAsLazyPagingItems()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     var confirmEmpty by remember { mutableStateOf(false) }
@@ -123,7 +123,7 @@ fun FolderScreen(
                         } else {
                             IconButton(onClick = vm::unarchive) { Icon(Icons.Outlined.Unarchive, stringResource(R.string.unarchive)) }
                         }
-                    } else if (bin && items.itemCount > 0) {
+                    } else if (bin && pagingItems.itemCount > 0) {
                         IconButton(onClick = { confirmEmpty = true }) {
                             Icon(Icons.Outlined.DeleteSweep, stringResource(R.string.empty_bin))
                         }
@@ -135,7 +135,7 @@ fun FolderScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(8.dp),
+            contentPadding = PaddingValues(bottom = 24.dp),
         ) {
             if (bin) {
                 item(key = "hint") {
@@ -147,8 +147,8 @@ fun FolderScreen(
                     )
                 }
             }
-            items(count = items.itemCount, key = items.itemKey { it.threadId }) { i ->
-                val c = items[i] ?: return@items
+            items(count = pagingItems.itemCount, key = pagingItems.itemKey { it.threadId }) { i ->
+                val c = pagingItems[i] ?: return@items
                 ConversationRow(
                     conversation = c,
                     settings = settings,
@@ -157,7 +157,7 @@ fun FolderScreen(
                     onLongClick = { vm.toggle(c.threadId) },
                 )
             }
-            if (items.itemCount == 0) {
+            if (pagingItems.itemCount == 0) {
                 item(key = "empty") {
                     Column(
                         Modifier.fillMaxWidth().padding(top = 96.dp),

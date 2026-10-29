@@ -16,6 +16,7 @@ import dev.saged.barq.data.telephony.ProviderSms
 import dev.saged.barq.data.telephony.TelephonyProvider
 import dev.saged.barq.domain.Classifier
 import dev.saged.barq.domain.OtpDetector
+import dev.saged.barq.domain.PhoneUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -54,24 +55,49 @@ class SyncManager @Inject constructor(
         val spamFilter = settings.current().spamFilter
         val touched = HashSet<Long>()
         var imported = 0
+        // One conversation per real number: +972…, +970… and 0… of the same number share a thread.
+        val keyToThread = HashMap<String, Long>()
+        val threadToKey = HashMap<Long, String>()
+        db.conversations().all().sortedByDescending { it.date }.forEach { conv ->
+            val key = PhoneUtils.conversationKey(conv.addresses)
+            if (keyToThread.putIfAbsent(key, conv.threadId) == null) threadToKey.putIfAbsent(conv.threadId, key)
+        }
+        fun canonicalThread(sms: ProviderSms): Long {
+            if (sms.address.isBlank()) return sms.threadId
+            val key = PhoneUtils.matchKey(sms.address)
+            keyToThread[key]?.let { return it }
+            var thread = sms.threadId
+            val owner = threadToKey[thread]
+            // A phone "group" thread holds several numbers: give each number its own conversation.
+            if (owner != null && owner != key) thread = provider.threadIdFor(listOf(sms.address))
+            keyToThread[key] = thread
+            threadToKey.putIfAbsent(thread, key)
+            return thread
+        }
         try {
             repository.providerLock.withLock {
                 val after = messages.maxProviderId() ?: 0L
                 provider.readSmsAfter(after, PAGE) { page ->
-                    val entities = page.map { it.toEntity(rules, spamFilter) }
+                    val entities = page.map { it.toEntity(canonicalThread(it), rules, spamFilter) }
                     db.withTransaction { messages.insertAll(entities) }
-                    page.forEach { touched += it.threadId }
+                    entities.forEach { touched += it.threadId }
                     imported += page.size
                     _progress.value = Progress(running = true, imported = imported)
                 }
             }
             touched.forEach { repository.refreshConversation(it) }
+            repository.mergeDuplicateConversations()
+            repository.refreshNames()
         } finally {
             _progress.value = Progress(running = false, imported = imported)
         }
     }
 
-    private fun ProviderSms.toEntity(rules: List<dev.saged.barq.data.db.CategoryRuleEntity>, spamFilter: Boolean): MessageEntity {
+    private fun ProviderSms.toEntity(
+        canonicalThreadId: Long,
+        rules: List<dev.saged.barq.data.db.CategoryRuleEntity>,
+        spamFilter: Boolean,
+    ): MessageEntity {
         val incoming = type == Box.INBOX
         val otp = if (incoming) OtpDetector.detect(body) else null
         val category = if (incoming) {
@@ -84,7 +110,7 @@ class SyncManager @Inject constructor(
             else -> Box.SENT
         }
         return MessageEntity(
-            providerId = id, threadId = threadId, address = address, body = body, date = date,
+            providerId = id, threadId = canonicalThreadId, address = address, body = body, date = date,
             dateSent = dateSent, box = box, read = read || !incoming, subId = subId, otp = otp,
             category = category,
         )

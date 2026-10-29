@@ -10,6 +10,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.data.MessageRepository
 import dev.saged.barq.data.SyncManager
+import dev.saged.barq.data.contacts.ContactsWatcher
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.sms.SendQueue
@@ -27,6 +28,7 @@ class MainViewModel @Inject constructor(
     private val sync: SyncManager,
     private val repository: MessageRepository,
     private val sendQueue: SendQueue,
+    private val contactsWatcher: ContactsWatcher,
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings?> =
@@ -55,6 +57,7 @@ class MainViewModel @Inject constructor(
 
     fun onPermissionsChanged() {
         _isDefault.value = isDefaultSmsApp()
+        contactsWatcher.start()
         viewModelScope.launch {
             repository.refreshNames()
             sync.sync()

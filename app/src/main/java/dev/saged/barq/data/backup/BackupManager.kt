@@ -136,6 +136,7 @@ class BackupManager @Inject constructor(
         val spamFilter = settings.current().spamFilter
         val touched = HashSet<Long>()
         val messages = db.messages()
+        val resolver = repository.threadResolver()
         backup.messages.chunked(PAGE).forEach { chunk ->
             repository.providerLock.withLock {
                 val toInsert = ArrayList<MessageEntity>(chunk.size)
@@ -145,7 +146,7 @@ class BackupManager @Inject constructor(
                         return@forEach
                     }
                     val box = if (m.box == Box.INBOX || m.box == Box.SENT) m.box else Box.FAILED
-                    val threadId = provider.threadIdFor(listOf(m.address))
+                    val threadId = resolver.resolve(m.address)
                     val providerId = provider.insertSms(
                         address = m.address, body = m.body, date = m.date, dateSent = m.dateSent,
                         type = box, read = m.read, threadId = threadId, subId = m.subId,
@@ -167,6 +168,7 @@ class BackupManager @Inject constructor(
             }
         }
         touched.forEach { repository.refreshConversation(it) }
+        repository.mergeDuplicateConversations()
         restoreConversationFlags(backup)
         ImportResult(imported, skipped)
     }
@@ -195,8 +197,9 @@ class BackupManager @Inject constructor(
 
     private suspend fun restoreConversationFlags(b: BackupFile) {
         val dao = db.conversations()
+        val resolver = repository.threadResolver()
         b.conversations.forEach { c ->
-            val threadId = provider.threadIdFor(PhoneUtils.splitAddresses(c.addresses))
+            val threadId = resolver.resolve(c.addresses)
             val conv = dao.get(threadId) ?: return@forEach
             val cat = runCatching { Category.valueOf(c.category) }.getOrDefault(conv.category)
             dao.upsert(

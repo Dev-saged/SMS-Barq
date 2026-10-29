@@ -107,9 +107,10 @@ fun InboxScreen(
     openArchive: () -> Unit,
     openBin: () -> Unit,
     openSettings: () -> Unit,
+    openContact: (Long) -> Unit,
     vm: InboxViewModel = hiltViewModel(),
 ) {
-    val items = vm.conversationsPaged.collectAsLazyPagingItems()
+    val pagingItems = vm.conversationsPaged.collectAsLazyPagingItems()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val filter by vm.filter.collectAsStateWithLifecycle()
     val query by vm.query.collectAsStateWithLifecycle()
@@ -180,7 +181,7 @@ fun InboxScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(bottom = 96.dp),
         ) {
             if (!isDefault) {
                 item(key = "default") {
@@ -213,8 +214,8 @@ fun InboxScreen(
                     )
                 }
             }
-            items(count = items.itemCount, key = items.itemKey { it.threadId }) { index ->
-                val c = items[index] ?: return@items
+            items(count = pagingItems.itemCount, key = pagingItems.itemKey { it.threadId }) { index ->
+                val c = pagingItems[index] ?: return@items
                 SwipeableRow(
                     conversation = c,
                     settings = settings,
@@ -229,10 +230,11 @@ fun InboxScreen(
                             if (selection.isNotEmpty()) vm.toggleSelection(c.threadId) else openThread(c.threadId)
                         },
                         onLongClick = { vm.toggleSelection(c.threadId) },
+                        onAvatarClick = if (selection.isEmpty()) ({ openContact(c.threadId) }) else null,
                     )
                 }
             }
-            if (items.itemCount == 0 && !sync.running) {
+            if (pagingItems.itemCount == 0 && !sync.running) {
                 item(key = "empty") { EmptyState(query.isNotBlank() || filter != null) }
             }
             if (filter == null && spamCount > 0 && query.isBlank()) {
@@ -339,7 +341,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 16.dp, vertical = 6.dp)
             .height(52.dp)
             .clip(RoundedCornerShape(26.dp))
             .background(scheme.surfaceContainer)
@@ -378,7 +380,7 @@ private fun FilterChips(selected: Category?, onSelect: (Category?) -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         options.forEach { cat ->
@@ -408,7 +410,7 @@ private fun OtpCard(message: MessageEntity, onDismiss: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(scheme.primaryContainer)
             .padding(horizontal = 18.dp, vertical = 16.dp),
@@ -468,7 +470,7 @@ fun InfoCard(icon: ImageVector, text: String, action: String, onAction: () -> Un
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(scheme.surfaceContainer)
             .clickable(onClick = onAction)
@@ -559,7 +561,7 @@ private fun SwipeBackground(action: SwipeAction, alignStart: Boolean) {
         SwipeAction.NONE -> Icons.AutoMirrored.Outlined.ArrowBack
     }
     Box(
-        modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)).background(bg).padding(horizontal = 28.dp),
+        modifier = Modifier.fillMaxSize().background(bg).padding(horizontal = 28.dp),
         contentAlignment = if (alignStart) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
         Icon(icon, contentDescription = null, tint = fg)

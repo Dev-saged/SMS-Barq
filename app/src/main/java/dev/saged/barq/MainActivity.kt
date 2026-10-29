@@ -11,20 +11,26 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.ui.BarqNavHost
+import dev.saged.barq.ui.components.LocalContacts
 import dev.saged.barq.ui.MainViewModel
 import dev.saged.barq.ui.Routes
 import dev.saged.barq.ui.theme.BarqTheme
 import kotlinx.coroutines.flow.MutableStateFlow
+import javax.inject.Inject
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
+
+    @Inject lateinit var contacts: ContactsRepository
 
     /** Route requested by an external intent (notification tap, sms: link, share). */
     private val pendingRoute = MutableStateFlow<String?>(null)
@@ -40,12 +46,14 @@ class MainActivity : ComponentActivity() {
                 Box(Modifier.fillMaxSize())
             } else {
                 BarqTheme(s) {
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                        BarqNavHost(
-                            startOnboarding = !s.onboardingDone,
-                            pendingRoute = pendingRoute,
-                            mainViewModel = viewModel,
-                        )
+                    CompositionLocalProvider(LocalContacts provides contacts) {
+                        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                            BarqNavHost(
+                                startOnboarding = !s.onboardingDone,
+                                pendingRoute = pendingRoute,
+                                mainViewModel = viewModel,
+                            )
+                        }
                     }
                 }
             }

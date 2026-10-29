@@ -54,4 +54,30 @@ class PhoneUtilsTest {
         assertFalse(PhoneUtils.isReplyable("MyBank"))
         assertFalse(PhoneUtils.isReplyable("1234"))
     }
+
+    @Test fun samePersonAcrossPrefixes() {
+        val k = PhoneUtils.matchKey("0597857250")
+        assertEquals(k, PhoneUtils.matchKey("+972597857250"))
+        assertEquals(k, PhoneUtils.matchKey("+970597857250"))
+        assertEquals(k, PhoneUtils.matchKey("059-785-7250"))
+        assertEquals(k, PhoneUtils.matchKey("+970 59 785 7250"))
+        assertFalse(k == PhoneUtils.matchKey("0598570062"))
+        assertEquals("mybank", PhoneUtils.matchKey("MyBank"))
+    }
+}
+
+class NumberTextTest {
+    private val book = mapOf(PhoneUtils.matchKey("0592042464") to "أمي الحبيبة")
+    private fun names(s: String) = NumberText.replaceWithNames(s) { book[PhoneUtils.matchKey(it)] }
+
+    @Test fun replacesKnownNumber() =
+        assertEquals("الرقم أمي الحبيبة حاول الاتصال بك", names("الرقم 0592042464 حاول الاتصال بك"))
+
+    @Test fun replacesInternationalForm() =
+        assertEquals("اتصل على أمي الحبيبة.", names("اتصل على +972592042464."))
+
+    @Test fun keepsUnknownNumbersAndAmounts() {
+        assertEquals("الرقم 0599999999 والمبلغ 45.00", names("الرقم 0599999999 والمبلغ 45.00"))
+        assertEquals("رمزك 482913", names("رمزك 482913"))
+    }
 }

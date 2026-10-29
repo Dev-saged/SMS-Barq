@@ -92,7 +92,7 @@ class ComposeViewModel @Inject constructor(
 
     val recipients = MutableStateFlow(
         savedState.get<String>("to").orEmpty().split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }
-            .map { Recipient(it, contacts.nameFor(it)) }
+            .map { Recipient(it, contacts.lookupCached(it)?.name) }
     )
     val query = MutableStateFlow("")
     val text = MutableStateFlow(savedState.get<String>("body").orEmpty())
@@ -127,7 +127,7 @@ class ComposeViewModel @Inject constructor(
         val a = address.trim()
         if (a.isEmpty()) return
         if (recipients.value.none { PhoneUtils.same(it.address, a) }) {
-            recipients.value = recipients.value + Recipient(a, name ?: contacts.nameFor(a))
+            recipients.value = recipients.value + Recipient(a, name ?: contacts.lookupCached(a)?.name)
         }
         query.value = ""
     }

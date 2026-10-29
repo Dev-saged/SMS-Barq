@@ -243,4 +243,11 @@
     <string name="add_smart_reply">رد ذكي جديد</string>
     <string name="keywords_label">الكلمات (افصل بينها بـ |)</string>
     <string name="when_contains">عندما تحتوي: %1$s</string>
+
+    <!-- Contact page -->
+    <string name="number_copied">تم نسخ الرقم</string>
+    <string name="tap_number_to_copy">اضغط على الرقم لنسخه</string>
+    <string name="messages_button">الرسائل</string>
+    <string name="open_contact">جهة الاتصال</string>
+    <string name="add_contact">إضافة لجهات الاتصال</string>
 </resources>

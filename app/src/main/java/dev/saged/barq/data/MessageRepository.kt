@@ -66,7 +66,7 @@ class MessageRepository @Inject constructor(
                 address, body, otp, contacts.isContact(address), s.spamFilter, rules.all()
             )
             val stored = providerLock.withLock {
-                val threadId = provider.threadIdFor(listOf(address))
+                val threadId = threadResolver().resolve(address)
                 val providerId = provider.insertSms(
                     address = address, body = body, date = now, dateSent = dateSent,
                     type = Telephony.Sms.MESSAGE_TYPE_INBOX, read = false, threadId = threadId, subId = subId,
@@ -94,7 +94,7 @@ class MessageRepository @Inject constructor(
         val s = settings.current()
         val otp = OtpDetector.detect(text)
         val category = Classifier.classify(address, text, otp, contacts.isContact(address), s.spamFilter, rules.all())
-        val threadId = provider.threadIdFor(listOf(address))
+        val threadId = threadResolver().resolve(address)
         val msg = MessageEntity(
             threadId = threadId, address = address, body = text, date = date, dateSent = date,
             box = Box.INBOX, read = false, subId = subId, otp = otp, category = category,
@@ -125,9 +125,10 @@ class MessageRepository @Inject constructor(
         val scheduled = ArrayList<MessageEntity>()
         // One transaction for the whole batch keeps 500 recipients fast.
         val touched = providerLock.withLock {
+            val resolver = threadResolver()
             db.withTransaction {
-                recipients.distinctBy { PhoneUtils.normalize(it) }.forEachIndexed { i, address ->
-                    val threadId = provider.threadIdFor(listOf(address))
+                recipients.distinctBy { PhoneUtils.matchKey(it) }.forEachIndexed { i, address ->
+                    val threadId = resolver.resolve(address)
                     val msg = MessageEntity(
                         threadId = threadId, address = address, body = text,
                         date = (if (scheduledAt > 0) scheduledAt else now) + i, box = Box.QUEUED,
@@ -329,10 +330,71 @@ class MessageRepository @Inject constructor(
         delete(threadIds)
     }
 
-    /** Refreshes contact names (e.g. after the contacts permission is granted). */
+    /** Refreshes contact names (after the permission is granted or contacts change). */
     suspend fun refreshNames() = withContext(Dispatchers.IO) {
-        contacts.clearCache()
-        conversations.all().forEach { conversations.setDisplayName(it.threadId, contacts.displayName(it.addresses)) }
+        contacts.invalidate()
+        contacts.warmUp()
+        conversations.all().forEach { conv ->
+            val name = contacts.displayName(conv.addresses)
+            if (name != conv.displayName) conversations.setDisplayName(conv.threadId, name)
+        }
+    }
+
+    // ---------------------------------------------------------------- one conversation per number
+
+    /**
+     * Maps a number to the conversation that already holds it in any format, so
+     * 0597857250, +972597857250 and +970597857250 always land in the same thread.
+     * Built once per operation (cheap even for hundreds of conversations).
+     */
+    inner class ThreadResolver(private val byKey: MutableMap<String, Long>) {
+        fun resolve(address: String): Long {
+            val key = PhoneUtils.conversationKey(address)
+            return byKey.getOrPut(key) { provider.threadIdFor(listOf(address)) }
+        }
+    }
+
+    suspend fun threadResolver(): ThreadResolver {
+        val map = HashMap<String, Long>()
+        conversations.all().sortedByDescending { it.date }.forEach { conv ->
+            map.putIfAbsent(PhoneUtils.conversationKey(conv.addresses), conv.threadId)
+        }
+        return ThreadResolver(map)
+    }
+
+    /**
+     * Joins conversations that are really the same number written differently (older data,
+     * or messages imported from the phone). Keeps the most recent thread and its flags.
+     */
+    suspend fun mergeDuplicateConversations() = withContext(Dispatchers.IO) {
+        val groups = conversations.all()
+            .groupBy { PhoneUtils.conversationKey(it.addresses) }
+            .values.filter { it.size > 1 }
+        if (groups.isEmpty()) return@withContext
+        val targets = ArrayList<Long>()
+        providerLock.withLock {
+            db.withTransaction {
+                groups.forEach { list ->
+                    val target = list.maxByOrNull { it.date } ?: return@forEach
+                    list.filter { it.threadId != target.threadId }.forEach { other ->
+                        messages.moveThread(other.threadId, target.threadId)
+                        conversations.deleteForever(listOf(other.threadId))
+                    }
+                    conversations.upsert(
+                        target.copy(
+                            pinned = list.any { it.pinned },
+                            muted = list.any { it.muted },
+                            archived = list.all { it.archived },
+                            deleted = list.all { it.deleted },
+                            draft = target.draft ?: list.firstNotNullOfOrNull { it.draft },
+                            categoryLocked = list.any { it.categoryLocked },
+                        )
+                    )
+                    targets += target.threadId
+                }
+            }
+        }
+        targets.forEach { refreshConversation(it) }
     }
 
     fun attachmentDir(): File = File(context.filesDir, "attachments").apply { mkdirs() }

@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -91,6 +92,7 @@ import dev.saged.barq.ui.inbox.ConfirmDialog
 fun ThreadScreen(
     onBack: () -> Unit,
     forward: (String) -> Unit,
+    openContact: (Long) -> Unit,
     vm: ThreadViewModel = hiltViewModel(),
 ) {
     val context = LocalContext.current
@@ -100,7 +102,7 @@ fun ThreadScreen(
     val text by vm.text.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val subId by vm.subId.collectAsStateWithLifecycle()
-    val items = vm.messages.collectAsLazyPagingItems()
+    val pagingItems = vm.messages.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
 
     var menu by remember { mutableStateOf(false) }
@@ -117,7 +119,7 @@ fun ThreadScreen(
     val yesterday = stringResource(R.string.yesterday)
 
     // New messages arrive at index 0 — keep the view pinned to the bottom when already there.
-    LaunchedEffect(items.itemCount) {
+    LaunchedEffect(pagingItems.itemCount) {
         if (listState.firstVisibleItemIndex <= 1) listState.animateScrollToItem(0)
         vm.markRead()
     }
@@ -130,7 +132,14 @@ fun ThreadScreen(
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) }
                 },
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .clickable(enabled = conv != null) { conv?.let { openContact(it.threadId) } }
+                            .padding(end = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
                         if (conv != null) {
                             Avatar(conv.displayName, conv.addresses, conv.threadId, conv.category, size = 40.dp)
                         }
@@ -239,9 +248,9 @@ fun ThreadScreen(
             reverseLayout = true,
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
-            items(count = items.itemCount, key = items.itemKey { it.id }) { index ->
-                val m = items[index] ?: return@items
-                val older = if (index + 1 < items.itemCount) items.peek(index + 1) else null
+            items(count = pagingItems.itemCount, key = pagingItems.itemKey { it.id }) { index ->
+                val m = pagingItems[index] ?: return@items
+                val older = if (index + 1 < pagingItems.itemCount) pagingItems.peek(index + 1) else null
                 Column {
                     if (older == null || !TimeFormat.isSameDay(older.date, m.date)) {
                         DayHeader(TimeFormat.dayHeader(m.date, settings, today, yesterday))

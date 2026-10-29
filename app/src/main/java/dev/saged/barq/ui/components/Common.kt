@@ -1,6 +1,12 @@
 package dev.saged.barq.ui.components
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.LruCache
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -14,20 +20,32 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.saged.barq.R
+import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.ui.theme.LocalBarqColors
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -52,27 +70,100 @@ fun Category.label(): String = stringResource(
     }
 )
 
-/** Initial letter for people, a category icon for service senders. */
+/** Gives every screen access to the contacts index (names, photos). Set in MainActivity. */
+val LocalContacts = staticCompositionLocalOf<ContactsRepository?> { null }
+
+private val photoCache = LruCache<String, ImageBitmap>(150)
+
+/**
+ * Loads a contact photo (thumbnail) once and keeps it in memory. [version] is the contacts
+ * version: Android keeps the same photo URI when a photo is replaced, so the cache key includes
+ * it and a changed photo shows up right away.
+ */
 @Composable
-fun Avatar(name: String, address: String, seed: Long, category: Category, size: Dp = 48.dp) {
+fun rememberContactPhoto(uri: String?, version: Int = 0): ImageBitmap? {
+    val context = LocalContext.current
+    val key = uri?.let { "$it@$version" }
+    val state = produceState(initialValue = key?.let { photoCache.get(it) }, key) {
+        if (uri == null || key == null) {
+            value = null
+            return@produceState
+        }
+        photoCache.get(key)?.let {
+            value = it
+            return@produceState
+        }
+        val loaded = withContext(Dispatchers.IO) {
+            runCatching {
+                context.contentResolver.openInputStream(Uri.parse(uri))?.use { BitmapFactory.decodeStream(it) }?.asImageBitmap()
+            }.getOrNull()
+        }
+        if (loaded != null) photoCache.put(key, loaded)
+        value = loaded
+    }
+    return state.value
+}
+
+/** Current contacts version — recomposes callers when names or photos change. */
+@Composable
+fun contactsVersion(): Int {
+    val contacts = LocalContacts.current ?: return 0
+    val v by contacts.version.collectAsState()
+    return v
+}
+
+/** Message text with saved contact names shown in place of their phone numbers. */
+@Composable
+fun rememberWithNames(text: String): String {
+    val contacts = LocalContacts.current ?: return text
+    val version = contactsVersion()
+    return remember(text, version) { contacts.withNames(text) }
+}
+
+/** Contact photo when there is one; otherwise an initial letter, or a category icon for services. */
+@Composable
+fun Avatar(
+    name: String,
+    address: String,
+    seed: Long,
+    category: Category,
+    size: Dp = 48.dp,
+    photoUri: String? = null,
+    onClick: (() -> Unit)? = null,
+) {
+    val contacts = LocalContacts.current
+    val version = contactsVersion()
+    val uri = photoUri ?: remember(address, version) {
+        PhoneUtils.splitAddresses(address).singleOrNull()?.let { contacts?.lookupCached(it)?.photoUri }
+    }
+    val photo = rememberContactPhoto(uri, version)
     val extra = LocalBarqColors.current
     val scheme = MaterialTheme.colorScheme
     val isService = !PhoneUtils.isReplyable(address) || category == Category.BANK || category == Category.OTP
     val colors = if (isService) extra.category(category, scheme) else extra.avatar(seed)
     Box(
-        modifier = Modifier.size(size).clip(CircleShape).background(colors.container),
+        modifier = Modifier
+            .size(size)
+            .clip(CircleShape)
+            .background(colors.container)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         val letter = name.trim().firstOrNull { it.isLetter() }
-        if (isService || letter == null) {
-            Icon(
+        when {
+            photo != null -> Image(
+                bitmap = photo,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            isService || letter == null -> Icon(
                 imageVector = if (isService) category.icon() else Icons.Outlined.Person,
                 contentDescription = null,
                 tint = colors.content,
                 modifier = Modifier.size(size * 0.46f),
             )
-        } else {
-            Text(
+            else -> Text(
                 text = letter.uppercase(),
                 color = colors.content,
                 fontWeight = FontWeight.SemiBold,

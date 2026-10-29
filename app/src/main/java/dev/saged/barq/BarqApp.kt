@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import dev.saged.barq.data.contacts.ContactsWatcher
 import dev.saged.barq.data.db.AutoReplyDao
 import dev.saged.barq.data.db.TemplateDao
 import dev.saged.barq.data.db.TemplateEntity
@@ -28,6 +29,7 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var templates: TemplateDao
     @Inject lateinit var autoReply: AutoReplyDao
     @Inject @field:AppScope lateinit var scope: CoroutineScope
+    @Inject lateinit var contactsWatcher: ContactsWatcher
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -36,6 +38,7 @@ class BarqApp : Application(), Configuration.Provider {
         super.onCreate()
         notifier.createChannels()
         maintenance.ensureScheduled()
+        contactsWatcher.start()
         scope.launch { seedDefaults() }
     }
 

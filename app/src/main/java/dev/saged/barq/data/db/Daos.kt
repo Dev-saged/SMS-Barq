@@ -172,6 +172,9 @@ interface MessageDao {
     @Query("DELETE FROM messages WHERE threadId IN (:ids)")
     suspend fun deleteThreads(ids: List<Long>)
 
+    @Query("UPDATE messages SET threadId = :to WHERE threadId = :from")
+    suspend fun moveThread(from: Long, to: Long)
+
     @Query("DELETE FROM messages WHERE id IN (:ids)")
     suspend fun deleteByIds(ids: List<Long>)
 

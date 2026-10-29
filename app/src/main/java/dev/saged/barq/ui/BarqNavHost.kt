@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.saged.barq.ui.compose.ComposeScreen
+import dev.saged.barq.ui.contact.ContactScreen
 import dev.saged.barq.ui.inbox.FolderScreen
 import dev.saged.barq.ui.inbox.InboxScreen
 import dev.saged.barq.ui.onboarding.OnboardingScreen
@@ -37,8 +38,10 @@ object Routes {
     const val RULES = "rules"
     const val TEMPLATES = "templates"
     const val AUTO_REPLY = "autoreply"
+    const val CONTACT = "contact/{threadId}"
 
     fun thread(id: Long) = "thread/$id"
+    fun contact(id: Long) = "contact/$id"
     fun compose(to: String = "", body: String = "") = "compose?to=${Uri.encode(to)}&body=${Uri.encode(body)}"
 }
 
@@ -84,6 +87,7 @@ fun BarqNavHost(
                 openArchive = { nav.navigate(Routes.ARCHIVE) },
                 openBin = { nav.navigate(Routes.BIN) },
                 openSettings = { nav.navigate(Routes.SETTINGS) },
+                openContact = { nav.navigate(Routes.contact(it)) },
             )
         }
         composable(
@@ -93,6 +97,19 @@ fun BarqNavHost(
             ThreadScreen(
                 onBack = back,
                 forward = { body -> nav.navigate(Routes.compose("", body)) },
+                openContact = { nav.navigate(Routes.contact(it)) { launchSingleTop = true } },
+            )
+        }
+        composable(
+            Routes.CONTACT,
+            arguments = listOf(navArgument("threadId") { type = NavType.LongType }),
+        ) {
+            ContactScreen(
+                onBack = back,
+                openThread = { id ->
+                    // Coming from the thread → just go back; from the inbox → open the thread.
+                    if (!nav.popBackStack(Routes.THREAD, false)) nav.navigate(Routes.thread(id))
+                },
             )
         }
         composable(

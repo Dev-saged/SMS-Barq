@@ -64,6 +64,7 @@ import dev.saged.barq.data.db.isIncoming
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.notifications.NotificationActionReceiver
 import dev.saged.barq.ui.components.TimeFormat
+import dev.saged.barq.ui.components.rememberWithNames
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -139,7 +140,7 @@ fun MessageBubble(
             message.attachments.forEach { AttachmentView(it) }
             if (message.body.isNotBlank()) {
                 Text(
-                    text = linkify(message.body),
+                    text = linkify(rememberWithNames(message.body)),
                     style = MaterialTheme.typography.bodyLarge.copy(textDirection = TextDirection.Content),
                     color = content,
                 )
