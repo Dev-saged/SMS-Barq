@@ -1,0 +1,130 @@
+# Builds the Barq APK on GitHub — no computer needed.
+# - Every push builds an APK (Actions tab → run → Artifacts) and refreshes the "latest-build" release.
+# - Pushing a tag like v1.0.0 creates a proper GitHub Release with the APK attached.
+# - Uploading the project as a single .zip from a phone also works: this workflow unpacks it first.
+name: Build Barq APK
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Unpack uploaded project zip (phone helper)
+        run: |
+          shopt -s nullglob
+          zips=( *.zip )
+          if [ ${#zips[@]} -eq 0 ]; then echo "No project zip to unpack."; exit 0; fi
+          ZIP="${zips[0]}"
+          echo "Unpacking $ZIP"
+          rm -rf /tmp/unz && mkdir -p /tmp/unz
+          unzip -q -o "$ZIP" -d /tmp/unz
+          SETTINGS=$(find /tmp/unz -maxdepth 3 -name settings.gradle.kts | head -n1)
+          if [ -z "$SETTINGS" ]; then echo "::error::The zip does not contain settings.gradle.kts"; exit 1; fi
+          SRC=$(dirname "$SETTINGS")
+          # Workflow files cannot be committed by the bot; the one you created stays in place.
+          (cd "$SRC" && tar --exclude='./.github' -cf - .) | tar -xf -
+          git rm -q "$ZIP"
+          if [ "$GITHUB_REF_TYPE" = "branch" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            git commit -q -m "Unpack $ZIP" && git push origin "HEAD:$GITHUB_REF_NAME" || echo "Nothing to commit"
+          fi
+
+      - name: Check project is present
+        id: check
+        run: |
+          if [ -f settings.gradle.kts ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Project files not uploaded yet — upload Barq-project.zip and the build will start."
+          fi
+
+      - name: Set up JDK 17
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        if: steps.check.outputs.ready == 'true'
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Prepare signing key
+        if: steps.check.outputs.ready == 'true' && env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/barq-release.jks"
+          echo "SIGNING_STORE_FILE=$RUNNER_TEMP/barq-release.jks" >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        if: steps.check.outputs.ready == 'true'
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace assembleRelease
+
+      - name: Collect APK
+        if: steps.check.outputs.ready == 'true'
+        run: |
+          VERSION=$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2)
+          mkdir -p dist
+          cp app/build/outputs/apk/release/*.apk "dist/Barq-v${VERSION}-build${GITHUB_RUN_NUMBER}.apk"
+          cp app/build/outputs/apk/release/*.apk "dist/Barq-latest.apk"
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::warning::No signing secrets set — APK is signed with a temporary key. Add the secrets (see docs/PUBLISHING.md) so updates install over each other."
+          fi
+          ls -l dist
+
+      - name: Upload APK artifact
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Barq-APK-${{ github.run_number }}
+          path: dist/Barq-v*.apk
+          if-no-files-found: error
+
+      - name: Update "latest-build" release
+        if: steps.check.outputs.ready == 'true' && github.ref_type == 'branch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          name: Barq — آخر نسخة تجريبية
+          body: آخر APK تم بناؤه تلقائياً من الفرع ${{ github.ref_name }} (build ${{ github.run_number }}).
+          prerelease: true
+          files: dist/Barq-latest.apk
+
+      - name: Publish tagged release
+        if: steps.check.outputs.ready == 'true' && startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Barq-v*.apk
+          generate_release_notes: true
+
+      - name: Unit tests
+        if: steps.check.outputs.ready == 'true'
+        continue-on-error: true
+        run: ./gradlew --no-daemon testDebugUnitTest
