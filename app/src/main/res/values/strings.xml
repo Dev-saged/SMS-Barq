@@ -1,0 +1,246 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">برق</string>
+    <string name="developer_line">تطوير: ساجد العبادلة</string>
+    <string name="copyright_line">© ساجد العبادلة — جميع الحقوق محفوظة</string>
+    <string name="version_value">الإصدار %1$s</string>
+
+    <!-- Onboarding -->
+    <string name="onboarding_tagline">رسائل SMS سريعة، نظيفة وذكية — كل شيء يعمل على هاتفك فقط.</string>
+    <string name="onboarding_f1_title">سريع جداً</string>
+    <string name="onboarding_f1_body">قوائم خفيفة وإرسال بالخلفية حتى لمئات الرسائل بدون تعليق.</string>
+    <string name="onboarding_f2_title">رموز التحقق بلمسة</string>
+    <string name="onboarding_f2_body">يكتشف رمز OTP وينسخه من الإشعار أو الويدجت مباشرة.</string>
+    <string name="onboarding_f3_title">تصنيف تلقائي</string>
+    <string name="onboarding_f3_body">بنوك، رموز، عروض وسبام — كل رسالة في مكانها.</string>
+    <string name="onboarding_make_default">اجعل برق تطبيق الرسائل الافتراضي</string>
+    <string name="onboarding_grant">منح الأذونات والبدء</string>
+    <string name="onboarding_later">لاحقاً</string>
+
+    <!-- Inbox -->
+    <string name="inbox_title">الرسائل</string>
+    <string name="search_hint">ابحث في الرسائل</string>
+    <string name="all">الكل</string>
+    <string name="cat_otp">OTP</string>
+    <string name="cat_bank">بنوك</string>
+    <string name="cat_offers">عروض</string>
+    <string name="cat_personal">شخصية</string>
+    <string name="cat_spam">سبام</string>
+    <string name="new_message">رسالة جديدة</string>
+    <string name="new_code_from">رمز تحقق جديد · %1$s</string>
+    <string name="code_card_hint">انسخه والصقه — يبقى الرمز محفوظاً في المحادثة</string>
+    <string name="spam_banner">%1$d محادثات سبام محجوبة</string>
+    <string name="show">عرض</string>
+    <string name="not_default_banner">برق ليس تطبيق الرسائل الافتراضي — لن تصل الرسائل الجديدة إليه.</string>
+    <string name="make_default">تفعيل</string>
+    <string name="importing">جارٍ استيراد رسائلك… %1$d</string>
+    <string name="empty_inbox">لا توجد رسائل بعد</string>
+    <string name="empty_filtered">لا توجد نتائج</string>
+    <string name="draft_prefix">مسودة: %1$s</string>
+    <string name="you_prefix">أنت: %1$s</string>
+    <string name="send_failed_short">فشل الإرسال</string>
+    <string name="yesterday">أمس</string>
+    <string name="today">اليوم</string>
+    <string name="archived_done">تمت الأرشفة</string>
+    <string name="deleted_done">نُقلت إلى سلة المحذوفات</string>
+    <string name="undo">تراجع</string>
+    <string name="more">المزيد</string>
+    <string name="clear">مسح</string>
+    <string name="dismiss">إخفاء</string>
+
+    <!-- Actions -->
+    <string name="archive">الأرشيف</string>
+    <string name="unarchive">إلغاء الأرشفة</string>
+    <string name="recycle_bin">سلة المحذوفات</string>
+    <string name="settings">الإعدادات</string>
+    <string name="pin">تثبيت</string>
+    <string name="unpin">إلغاء التثبيت</string>
+    <string name="mute">كتم</string>
+    <string name="unmute">إلغاء الكتم</string>
+    <string name="block">حظر</string>
+    <string name="delete">حذف</string>
+    <string name="delete_forever">حذف نهائي</string>
+    <string name="restore">استعادة</string>
+    <string name="mark_read">تحديد كمقروء</string>
+    <string name="cancel">إلغاء</string>
+    <string name="back">رجوع</string>
+    <string name="save">حفظ</string>
+    <string name="add">إضافة</string>
+    <string name="remove">إزالة</string>
+    <string name="next">التالي</string>
+    <string name="call">اتصال</string>
+    <string name="copy">نسخ</string>
+    <string name="copied">تم النسخ</string>
+    <string name="copy_code">نسخ الرمز</string>
+    <string name="copy_code_value">نسخ %1$s</string>
+    <string name="copy_text">نسخ النص</string>
+    <string name="code_copied">تم نسخ الرمز</string>
+    <string name="forward">إعادة توجيه</string>
+    <string name="resend">إعادة الإرسال</string>
+    <string name="reply">رد</string>
+    <string name="send">إرسال</string>
+    <string name="me">أنا</string>
+
+    <!-- Folders -->
+    <string name="archive_empty">الأرشيف فارغ</string>
+    <string name="bin_empty">سلة المحذوفات فارغة</string>
+    <string name="bin_hint">تُحذف المحادثات نهائياً بعد 30 يوماً. اضغط على محادثة لتحديدها.</string>
+    <string name="empty_bin">إفراغ السلة</string>
+    <string name="confirm_empty_bin">حذف كل محتوى السلة نهائياً؟ لا يمكن التراجع.</string>
+    <string name="confirm_delete_forever">حذف المحادثات المحددة نهائياً؟</string>
+
+    <!-- Thread -->
+    <string name="compose_hint">رسالة SMS</string>
+    <string name="cannot_reply">لا يمكن الرد على هذا المرسل</string>
+    <string name="set_category">تصنيف المرسل</string>
+    <string name="set_category_hint">كل رسائل هذا المرسل ستذهب دائماً إلى التصنيف الذي تختاره.</string>
+    <string name="delete_conversation">حذف المحادثة</string>
+    <string name="confirm_delete_conversation">حذف هذه المحادثة؟</string>
+    <string name="confirm_block">حظر هذا الرقم ونقل المحادثة إلى السلة؟</string>
+    <string name="schedule_send">جدولة الإرسال</string>
+    <string name="schedule">جدولة</string>
+    <string name="in_one_hour">بعد ساعة</string>
+    <string name="tonight_9">الليلة الساعة 9:00 م</string>
+    <string name="tomorrow_9">غداً الساعة 9:00 ص</string>
+    <string name="pick_date_time">اختيار التاريخ والوقت…</string>
+    <string name="scheduled_for">مجدولة · %1$s</string>
+    <string name="failed_tap_retry">فشل الإرسال — اضغط لإعادة المحاولة</string>
+    <string name="status_queued">في الانتظار</string>
+    <string name="status_sending">جارٍ الإرسال…</string>
+    <string name="status_delivered">تم التسليم</string>
+    <string name="status_not_delivered">لم يتم التسليم</string>
+    <string name="status_sent_parts">SMS · %1$d أجزاء</string>
+
+    <!-- Compose -->
+    <string name="to_label">إلى</string>
+    <string name="recipient_hint">اسم أو رقم (افصل بين الأرقام بفاصلة)</string>
+    <string name="bulk_hint">سيتم إرسال رسالة SMS منفصلة لكل مستلم (%1$d)</string>
+    <string name="sending_many">جارٍ إرسال %1$d رسالة في الخلفية</string>
+
+    <!-- Notifications -->
+    <string name="channel_messages">الرسائل</string>
+    <string name="channel_otp">رموز التحقق</string>
+    <string name="channel_otp_desc">إشعارات رموز OTP مع زر نسخ</string>
+    <string name="channel_status">حالة الإرسال</string>
+    <string name="send_failed_title">فشل إرسال رسالة</string>
+    <string name="send_failed_text">لم يتم الإرسال إلى %1$s — افتح المحادثة لإعادة المحاولة</string>
+    <string name="mms_disabled_title">وصلتك رسالة وسائط (MMS)</string>
+    <string name="mms_disabled_text">من %1$s — فعّل «استقبال الوسائط» من الإعدادات لاستلامها.</string>
+
+    <!-- Widget -->
+    <string name="widget_otp_label">آخر رمز تحقق</string>
+    <string name="widget_no_code">لا يوجد رمز بعد</string>
+    <string name="widget_tap_to_copy">اضغط للنسخ</string>
+
+    <!-- Settings -->
+    <string name="group_appearance">المظهر</string>
+    <string name="group_messages">الرسائل</string>
+    <string name="group_protection">الحماية</string>
+    <string name="group_tools">الأدوات</string>
+    <string name="group_gestures">السحب والحذف</string>
+    <string name="group_backup">النسخ الاحتياطي</string>
+    <string name="group_about">حول</string>
+    <string name="theme">السمة</string>
+    <string name="theme_system">حسب النظام</string>
+    <string name="theme_light">فاتح</string>
+    <string name="theme_dark">داكن</string>
+    <string name="material_you">ألوان Material You</string>
+    <string name="material_you_sub">ألوان التطبيق من خلفية هاتفك</string>
+    <string name="font_size">حجم الخط</string>
+    <string name="font_small">صغير</string>
+    <string name="font_normal">عادي</string>
+    <string name="font_large">كبير</string>
+    <string name="font_xlarge">كبير جداً</string>
+    <string name="date_format">صيغة التاريخ</string>
+    <string name="use_24h">نظام 24 ساعة</string>
+    <string name="delivery_reports">تقارير التسليم</string>
+    <string name="delivery_reports_sub">إشعار عند وصول الرسالة للمستلم (قد يكلف حسب المشغل)</string>
+    <string name="char_counter">عداد الأحرف</string>
+    <string name="char_counter_sub">عدد الأجزاء والأحرف المتبقية أثناء الكتابة</string>
+    <string name="default_sim">الشريحة الافتراضية</string>
+    <string name="ask_system">حسب النظام</string>
+    <string name="bulk_speed">سرعة الإرسال الجماعي</string>
+    <string name="speed_fast">سريع</string>
+    <string name="speed_balanced">متوازن (مُستحسن)</string>
+    <string name="speed_safe">آمن للمشغلات الحساسة</string>
+    <string name="mms_receive">استقبال الوسائط (MMS)</string>
+    <string name="mms_receive_sub">اختياري. الإرسال يبقى دائماً SMS نصية مهما طالت الرسالة.</string>
+    <string name="exact_alarms">السماح بالمواعيد الدقيقة</string>
+    <string name="exact_alarms_sub">لإرسال الرسائل المجدولة في وقتها بالضبط</string>
+    <string name="spam_filter">فلتر السبام المحلي</string>
+    <string name="spam_filter_sub">يعزل رسائل الاحتيال والروابط المشبوهة بدون إنترنت</string>
+    <string name="blocked_title">الأرقام والكلمات المحظورة</string>
+    <string name="blocked_sub">رسائلها لا تصل ولا تُشعرك</string>
+    <string name="rules_title">قواعد التصنيف</string>
+    <string name="rules_sub">اختر تصنيف كل مرسل بنفسك</string>
+    <string name="templates_title">القوالب والردود السريعة</string>
+    <string name="templates_sub">تظهر فوق مربع الكتابة بلمسة واحدة</string>
+    <string name="auto_reply_title">الرد التلقائي</string>
+    <string name="on">مفعّل</string>
+    <string name="off">متوقف</string>
+    <string name="swipe_start">السحب لليسار</string>
+    <string name="swipe_end">السحب لليمين</string>
+    <string name="swipe_none">بدون</string>
+    <string name="recycle_bin_sub">المحذوفات تبقى 30 يوماً قبل الحذف النهائي</string>
+    <string name="export_messages">تصدير الرسائل</string>
+    <string name="export_sub">ملف JSON يشمل الرسائل والقوائم والقوالب</string>
+    <string name="import_messages">استيراد الرسائل</string>
+    <string name="import_sub">من نسخة برق احتياطية (بدون تكرار)</string>
+    <string name="auto_backup">النسخ الاحتياطي التلقائي</string>
+    <string name="backup_off">متوقف</string>
+    <string name="backup_daily">يومياً</string>
+    <string name="backup_weekly">أسبوعياً</string>
+    <string name="backup_folder">مجلد النسخ</string>
+    <string name="backup_folder_default">مجلد التطبيق (آخر 5 نسخ)</string>
+    <string name="backup_now">نسخ احتياطي الآن</string>
+    <string name="last_backup">آخر نسخة: %1$s</string>
+    <string name="never">لم يتم بعد</string>
+    <string name="export_done">تم تصدير %1$d رسالة</string>
+    <string name="import_done">تم استيراد %1$d رسالة</string>
+    <string name="backup_now_done">تم حفظ النسخة الاحتياطية</string>
+    <string name="operation_failed">تعذّرت العملية</string>
+
+    <!-- Blocked / rules / templates -->
+    <string name="numbers">الأرقام</string>
+    <string name="keywords">الكلمات</string>
+    <string name="number">الرقم</string>
+    <string name="keyword">الكلمة أو العبارة</string>
+    <string name="block_number">حظر رقم</string>
+    <string name="block_keyword">حظر كلمة</string>
+    <string name="blocked_numbers_hint">الرسائل من هذه الأرقام تُرفض بصمت. نحترم أيضاً قائمة الحظر في هاتفك.</string>
+    <string name="blocked_keywords_hint">أي رسالة تحتوي إحدى هذه الكلمات لن تصلك.</string>
+    <string name="nothing_here">القائمة فارغة</string>
+    <string name="add_rule">قاعدة جديدة</string>
+    <string name="rules_hint">مثال: كل رسائل «BankX» تذهب إلى «بنوك». القواعد أقوى من التصنيف التلقائي.</string>
+    <string name="sender_label">المرسل</string>
+    <string name="sender_hint">رقم أو اسم المرسل كما يظهر في الرسائل</string>
+    <string name="add_template">قالب جديد</string>
+    <string name="edit_template">تعديل القالب</string>
+    <string name="template_text">نص القالب</string>
+    <string name="templates_hint">اضغط على قالب لتعديله. تظهر القوالب كأزرار سريعة في كل محادثة.</string>
+
+    <!-- Auto reply -->
+    <string name="auto_reply_switch">الرد التلقائي</string>
+    <string name="auto_reply_switch_sub">فعّله وقت انشغالك وسيرد هاتفك عنك</string>
+    <string name="auto_reply_mode">نوع الرد</string>
+    <string name="mode_fixed">رد ثابت</string>
+    <string name="mode_smart">رد ذكي</string>
+    <string name="mode_fixed_sub">نفس الرد لكل من يراسلك.</string>
+    <string name="mode_smart_sub">يقرأ الرسالة ويختار الرد المناسب حسب الكلمات (تحية، سؤال، أمر عاجل…)، وإن لم يجد يستخدم الرد الثابت.</string>
+    <string name="fixed_reply_text">نص الرد الثابت</string>
+    <string name="reply_text">نص الرد</string>
+    <string name="auto_reply_conditions">الشروط</string>
+    <string name="contacts_only">جهات الاتصال فقط</string>
+    <string name="contacts_only_sub">لا يرد على الأرقام غير المحفوظة</string>
+    <string name="cooldown">مرة واحدة لكل شخص كل</string>
+    <string name="cooldown_value">%1$d دقيقة</string>
+    <string name="time_window">فترة زمنية فقط</string>
+    <string name="time_window_value">من %1$s إلى %2$s</string>
+    <string name="from_time">من %1$s</string>
+    <string name="to_time">إلى %1$s</string>
+    <string name="auto_reply_safety">للأمان: لا يرد أبداً على أرقام الخدمات والبنوك والأرقام القصيرة، ولا يرد على نفس الشخص أكثر من مرة خلال المدة المحددة.</string>
+    <string name="smart_rules">الردود الذكية</string>
+    <string name="add_smart_reply">رد ذكي جديد</string>
+    <string name="keywords_label">الكلمات (افصل بينها بـ |)</string>
+    <string name="when_contains">عندما تحتوي: %1$s</string>
+</resources>

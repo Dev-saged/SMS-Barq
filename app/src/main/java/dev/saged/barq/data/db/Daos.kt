@@ -1,0 +1,273 @@
+package dev.saged.barq.data.db
+
+import androidx.paging.PagingSource
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import androidx.room.Upsert
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface ConversationDao {
+
+    /**
+     * Main inbox. [category] null = "all" (spam excluded). [query] empty = no search.
+     */
+    @Query(
+        """
+        SELECT * FROM conversations
+        WHERE deleted = 0 AND archived = 0
+          AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
+          AND (:query = '' OR displayName LIKE '%' || :query || '%'
+               OR addresses LIKE '%' || :query || '%'
+               OR threadId IN (SELECT threadId FROM messages WHERE body LIKE '%' || :query || '%'))
+        ORDER BY pinned DESC, date DESC
+        """
+    )
+    fun inbox(category: String?, query: String): PagingSource<Int, ConversationEntity>
+
+    @Query("SELECT * FROM conversations WHERE deleted = 0 AND archived = 1 ORDER BY date DESC")
+    fun archived(): PagingSource<Int, ConversationEntity>
+
+    @Query("SELECT * FROM conversations WHERE deleted = 1 ORDER BY deletedAt DESC")
+    fun recycleBin(): PagingSource<Int, ConversationEntity>
+
+    @Query("SELECT COUNT(*) FROM conversations WHERE deleted = 0 AND category = 'SPAM'")
+    fun spamCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM conversations WHERE deleted = 1")
+    fun recycleBinCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM conversations WHERE deleted = 0 AND archived = 1")
+    fun archivedCount(): Flow<Int>
+
+    @Query("SELECT * FROM conversations WHERE threadId = :threadId")
+    suspend fun get(threadId: Long): ConversationEntity?
+
+    @Query("SELECT * FROM conversations WHERE threadId = :threadId")
+    fun observe(threadId: Long): Flow<ConversationEntity?>
+
+    @Query("SELECT * FROM conversations")
+    suspend fun all(): List<ConversationEntity>
+
+    @Upsert
+    suspend fun upsert(conversation: ConversationEntity)
+
+    @Query("UPDATE conversations SET pinned = :pinned WHERE threadId IN (:ids)")
+    suspend fun setPinned(ids: List<Long>, pinned: Boolean)
+
+    @Query("UPDATE conversations SET archived = :archived WHERE threadId IN (:ids)")
+    suspend fun setArchived(ids: List<Long>, archived: Boolean)
+
+    @Query("UPDATE conversations SET muted = :muted WHERE threadId IN (:ids)")
+    suspend fun setMuted(ids: List<Long>, muted: Boolean)
+
+    @Query("UPDATE conversations SET deleted = :deleted, deletedAt = :at WHERE threadId IN (:ids)")
+    suspend fun setDeleted(ids: List<Long>, deleted: Boolean, at: Long)
+
+    @Query("UPDATE conversations SET category = :category, categoryLocked = :locked WHERE threadId = :threadId")
+    suspend fun setCategory(threadId: Long, category: Category, locked: Boolean)
+
+    @Query("UPDATE conversations SET draft = :draft WHERE threadId = :threadId")
+    suspend fun setDraft(threadId: Long, draft: String?)
+
+    @Query("UPDATE conversations SET subId = :subId WHERE threadId = :threadId")
+    suspend fun setSubId(threadId: Long, subId: Int)
+
+    @Query("UPDATE conversations SET unreadCount = 0 WHERE threadId IN (:ids)")
+    suspend fun clearUnread(ids: List<Long>)
+
+    @Query("SELECT threadId FROM conversations WHERE deleted = 1 AND deletedAt < :before")
+    suspend fun deletedBefore(before: Long): List<Long>
+
+    @Query("SELECT threadId FROM conversations WHERE deleted = 1")
+    suspend fun allDeletedIds(): List<Long>
+
+    @Query("DELETE FROM conversations WHERE threadId IN (:ids)")
+    suspend fun deleteForever(ids: List<Long>)
+
+    @Query("UPDATE conversations SET displayName = :name WHERE threadId = :threadId")
+    suspend fun setDisplayName(threadId: Long, name: String)
+}
+
+@Dao
+interface MessageDao {
+
+    @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY date DESC, id DESC")
+    fun thread(threadId: Long): PagingSource<Int, MessageEntity>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(message: MessageEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(messages: List<MessageEntity>): List<Long>
+
+    @Update
+    suspend fun update(message: MessageEntity)
+
+    @Query("SELECT * FROM messages WHERE id = :id")
+    suspend fun get(id: Long): MessageEntity?
+
+    @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY date DESC, id DESC LIMIT 1")
+    suspend fun latest(threadId: Long): MessageEntity?
+
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND box = 1 ORDER BY date DESC LIMIT 1")
+    suspend fun latestIncoming(threadId: Long): MessageEntity?
+
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND read = 0 AND box = 1 ORDER BY date ASC")
+    suspend fun unread(threadId: Long): List<MessageEntity>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE threadId = :threadId AND read = 0 AND box = 1")
+    suspend fun unreadCount(threadId: Long): Int
+
+    @Query("SELECT providerId FROM messages WHERE threadId IN (:ids) AND read = 0 AND providerId IS NOT NULL")
+    suspend fun unreadProviderIds(ids: List<Long>): List<Long>
+
+    @Query("UPDATE messages SET read = 1 WHERE threadId IN (:ids) AND read = 0")
+    suspend fun markRead(ids: List<Long>)
+
+    @Query("UPDATE messages SET box = :box, errorCode = :errorCode WHERE id = :id")
+    suspend fun setBox(id: Long, box: Int, errorCode: Int = 0)
+
+    @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
+    suspend fun setDelivery(id: Long, status: Int)
+
+    @Query("UPDATE messages SET providerId = :providerId WHERE id = :id")
+    suspend fun setProviderId(id: Long, providerId: Long)
+
+    @Query(
+        """SELECT * FROM messages WHERE box = 6 AND (scheduledAt = 0 OR scheduledAt <= :now)
+           ORDER BY scheduledAt ASC, id ASC LIMIT :limit"""
+    )
+    suspend fun dueQueued(now: Long, limit: Int): List<MessageEntity>
+
+    @Query("SELECT * FROM messages WHERE box = 6 AND scheduledAt > :now")
+    suspend fun futureScheduled(now: Long): List<MessageEntity>
+
+    @Query("SELECT * FROM messages WHERE box = 6 AND scheduledAt > :now ORDER BY scheduledAt ASC")
+    fun observeScheduled(now: Long): Flow<List<MessageEntity>>
+
+    /** Messages stuck in OUTBOX after a crash/reboot. */
+    @Query("SELECT * FROM messages WHERE box = 4 AND date < :before")
+    suspend fun staleOutbox(before: Long): List<MessageEntity>
+
+    @Query("SELECT * FROM messages WHERE otp IS NOT NULL ORDER BY date DESC LIMIT 1")
+    fun observeLatestOtp(): Flow<MessageEntity?>
+
+    @Query("SELECT * FROM messages WHERE otp IS NOT NULL ORDER BY date DESC LIMIT 1")
+    suspend fun latestOtp(): MessageEntity?
+
+    @Query("SELECT MAX(providerId) FROM messages WHERE isMms = 0")
+    suspend fun maxProviderId(): Long?
+
+    @Query("SELECT providerId FROM messages WHERE threadId IN (:ids) AND providerId IS NOT NULL")
+    suspend fun providerIds(ids: List<Long>): List<Long>
+
+    @Query("SELECT * FROM messages WHERE threadId IN (:ids) AND isMms = 1")
+    suspend fun mmsIn(ids: List<Long>): List<MessageEntity>
+
+    @Query("DELETE FROM messages WHERE threadId IN (:ids)")
+    suspend fun deleteThreads(ids: List<Long>)
+
+    @Query("DELETE FROM messages WHERE id IN (:ids)")
+    suspend fun deleteByIds(ids: List<Long>)
+
+    @Query("SELECT * FROM messages WHERE isMms = 0 ORDER BY id ASC LIMIT :limit OFFSET :offset")
+    suspend fun page(limit: Int, offset: Int): List<MessageEntity>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE address = :address AND date = :date AND body = :body")
+    suspend fun countSame(address: String, date: Long, body: String): Int
+
+    @Query("SELECT DISTINCT threadId FROM messages")
+    suspend fun threadIds(): List<Long>
+}
+
+@Dao
+interface BlockDao {
+    @Query("SELECT * FROM blocked_numbers ORDER BY addedAt DESC")
+    fun numbers(): Flow<List<BlockedNumberEntity>>
+
+    @Query("SELECT * FROM blocked_numbers")
+    suspend fun numbersOnce(): List<BlockedNumberEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addNumber(n: BlockedNumberEntity)
+
+    @Delete
+    suspend fun removeNumber(n: BlockedNumberEntity)
+
+    @Query("SELECT * FROM blocked_keywords ORDER BY addedAt DESC")
+    fun keywords(): Flow<List<BlockedKeywordEntity>>
+
+    @Query("SELECT * FROM blocked_keywords")
+    suspend fun keywordsOnce(): List<BlockedKeywordEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun addKeyword(k: BlockedKeywordEntity)
+
+    @Delete
+    suspend fun removeKeyword(k: BlockedKeywordEntity)
+}
+
+@Dao
+interface RuleDao {
+    @Query("SELECT * FROM category_rules ORDER BY id DESC")
+    fun observe(): Flow<List<CategoryRuleEntity>>
+
+    @Query("SELECT * FROM category_rules")
+    suspend fun all(): List<CategoryRuleEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(rule: CategoryRuleEntity)
+
+    @Query("DELETE FROM category_rules WHERE id = :id")
+    suspend fun delete(id: Long)
+}
+
+@Dao
+interface TemplateDao {
+    @Query("SELECT * FROM templates ORDER BY position ASC, id ASC")
+    fun observe(): Flow<List<TemplateEntity>>
+
+    @Query("SELECT * FROM templates ORDER BY position ASC, id ASC")
+    suspend fun all(): List<TemplateEntity>
+
+    @Upsert
+    suspend fun upsert(template: TemplateEntity)
+
+    @Query("DELETE FROM templates WHERE id = :id")
+    suspend fun delete(id: Long)
+
+    @Query("SELECT COUNT(*) FROM templates")
+    suspend fun count(): Int
+}
+
+@Dao
+interface AutoReplyDao {
+    @Query("SELECT * FROM auto_reply_rules ORDER BY id ASC")
+    fun observeRules(): Flow<List<AutoReplyRuleEntity>>
+
+    @Query("SELECT * FROM auto_reply_rules WHERE enabled = 1 ORDER BY id ASC")
+    suspend fun enabledRules(): List<AutoReplyRuleEntity>
+
+    @Query("SELECT * FROM auto_reply_rules")
+    suspend fun allRules(): List<AutoReplyRuleEntity>
+
+    @Upsert
+    suspend fun upsertRule(rule: AutoReplyRuleEntity)
+
+    @Query("DELETE FROM auto_reply_rules WHERE id = :id")
+    suspend fun deleteRule(id: Long)
+
+    @Query("SELECT COUNT(*) FROM auto_reply_rules")
+    suspend fun ruleCount(): Int
+
+    @Query("SELECT * FROM auto_reply_log WHERE address = :address")
+    suspend fun lastReply(address: String): AutoReplyLogEntity?
+
+    @Upsert
+    suspend fun logReply(log: AutoReplyLogEntity)
+}
