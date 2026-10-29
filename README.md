@@ -1,4 +1,4 @@
-<div align="center">
+<div align="center" dir="rtl">
 
 <img src="docs/cover.jpg" alt="برق — تطبيق رسائل SMS سريع وذكي لأندرويد" width="100%">
 
@@ -12,20 +12,26 @@
 
 <br>
 
-![Version](https://img.shields.io/badge/الإصدار-1.2.0-4355B9?style=for-the-badge)
-![Android](https://img.shields.io/badge/Android-8.0%2B-3DDC84?style=for-the-badge&logo=android&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.1-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
-![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
-![License](https://img.shields.io/badge/الترخيص-خاص-121747?style=for-the-badge)
-
-[![Build](https://github.com/Dev-saged/SMS-Barq/actions/workflows/build.yml/badge.svg)](https://github.com/Dev-saged/SMS-Barq/actions/workflows/build.yml)
+<img src="docs/readme/chip-version.svg" height="40" alt="الإصدار 1.2.0">
+<img src="docs/readme/chip-android.svg" height="40" alt="أندرويد 8.0 فأحدث">
+<img src="docs/readme/chip-stack.svg" height="40" alt="Kotlin · Compose">
+<img src="docs/readme/chip-offline.svg" height="40" alt="يعمل بدون إنترنت">
+<img src="docs/readme/chip-license.svg" height="40" alt="ترخيص خاص">
 
 <br>
 
-**[تنزيل آخر نسخة](https://github.com/Dev-saged/SMS-Barq/releases/tag/latest-build)** &nbsp;·&nbsp;
+<a href="https://github.com/Dev-saged/SMS-Barq/releases/tag/latest-build"><img src="docs/readme/download.svg" height="56" alt="تنزيل آخر نسخة"></a>
+
+<br><br>
+
 **[المزايا](#المزايا)** &nbsp;·&nbsp;
 **[الجديد في 1.2.0](#الجديد-في-الإصدار-120)** &nbsp;·&nbsp;
+**[التثبيت](#التنزيل-والتثبيت)** &nbsp;·&nbsp;
 **[تواصل معي](#تواصل-مع-المطور)**
+
+<br>
+
+[![Build](https://github.com/Dev-saged/SMS-Barq/actions/workflows/build.yml/badge.svg)](https://github.com/Dev-saged/SMS-Barq/actions/workflows/build.yml)
 
 </div>
 
@@ -37,14 +43,14 @@
 
 **برق** تطبيق رسائل لأندرويد كُتب **من الصفر** بلغة Kotlin ومكتبة Jetpack Compose، ليكون تطبيق الرسائل الافتراضي في هاتفك: سريعاً وبسيطاً، وفيه ذكاء محلي يكشف رموز التحقق ويصنّف رسائلك ويعزل السبام، **وكل ذلك داخل هاتفك بدون إرسال أي شيء للإنترنت**.
 
-<table>
-<tr>
-<td align="center" width="25%"><b>سريع</b><br><sub>قوائم مجزّأة، طابور إرسال بالخلفية، قاعدة بيانات مفهرسة</sub></td>
-<td align="center" width="25%"><b>ذكي</b><br><sub>كشف OTP وتصنيف وفلتر سبام ورد تلقائي، محلياً بالكامل</sub></td>
-<td align="center" width="25%"><b>خاص</b><br><sub>لا تتبّع، لا إعلانات، لا خوادم. رسائلك تبقى عندك</sub></td>
-<td align="center" width="25%"><b>عربي أولاً</b><br><sub>واجهة من اليمين لليسار بالكامل، وخط Readex Pro</sub></td>
-</tr>
-</table>
+<div align="center">
+
+<img src="docs/readme/feature-fast.svg" width="190" alt="سريع">
+<img src="docs/readme/feature-smart.svg" width="190" alt="ذكي">
+<img src="docs/readme/feature-private.svg" width="190" alt="خاص">
+<img src="docs/readme/feature-arabic.svg" width="190" alt="عربي أولاً">
+
+</div>
 
 ### مبادئ لا تتغيّر
 - **الرسالة تبقى SMS نصية دائماً** مهما طال نصها؛ تُقسَّم إلى أجزاء SMS عادية ولا تتحوّل إلى MMS أبداً.
@@ -181,26 +187,23 @@ app/src/main/java/dev/saged/barq/
 
 <div align="center">
 
-### المهندس ساجد العبادلة
-**تصميم وتطوير**
+<img src="docs/readme/developer.svg" width="620" alt="المطوّر: ساجد العبادلة — تصميم وتطوير تطبيق برق">
+
+<br><br>
+
+<a href="https://wa.me/972597857250"><img src="docs/readme/contact-whatsapp.svg" width="380" alt="واتساب: +972597857250"></a>
+<a href="https://instagram.com/sajedd.0"><img src="docs/readme/contact-instagram.svg" width="380" alt="إنستغرام: sajedd.0"></a>
+<br>
+<a href="https://facebook.com/saged.t"><img src="docs/readme/contact-facebook.svg" width="380" alt="فيسبوك: saged.t"></a>
+<a href="https://x.com/saged_al"><img src="docs/readme/contact-x.svg" width="380" alt="إكس: saged_al"></a>
+<br>
+<a href="https://github.com/Dev-saged"><img src="docs/readme/contact-github.svg" width="380" alt="غيت هب: Dev-saged"></a>
 
 <br>
 
-[![WhatsApp](https://img.shields.io/badge/واتساب-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/972597857250)
-[![Instagram](https://img.shields.io/badge/إنستغرام-E4405F?style=for-the-badge&logo=instagram&logoColor=white)](https://instagram.com/sajedd.0)
-[![Facebook](https://img.shields.io/badge/فيسبوك-1877F2?style=for-the-badge&logo=facebook&logoColor=white)](https://facebook.com/saged.t)
-[![X](https://img.shields.io/badge/إكس-000000?style=for-the-badge&logo=x&logoColor=white)](https://x.com/saged_al)
-[![GitHub](https://img.shields.io/badge/غيت%20هب-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Dev-saged)
+<sub>اضغط على أي بطاقة لفتح الحساب مباشرة.</sub>
 
 </div>
-
-| المنصة | الحساب |
-|---|---|
-| واتساب | [+972597857250](https://wa.me/972597857250) |
-| إنستغرام | [@sajedd.0](https://instagram.com/sajedd.0) |
-| فيسبوك | [saged.t](https://facebook.com/saged.t) |
-| إكس | [@saged_al](https://x.com/saged_al) |
-| غيت هب | [Dev-saged](https://github.com/Dev-saged) |
 
 ---
 
@@ -218,7 +221,7 @@ app/src/main/java/dev/saged/barq/
 
 <div align="center">
 
-<img src="https://img.shields.io/badge/صُنع%20بكل%20حب%20من%20فلسطين%20—%20غزة-007A3D?style=for-the-badge&labelColor=CE1126" alt="صُنع بكل حب من فلسطين — غزة">
+<img src="docs/readme/made-in-gaza.svg" width="420" alt="صُنع بكل حب من فلسطين — غزة">
 
 <sub>© 2026 ساجد العبادلة · Barq SMS</sub>
 
