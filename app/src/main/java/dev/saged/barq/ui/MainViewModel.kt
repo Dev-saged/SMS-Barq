@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.data.ConversationRepository
+import dev.saged.barq.data.ProviderWatcher
 import dev.saged.barq.data.SyncManager
 import dev.saged.barq.data.contacts.ContactsWatcher
 import dev.saged.barq.data.settings.AppSettings
@@ -30,6 +31,7 @@ class MainViewModel @Inject constructor(
     private val conversations: ConversationRepository,
     private val engine: SendEngine,
     private val contactsWatcher: ContactsWatcher,
+    private val providerWatcher: ProviderWatcher,
 ) : ViewModel() {
 
     val settings: StateFlow<AppSettings?> =
@@ -58,6 +60,10 @@ class MainViewModel @Inject constructor(
         _isDefault.value = isDefaultSmsApp()
         viewModelScope.launch {
             sync.sync()
+            // Once per launch, every failed message is checked again against the system store:
+            // one that went out after all (sent by another app) is shown as sent.
+            sync.reconcile(repairFailed = !repairedThisLaunch)
+            repairedThisLaunch = true
             if (_isDefault.value) engine.kick()
         }
     }
@@ -65,6 +71,7 @@ class MainViewModel @Inject constructor(
     fun onPermissionsChanged() {
         _isDefault.value = isDefaultSmsApp()
         contactsWatcher.start()
+        providerWatcher.start()
         viewModelScope.launch {
             conversations.refreshNames(rebuildIndex = true)
             sync.sync()
@@ -78,6 +85,10 @@ class MainViewModel @Inject constructor(
     fun dismissCrash() {
         CrashLog.markSeen()
         crashPending.value = false
+    }
+
+    private companion object {
+        @Volatile var repairedThisLaunch = false
     }
 
     fun finishOnboarding() {

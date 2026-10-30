@@ -115,7 +115,8 @@ interface ConversationDao {
 @Dao
 interface MessageDao {
 
-    @Query("SELECT * FROM messages WHERE threadId = :threadId ORDER BY date DESC, id DESC")
+    /** A conversation, newest first. Reaction messages are shown on their target, not as bubbles. */
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND reactionTo = 0 ORDER BY date DESC, id DESC")
     fun thread(threadId: Long): PagingSource<Int, MessageEntity>
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
@@ -136,6 +137,7 @@ interface MessageDao {
     /** Latest message that should represent the conversation (future scheduled ones excluded). */
     @Query(
         """SELECT * FROM messages WHERE threadId = :threadId AND NOT (box = 6 AND scheduledAt > 0)
+           AND reactionTo = 0
            ORDER BY date DESC, id DESC LIMIT 1"""
     )
     suspend fun latestVisible(threadId: Long): MessageEntity?
@@ -145,7 +147,7 @@ interface MessageDao {
 
     /** Position of a message in [thread] (newest first) — used to jump to a search result. */
     @Query(
-        """SELECT COUNT(*) FROM messages WHERE threadId = :threadId
+        """SELECT COUNT(*) FROM messages WHERE threadId = :threadId AND reactionTo = 0
            AND (date > :date OR (date = :date AND id > :id))"""
     )
     suspend fun positionInThread(threadId: Long, date: Long, id: Long): Int
@@ -163,6 +165,32 @@ interface MessageDao {
         """
     )
     suspend fun search(match: String, limit: Int): List<SearchHit>
+
+    /** Search inside one conversation (newest first), for the search bar of a thread. */
+    @Query(
+        """
+        SELECT m.id AS id, m.date AS date FROM messages_fts
+        JOIN messages m ON m.id = messages_fts.rowid
+        WHERE messages_fts MATCH :match AND m.threadId = :threadId AND m.reactionTo = 0
+          AND NOT (m.box = 6 AND m.scheduledAt > 0)
+        ORDER BY m.date DESC, m.id DESC
+        LIMIT 500
+        """
+    )
+    suspend fun searchInThread(match: String, threadId: Long): List<ThreadHit>
+
+    /** Recent messages of a conversation, to find the one a reaction text points at. */
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND reactionTo = 0 ORDER BY date DESC, id DESC LIMIT :limit")
+    suspend fun recentInThread(threadId: Long, limit: Int): List<MessageEntity>
+
+    @Query("UPDATE messages SET reaction = :emoji WHERE id = :id")
+    suspend fun setReaction(id: Long, emoji: String?)
+
+    @Query("UPDATE messages SET theirReaction = :emoji WHERE id = :id")
+    suspend fun setTheirReaction(id: Long, emoji: String?)
+
+    @Query("UPDATE messages SET reactionTo = :target WHERE id = :id")
+    suspend fun setReactionTo(id: Long, target: Long)
 
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND read = 0 AND box = 1 ORDER BY date ASC")
     suspend fun unread(threadId: Long): List<MessageEntity>
@@ -185,19 +213,34 @@ interface MessageDao {
     @Query("UPDATE messages SET providerId = :providerId WHERE id = :id")
     suspend fun setProviderId(id: Long, providerId: Long)
 
-    /** Messages ready to go. [pausedBatch] (when not 0) is skipped while the user paused it. */
+    /**
+     * Messages ready to go. A normal message never waits behind a bulk send: single messages come
+     * first. [pausedBatch] (when not 0) is skipped while the user paused it; retries wait for
+     * their time.
+     */
     @Query(
         """SELECT * FROM messages WHERE box = 6 AND (scheduledAt = 0 OR scheduledAt <= :now)
+           AND retryAt <= :now
            AND (:pausedBatch = 0 OR batchId != :pausedBatch)
-           ORDER BY scheduledAt ASC, id ASC LIMIT :limit"""
+           ORDER BY (CASE WHEN batchId = 0 THEN 0 ELSE 1 END) ASC, scheduledAt ASC, id ASC LIMIT :limit"""
     )
     suspend fun dueQueued(now: Long, limit: Int, pausedBatch: Long): List<MessageEntity>
+
+    /** When the next automatic retry is due (null = none waiting). */
+    @Query("SELECT MIN(retryAt) FROM messages WHERE box = 6 AND retryAt > :now")
+    suspend fun nextRetryAt(now: Long): Long?
+
+    /** A temporary failure: back in the queue, to try again at [at]. */
+    @Query("UPDATE messages SET box = 6, retryCount = :count, retryAt = :at, errorCode = :code WHERE id = :id")
+    suspend fun scheduleRetry(id: Long, count: Int, at: Long, code: Int)
 
     @Query(
         """SELECT COUNT(*) AS total,
                   COALESCE(SUM(CASE WHEN box = 2 THEN 1 ELSE 0 END), 0) AS sent,
                   COALESCE(SUM(CASE WHEN box = 5 THEN 1 ELSE 0 END), 0) AS failed,
-                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending
+                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending,
+                  COALESCE(SUM(CASE WHEN box = 2 AND deliveryStatus = 0 THEN 1 ELSE 0 END), 0) AS delivered,
+                  COALESCE(SUM(CASE WHEN box = 6 AND retryAt > 0 THEN 1 ELSE 0 END), 0) AS retrying
            FROM messages WHERE batchId = :batchId"""
     )
     fun observeBatch(batchId: Long): Flow<BatchCounts>
@@ -206,13 +249,63 @@ interface MessageDao {
         """SELECT COUNT(*) AS total,
                   COALESCE(SUM(CASE WHEN box = 2 THEN 1 ELSE 0 END), 0) AS sent,
                   COALESCE(SUM(CASE WHEN box = 5 THEN 1 ELSE 0 END), 0) AS failed,
-                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending
+                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending,
+                  COALESCE(SUM(CASE WHEN box = 2 AND deliveryStatus = 0 THEN 1 ELSE 0 END), 0) AS delivered,
+                  COALESCE(SUM(CASE WHEN box = 6 AND retryAt > 0 THEN 1 ELSE 0 END), 0) AS retrying
            FROM messages WHERE batchId = :batchId"""
     )
     suspend fun batchCounts(batchId: Long): BatchCounts
 
     @Query("SELECT * FROM messages WHERE batchId = :batchId AND box = 5")
     suspend fun failedInBatch(batchId: Long): List<MessageEntity>
+
+    /** Every recipient of a bulk send with its state, for the details screen. */
+    @Query(
+        """SELECT m.id AS id, m.threadId AS threadId, m.address AS address, m.box AS box,
+                  m.errorCode AS errorCode, m.deliveryStatus AS deliveryStatus, m.retryCount AS retryCount,
+                  m.retryAt AS retryAt, m.date AS date, c.displayName AS displayName
+           FROM messages m LEFT JOIN conversations c ON c.threadId = m.threadId
+           WHERE m.batchId = :batchId ORDER BY m.id ASC"""
+    )
+    fun observeBatchRows(batchId: Long): Flow<List<BatchRow>>
+
+    /** What other apps (a gateway, a bot…) sent since [since]. */
+    @Query(
+        """SELECT COUNT(*) AS total,
+                  COALESCE(SUM(CASE WHEN box = 2 THEN 1 ELSE 0 END), 0) AS sent,
+                  COALESCE(SUM(CASE WHEN box = 5 THEN 1 ELSE 0 END), 0) AS failed,
+                  COALESCE(SUM(CASE WHEN box IN (4, 6) THEN 1 ELSE 0 END), 0) AS pending,
+                  COALESCE(SUM(CASE WHEN box = 2 AND deliveryStatus = 0 THEN 1 ELSE 0 END), 0) AS delivered,
+                  COALESCE(SUM(CASE WHEN box = 6 AND retryAt > 0 THEN 1 ELSE 0 END), 0) AS retrying
+           FROM messages WHERE fromOtherApp = 1 AND date >= :since"""
+    )
+    fun observeExternal(since: Long): Flow<BatchCounts>
+
+    @Query(
+        """SELECT m.id AS id, m.threadId AS threadId, m.address AS address, m.box AS box,
+                  m.errorCode AS errorCode, m.deliveryStatus AS deliveryStatus, m.retryCount AS retryCount,
+                  m.retryAt AS retryAt, m.date AS date, c.displayName AS displayName
+           FROM messages m LEFT JOIN conversations c ON c.threadId = m.threadId
+           WHERE m.fromOtherApp = 1 AND m.date >= :since ORDER BY m.date ASC, m.id ASC"""
+    )
+    fun observeExternalRows(since: Long): Flow<List<BatchRow>>
+
+    @Query("SELECT * FROM messages WHERE fromOtherApp = 1 AND date >= :since AND box = 5")
+    suspend fun failedExternal(since: Long): List<MessageEntity>
+
+    /** Other apps' messages still on their way: followed until the system reports the result. */
+    @Query("SELECT providerId FROM messages WHERE fromOtherApp = 1 AND box IN (4, 6) AND providerId IS NOT NULL")
+    suspend fun externalPendingProviderIds(): List<Long>
+
+    /** Failed messages that are in the system store (some may have gone out after all). */
+    @Query("SELECT providerId FROM messages WHERE box = 5 AND providerId IS NOT NULL")
+    suspend fun failedProviderIds(): List<Long>
+
+    @Query("SELECT * FROM messages WHERE providerId IN (:providerIds)")
+    suspend fun byProviderIds(providerIds: List<Long>): List<MessageEntity>
+
+    @Query("UPDATE messages SET box = :box, errorCode = :errorCode, deliveryStatus = :delivery WHERE id = :id")
+    suspend fun applyProviderState(id: Long, box: Int, errorCode: Int, delivery: Int)
 
     @Query("SELECT DISTINCT threadId FROM messages WHERE batchId = :batchId")
     suspend fun threadsInBatch(batchId: Long): List<Long>
@@ -242,7 +335,7 @@ interface MessageDao {
     fun observeScheduled(now: Long): Flow<List<MessageEntity>>
 
     /** Messages stuck in OUTBOX after a crash/reboot. */
-    @Query("SELECT * FROM messages WHERE box = 4 AND date < :before")
+    @Query("SELECT * FROM messages WHERE box = 4 AND fromOtherApp = 0 AND date < :before")
     suspend fun staleOutbox(before: Long): List<MessageEntity>
 
     @Query("SELECT * FROM messages WHERE otp IS NOT NULL ORDER BY date DESC LIMIT 1")
@@ -278,6 +371,8 @@ interface MessageDao {
     @Query("SELECT DISTINCT threadId FROM messages")
     suspend fun threadIds(): List<Long>
 }
+
+data class ThreadHit(val id: Long, val date: Long)
 
 data class StatRow(val date: Long, val box: Int, val subId: Int, val body: String)
 

@@ -1,6 +1,9 @@
 package dev.saged.barq.data
 
+import android.content.Context
 import androidx.room.withTransaction
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.saged.barq.R
 import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.db.BarqDatabase
 import dev.saged.barq.data.db.Box
@@ -25,6 +28,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class ConversationRepository @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val db: BarqDatabase,
     private val provider: TelephonyProvider,
     private val contacts: ContactsRepository,
@@ -80,7 +84,7 @@ class ConversationRepository @Inject constructor(
         }
         val snippet = when {
             latest.body.isNotBlank() -> latest.body
-            latest.isMms -> "[وسائط]"
+            latest.isMms -> context.getString(R.string.media_placeholder)
             else -> ""
         }
         // Only scheduled messages so far: keep the conversation where it is.
@@ -107,6 +111,8 @@ class ConversationRepository @Inject constructor(
     }
 
     // ---------------------------------------------------------------- flags
+
+    suspend fun get(threadId: Long): ConversationEntity? = conversations.get(threadId)
 
     suspend fun markRead(threadIds: List<Long>) = withContext(Dispatchers.IO) {
         if (threadIds.isEmpty()) return@withContext

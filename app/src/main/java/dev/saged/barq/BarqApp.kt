@@ -4,7 +4,10 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import dev.saged.barq.data.ProviderWatcher
 import dev.saged.barq.data.contacts.ContactsWatcher
+import dev.saged.barq.data.db.MessageDao
+import dev.saged.barq.sms.SendQueue
 import dev.saged.barq.data.db.AutoReplyDao
 import dev.saged.barq.data.db.TemplateDao
 import dev.saged.barq.data.db.TemplateEntity
@@ -31,6 +34,9 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var autoReply: AutoReplyDao
     @Inject @field:AppScope lateinit var scope: CoroutineScope
     @Inject lateinit var contactsWatcher: ContactsWatcher
+    @Inject lateinit var providerWatcher: ProviderWatcher
+    @Inject lateinit var messages: MessageDao
+    @Inject lateinit var sendQueue: SendQueue
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -42,12 +48,28 @@ class BarqApp : Application(), Configuration.Provider {
         notifier.createChannels()
         maintenance.ensureScheduled()
         contactsWatcher.start()
-        scope.launch { seedDefaults() }
+        providerWatcher.start()
+        scope.launch {
+            seedDefaults()
+            resumeQueue()
+        }
+    }
+
+    /**
+     * Android may have stopped Barq in the middle of a send: whatever is still waiting goes on
+     * by itself the next time Barq's process starts, without the user doing anything.
+     */
+    private suspend fun resumeQueue() {
+        val now = System.currentTimeMillis()
+        runCatching {
+            if (messages.dueQueued(now, 1, 0L).isNotEmpty()) sendQueue.kick()
+            messages.nextRetryAt(now)?.let { sendQueue.kickAt(it) }
+        }.onFailure { CrashLog.warn("resume-queue", it) }
     }
 
     private suspend fun seedDefaults() {
         if (templates.count() == 0) {
-            listOf("تمام", "أنا بالطريق", "بتواصل معك لاحقاً", "شكراً لك", "مشغول حالياً")
+            resources.getStringArray(R.array.default_templates).toList()
                 .forEachIndexed { i, t -> templates.upsert(TemplateEntity(text = t, position = i)) }
         }
         if (autoReply.ruleCount() == 0) {

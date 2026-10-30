@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
@@ -41,6 +42,7 @@ class BulkSendService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -60,13 +62,29 @@ class BulkSendService : Service() {
         return START_NOT_STICKY
     }
 
+    private class Progress(
+        val counts: BatchCounts,
+        val preparing: Boolean,
+        val paused: Boolean,
+        val waitingLimit: Boolean,
+        val stalled: Boolean,
+    )
+
     private suspend fun run() {
         val batchId = settings.current().lastBatchId
+        // The screen may turn off during a long send: keep the CPU awake until it is finished.
+        wakeLock = runCatching {
+            getSystemService(PowerManager::class.java)
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Barq:bulk-send")
+                .apply { setReferenceCounted(false); acquire(MAX_WAKE_MS) }
+        }.getOrNull()
         val progress = scope.launch {
-            combine(messages.observeBatch(batchId), state.preparing, state.paused) { counts, preparing, paused ->
-                Triple(counts, preparing, paused == batchId && batchId != 0L)
-            }.conflate().collect { (counts, preparing, paused) ->
-                notifier.updateBulkProgress(batchId, counts, preparing, paused)
+            combine(
+                messages.observeBatch(batchId), state.preparing, state.paused, state.waitingLimitUntil, state.stalled,
+            ) { counts, preparing, paused, waitUntil, stalled ->
+                Progress(counts, preparing, paused == batchId && batchId != 0L, waitUntil > 0L, stalled)
+            }.conflate().collect { p ->
+                notifier.updateBulkProgress(batchId, p.counts, p.preparing, p.paused, p.waitingLimit, p.stalled)
                 delay(400)
             }
         }
@@ -87,6 +105,13 @@ class BulkSendService : Service() {
                     state.preparing.first { !it }
                     continue
                 }
+                // Some messages wait for an automatic retry: stay (and keep the progress) until then.
+                val now = System.currentTimeMillis()
+                val next = messages.nextRetryAt(now)
+                if (batchId != 0L && next != null && messages.batchCounts(batchId).retrying > 0) {
+                    delay((next - now).coerceIn(1_000L, MAX_RETRY_WAIT_MS))
+                    continue
+                }
                 break
             }
         } catch (t: Throwable) {
@@ -97,17 +122,22 @@ class BulkSendService : Service() {
                 val counts = runCatching { messages.batchCounts(batchId) }.getOrNull()
                 if (counts != null && counts.total > 0) notifier.notifyBulkFinished(batchId, counts)
             }
+            runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
     }
 
     override fun onDestroy() {
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
         scope.cancel()
         super.onDestroy()
     }
 
     companion object {
+        private const val MAX_WAKE_MS = 3 * 60 * 60 * 1000L
+        private const val MAX_RETRY_WAIT_MS = 4 * 60 * 1000L
+
         /** Starts (or nudges) the service. Returns false when Android does not allow it right now. */
         fun start(context: Context): Boolean = runCatching {
             ContextCompat.startForegroundService(context, Intent(context, BulkSendService::class.java))

@@ -129,7 +129,7 @@ class Notifier @Inject constructor(
             if (icon != null) setIcon(icon)
         }.build()
         val style = NotificationCompat.MessagingStyle(me)
-        unread.takeLast(6).forEach { style.addMessage(it.body.ifBlank { "[وسائط]" }, it.date, sender) }
+        unread.takeLast(6).forEach { style.addMessage(it.body.ifBlank { context.getString(R.string.media_placeholder) }, it.date, sender) }
 
         val shortcutId = pushShortcut(threadId, conv.displayName, sender, icon)
         val channel = when {
@@ -316,7 +316,14 @@ class Notifier @Inject constructor(
             .build()
 
     /** Live progress of a bulk send with Pause/Resume and Cancel. */
-    fun bulkProgress(batchId: Long, counts: BatchCounts, preparing: Boolean, paused: Boolean): Notification {
+    fun bulkProgress(
+        batchId: Long,
+        counts: BatchCounts,
+        preparing: Boolean,
+        paused: Boolean,
+        waitingLimit: Boolean = false,
+        stalled: Boolean = false,
+    ): Notification {
         val b = NotificationCompat.Builder(context, CH_SENDING)
             .setSmallIcon(R.drawable.ic_stat_barq)
             .setColor(ContextCompat.getColor(context, R.color.brand))
@@ -330,8 +337,14 @@ class Notifier @Inject constructor(
                 .setProgress(0, 0, true)
             else -> {
                 val title = if (paused) R.string.bulk_paused_title else R.string.bulk_sending_title
+                val text = when {
+                    stalled -> context.getString(R.string.bulk_stalled)
+                    waitingLimit -> context.getString(R.string.bulk_waiting_limit)
+                    else -> context.getString(R.string.bulk_counts, counts.sent, counts.failed, counts.pending)
+                }
                 b.setContentTitle(context.getString(title, counts.done, counts.total))
-                    .setContentText(context.getString(R.string.bulk_counts, counts.sent, counts.failed, counts.pending))
+                    .setContentText(text)
+                    .setStyle(NotificationCompat.BigTextStyle().bigText(text))
                     .setProgress(counts.total, counts.done, false)
             }
         }
@@ -349,9 +362,16 @@ class Notifier @Inject constructor(
         return b.build()
     }
 
-    fun updateBulkProgress(batchId: Long, counts: BatchCounts, preparing: Boolean, paused: Boolean) {
+    fun updateBulkProgress(
+        batchId: Long,
+        counts: BatchCounts,
+        preparing: Boolean,
+        paused: Boolean,
+        waitingLimit: Boolean = false,
+        stalled: Boolean = false,
+    ) {
         if (!canPost()) return
-        runCatching { manager.notify(BULK_ID, bulkProgress(batchId, counts, preparing, paused)) }
+        runCatching { manager.notify(BULK_ID, bulkProgress(batchId, counts, preparing, paused, waitingLimit, stalled)) }
     }
 
     fun notifyBulkFinished(batchId: Long, counts: BatchCounts) {

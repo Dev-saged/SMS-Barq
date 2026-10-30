@@ -14,6 +14,11 @@ import dev.saged.barq.ui.settings.GroupScreen
 import dev.saged.barq.ui.settings.GroupsScreen
 import dev.saged.barq.ui.settings.GroupPickerScreen
 import dev.saged.barq.ui.settings.StatsScreen
+import dev.saged.barq.ui.settings.HealthScreen
+import dev.saged.barq.ui.settings.SendLimitScreen
+import dev.saged.barq.ui.batch.BatchScreen
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -50,12 +55,17 @@ object Routes {
     const val GROUPS = "groups"
     const val GROUP = "group/{groupId}"
     const val GROUP_PICK = "group/{groupId}/pick"
+    const val BATCH = "batch/{batchId}?since={since}"
+    const val SEND_LIMIT = "sendlimit"
+    const val HEALTH = "health"
 
     fun thread(id: Long) = "thread/$id"
     fun threadAt(id: Long, messageId: Long) = "thread/$id?focus=$messageId"
     fun group(id: Long) = "group/$id"
     fun groupPick(id: Long) = "group/$id/pick"
     fun contact(id: Long) = "contact/$id"
+    fun batch(id: Long) = "batch/$id"
+    fun external(since: Long) = "batch/0?since=$since"
     fun compose(to: String = "", body: String = "") = "compose?to=${Uri.encode(to)}&body=${Uri.encode(body)}"
 }
 
@@ -83,14 +93,15 @@ fun BarqNavHost(
         nav.currentBackStackEntryFlow.collect { CrashLog.currentScreen = it.destination.route ?: "-" }
     }
 
+    // The next screen slides in from the reading side's end: from the left in Arabic, the right in English.
+    val sign = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1
     NavHost(
         navController = nav,
         startDestination = if (startOnboarding) Routes.ONBOARDING else Routes.INBOX,
-        // In RTL the next screen slides in from the left.
-        enterTransition = { slideInHorizontally(tween(260)) { -it / 4 } + fadeIn(tween(220)) },
+        enterTransition = { slideInHorizontally(tween(260)) { sign * it / 4 } + fadeIn(tween(220)) },
         exitTransition = { fadeOut(tween(180)) },
         popEnterTransition = { fadeIn(tween(220)) },
-        popExitTransition = { slideOutHorizontally(tween(240)) { -it / 4 } + fadeOut(tween(200)) },
+        popExitTransition = { slideOutHorizontally(tween(240)) { sign * it / 4 } + fadeOut(tween(200)) },
     ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(mainViewModel) {
@@ -109,6 +120,9 @@ fun BarqNavHost(
                 openContact = { nav.navigate(Routes.contact(it)) },
                 openThreadAt = { thread, message -> nav.navigate(Routes.threadAt(thread, message)) },
                 openCrashLog = { nav.navigate(Routes.CRASHES) },
+                openBatch = { nav.navigate(Routes.batch(it)) },
+                openExternal = { nav.navigate(Routes.external(it)) },
+                openSendLimit = { nav.navigate(Routes.SEND_LIMIT) },
             )
         }
         composable(
@@ -182,5 +196,16 @@ fun BarqNavHost(
         ) {
             GroupPickerScreen(onBack = back)
         }
+        composable(
+            Routes.BATCH,
+            arguments = listOf(
+                navArgument("batchId") { type = NavType.LongType },
+                navArgument("since") { type = NavType.LongType; defaultValue = 0L },
+            ),
+        ) {
+            BatchScreen(onBack = back, openThread = { nav.navigate(Routes.thread(it)) })
+        }
+        composable(Routes.SEND_LIMIT) { SendLimitScreen(onBack = back) }
+        composable(Routes.HEALTH) { HealthScreen(onBack = back, open = { nav.navigate(it) }) }
     }
 }

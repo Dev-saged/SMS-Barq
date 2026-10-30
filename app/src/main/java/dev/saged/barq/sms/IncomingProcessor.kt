@@ -4,6 +4,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.IncomingRepository
+import dev.saged.barq.data.ReactionRepository
 import dev.saged.barq.data.db.Attachment
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.domain.AutoReplyEngine
@@ -22,10 +23,15 @@ class IncomingProcessor @Inject constructor(
     private val conversations: ConversationRepository,
     private val notifier: Notifier,
     private val autoReply: AutoReplyEngine,
+    private val reactions: ReactionRepository,
 ) {
     suspend fun onSms(address: String, body: String, dateSent: Long, subId: Int) {
         val stored = incoming.onIncomingSms(address, body, dateSent, subId) ?: return
-        after(stored)
+        // A reaction text ("❤️ on “…”") is shown on its message; it still notifies, but never
+        // triggers an auto-reply.
+        val reaction = runCatching { reactions.onIncoming(stored.message) }
+            .onFailure { CrashLog.warn("reaction", it) }.getOrDefault(false)
+        after(stored, autoReplyAllowed = !reaction)
     }
 
     suspend fun onMms(address: String, text: String, subject: String?, attachments: List<Attachment>, date: Long, subId: Int) {
@@ -33,7 +39,7 @@ class IncomingProcessor @Inject constructor(
         after(stored)
     }
 
-    private suspend fun after(stored: IncomingRepository.Incoming) {
+    private suspend fun after(stored: IncomingRepository.Incoming, autoReplyAllowed: Boolean = true) {
         val (message, conversation) = stored
         when {
             // The conversation is open on screen: it is read already, no sound, no notification.
@@ -43,7 +49,7 @@ class IncomingProcessor @Inject constructor(
                 notifier.notifyConversation(conversation.threadId)
         }
         if (message.otp != null) runCatching { OtpWidget.refresh(context) }
-        if (conversation.category != Category.SPAM) {
+        if (conversation.category != Category.SPAM && autoReplyAllowed) {
             runCatching { autoReply.maybeReply(message) }.onFailure { CrashLog.warn("auto-reply", it) }
         }
     }

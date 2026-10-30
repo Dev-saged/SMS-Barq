@@ -10,6 +10,9 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.data.ConversationRepository
+import dev.saged.barq.data.ReactionRepository
+import dev.saged.barq.data.db.ThreadHit
+import dev.saged.barq.domain.TextNorm
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.ConversationEntity
@@ -54,6 +57,7 @@ class ThreadViewModel @Inject constructor(
     private val notifier: Notifier,
     private val settingsRepository: SettingsRepository,
     private val simRepository: SimRepository,
+    private val reactions: ReactionRepository,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -82,9 +86,10 @@ class ThreadViewModel @Inject constructor(
                 initialKey = (position - 20).coerceAtLeast(0)
             }
         }
+        // Placeholders let the list jump straight to any message (search results), however far back.
         val config = PagingConfig(
             pageSize = 50, prefetchDistance = 30, initialLoadSize = 100,
-            enablePlaceholders = initialKey != null,
+            enablePlaceholders = true, jumpThreshold = 150,
         )
         emitAll(Pager(config, initialKey = initialKey) { messageDao.thread(threadId) }.flow)
     }.cachedIn(viewModelScope)
@@ -175,6 +180,63 @@ class ThreadViewModel @Inject constructor(
     }
 
     fun resend(id: Long) = viewModelScope.launch { engine.resend(id) }
+
+    /** Toggles my reaction (the same emoji again removes it). */
+    fun react(id: Long, emoji: String) = viewModelScope.launch { reactions.react(id, emoji) }
+
+    // ---------------------------------------------------------------- search in this conversation
+
+    /** null = the search bar is closed. */
+    val searchQuery = MutableStateFlow<String?>(null)
+    val searchHits = MutableStateFlow<List<ThreadHit>>(emptyList())
+    /** Which result is shown (0 = the newest). */
+    val searchIndex = MutableStateFlow(0)
+    /** Position in the list of the shown result, to scroll to (-1 = none). */
+    val searchTarget = MutableStateFlow(-1)
+
+    init {
+        viewModelScope.launch {
+            searchQuery.debounce(220).collect { q ->
+                val match = q?.let { TextNorm.ftsQuery(it) }
+                searchHits.value = if (match == null) emptyList()
+                else runCatching { messageDao.searchInThread(match, threadId) }.getOrDefault(emptyList())
+                searchIndex.value = 0
+                showHit()
+            }
+        }
+    }
+
+    fun openSearch() {
+        if (searchQuery.value == null) searchQuery.value = ""
+    }
+
+    fun closeSearch() {
+        searchQuery.value = null
+        searchHits.value = emptyList()
+        searchTarget.value = -1
+    }
+
+    fun onSearch(q: String) {
+        searchQuery.value = q
+    }
+
+    /** Older result (up in the conversation). */
+    fun olderHit() = moveHit(+1)
+
+    /** Newer result (down in the conversation). */
+    fun newerHit() = moveHit(-1)
+
+    private fun moveHit(step: Int) {
+        val hits = searchHits.value
+        if (hits.isEmpty()) return
+        searchIndex.value = (searchIndex.value + step).mod(hits.size)
+        viewModelScope.launch { showHit() }
+    }
+
+    private suspend fun showHit() {
+        val hit = searchHits.value.getOrNull(searchIndex.value)
+        searchTarget.value = if (hit == null) -1 else messageDao.positionInThread(threadId, hit.date, hit.id)
+    }
     fun deleteMessage(id: Long) = viewModelScope.launch { conversations.deleteMessage(id) }
     fun cancelScheduled(id: Long) = viewModelScope.launch { engine.cancelScheduled(id) }
     fun setCategory(category: Category) = viewModelScope.launch { conversations.setCategoryForSender(threadId, category) }

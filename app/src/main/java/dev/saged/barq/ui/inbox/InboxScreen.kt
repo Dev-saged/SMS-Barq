@@ -33,6 +33,8 @@ import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Forum
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
@@ -107,6 +109,7 @@ import dev.saged.barq.R
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationEntity
 import dev.saged.barq.data.db.done
+import dev.saged.barq.data.db.BatchCounts
 import dev.saged.barq.data.db.finished
 import dev.saged.barq.data.db.MessageEntity
 import dev.saged.barq.data.db.SearchHit
@@ -134,6 +137,9 @@ fun InboxScreen(
     openSettings: () -> Unit,
     openContact: (Long) -> Unit,
     openCrashLog: () -> Unit,
+    openBatch: (Long) -> Unit,
+    openExternal: (Long) -> Unit,
+    openSendLimit: () -> Unit,
     vm: InboxViewModel = hiltViewModel(),
 ) {
     val pagingItems = vm.conversationsPaged.collectAsLazyPagingItems()
@@ -145,6 +151,7 @@ fun InboxScreen(
     val spamCount by vm.spamCount.collectAsStateWithLifecycle()
     val hits by vm.messageHits.collectAsStateWithLifecycle()
     val bulk by vm.bulk.collectAsStateWithLifecycle()
+    val external by vm.external.collectAsStateWithLifecycle()
     val isDefault by mainViewModel.isDefault.collectAsStateWithLifecycle()
     val sync by mainViewModel.syncProgress.collectAsStateWithLifecycle()
     val crashPending by mainViewModel.crashPending.collectAsStateWithLifecycle()
@@ -255,7 +262,22 @@ fun InboxScreen(
                         onCancel = { vm.cancelBulk(b.batchId) },
                         onResend = { vm.resendFailed(b.batchId) },
                         onClose = { vm.dismissBulk() },
+                        onDetails = { openBatch(b.batchId) },
+                        onLimit = openSendLimit,
                     )
+                }
+            }
+            external?.let { e ->
+                if (!searching) {
+                    item(key = "external", contentType = "card") {
+                        ExternalCard(
+                            ui = e,
+                            onDetails = { openExternal(e.since) },
+                            onResend = { vm.resendExternal(e.since) },
+                            onClose = { vm.dismissExternal() },
+                            onLimit = openSendLimit,
+                        )
+                    }
                 }
             }
             item(key = "otp", contentType = "card") {
@@ -576,6 +598,8 @@ private fun BulkCard(
     onCancel: () -> Unit,
     onResend: () -> Unit,
     onClose: () -> Unit,
+    onDetails: () -> Unit,
+    onLimit: () -> Unit,
 ) {
     val scheme = MaterialTheme.colorScheme
     val c = ui.counts
@@ -619,12 +643,17 @@ private fun BulkCard(
                 color = if (c.failed > 0 && finished) scheme.error else scheme.primary,
             )
             Text(
-                stringResource(R.string.bulk_counts, c.sent, c.failed, c.pending),
+                stringResource(R.string.bulk_counts, c.sent, c.failed, c.pending) +
+                    (if (c.delivered > 0) " · " + stringResource(R.string.bulk_delivered, c.delivered) else "") +
+                    (if (c.retrying > 0) " · " + stringResource(R.string.bulk_retrying, c.retrying) else ""),
                 style = MaterialTheme.typography.labelMedium,
                 color = scheme.onSurfaceVariant,
             )
+            if (!finished && (ui.stalled || ui.waitingLimit)) {
+                LimitHint(stalled = ui.stalled, onLimit = onLimit)
+            }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
                 finished && c.failed > 0 -> FilledTonalButton(onClick = onResend) {
                     Text(stringResource(R.string.bulk_resend_failed))
@@ -638,9 +667,106 @@ private fun BulkCard(
                     }
                 }
             }
+            if (c.total > 0) {
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = onDetails) { Text(stringResource(R.string.bulk_details)) }
+            }
         }
     }
 }
+
+/** Why a bulk send is slow right now, with a shortcut to raise Android's limit. */
+@Composable
+private fun LimitHint(stalled: Boolean, onLimit: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(scheme.tertiaryContainer)
+            .clickable(onClick = onLimit)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Outlined.Speed, null, tint = scheme.onTertiaryContainer, modifier = Modifier.size(18.dp))
+        Text(
+            stringResource(if (stalled) R.string.bulk_stalled else R.string.bulk_waiting_limit),
+            style = MaterialTheme.typography.labelMedium,
+            color = scheme.onTertiaryContainer,
+            modifier = Modifier.weight(1f),
+        )
+        Text(stringResource(R.string.send_limit_short), style = MaterialTheme.typography.labelLarge, color = scheme.onTertiaryContainer)
+    }
+}
+
+/** Live card for messages another app sent (a gateway, a bot…): what went out, what failed. */
+@Composable
+private fun ExternalCard(
+    ui: ExternalUi,
+    onDetails: () -> Unit,
+    onResend: () -> Unit,
+    onClose: () -> Unit,
+    onLimit: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val c = ui.counts
+    val sending = c.pending > 0
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(scheme.surfaceContainer)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(
+                Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(scheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(Icons.Outlined.Forum, null, tint = scheme.onSecondaryContainer, modifier = Modifier.size(18.dp))
+            }
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.external_title), style = MaterialTheme.typography.titleSmall)
+                Text(
+                    stringResource(if (sending) R.string.external_sending else R.string.external_done, c.done, c.total),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            if (!sending) {
+                Icon(
+                    Icons.Outlined.Close, stringResource(R.string.dismiss), tint = scheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp).clip(RoundedCornerShape(10.dp)).clickable(onClick = onClose),
+                )
+            }
+        }
+        LinearProgressIndicator(
+            progress = { if (c.total == 0) 0f else c.done.toFloat() / c.total },
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)),
+            color = if (c.failed > 0 && !sending) scheme.error else scheme.secondary,
+        )
+        Text(
+            stringResource(R.string.bulk_counts, c.sent, c.failed, c.pending) +
+                (if (c.delivered > 0) " · " + stringResource(R.string.bulk_delivered, c.delivered) else ""),
+            style = MaterialTheme.typography.labelMedium,
+            color = scheme.onSurfaceVariant,
+        )
+        if (c.failed > 0 && c.errorHintLimit()) LimitHint(stalled = false, onLimit = onLimit)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (c.failed > 0 && !sending) {
+                FilledTonalButton(onClick = onResend) { Text(stringResource(R.string.external_resend)) }
+            }
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = onDetails) { Text(stringResource(R.string.bulk_details)) }
+        }
+    }
+}
+
+/** Many failures from another app usually mean Android's limit stopped it. */
+private fun BatchCounts.errorHintLimit(): Boolean = failed >= 10
 
 /** One message found by search: who, the matching words highlighted, and when. */
 @Composable

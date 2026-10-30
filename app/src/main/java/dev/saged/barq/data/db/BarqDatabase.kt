@@ -39,7 +39,7 @@ class Converters {
         SendGroupEntity::class,
         SendGroupMemberEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -53,7 +53,7 @@ abstract class BarqDatabase : RoomDatabase() {
     abstract fun groups(): GroupDao
 
     companion object {
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3)
     }
 }
 
@@ -115,6 +115,26 @@ object Migration1To2 : Migration(1, 2) {
         db.execSQL(
             "CREATE TABLE IF NOT EXISTS `send_group_members` (`groupId` INTEGER NOT NULL, `address` TEXT NOT NULL, " +
                 "`name` TEXT, PRIMARY KEY(`groupId`, `address`))"
+        )
+    }
+}
+
+/**
+ * Version 2 → 3 (Barq 1.3.0). Only new columns with defaults, nothing is rewritten:
+ *  - retryCount / retryAt : automatic retries after a temporary failure
+ *  - fromOtherApp         : messages another app sent (followed live until the result is known)
+ *  - reaction / theirReaction / reactionTo : emoji reactions
+ */
+object Migration2To3 : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `retryCount` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `retryAt` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `fromOtherApp` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `reaction` TEXT")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `theirReaction` TEXT")
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `reactionTo` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_messages_fromOtherApp_date` ON `messages` (`fromOtherApp`, `date`)"
         )
     }
 }

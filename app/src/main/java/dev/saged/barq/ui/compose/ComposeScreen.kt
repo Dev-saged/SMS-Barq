@@ -22,6 +22,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.AlertDialog
@@ -66,6 +67,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
 import dev.saged.barq.data.contacts.ContactEntry
 import dev.saged.barq.data.contacts.ContactsRepository
+import dev.saged.barq.data.contacts.PhoneGroup
+import dev.saged.barq.data.contacts.PhoneGroups
 import dev.saged.barq.data.db.GroupDao
 import dev.saged.barq.data.db.SendGroupWithCount
 import dev.saged.barq.data.db.TemplateDao
@@ -99,6 +102,7 @@ class ComposeViewModel @Inject constructor(
     private val groupDao: GroupDao,
     private val settingsRepository: SettingsRepository,
     private val simRepository: SimRepository,
+    private val phoneGroups: PhoneGroups,
     templateDao: TemplateDao,
 ) : ViewModel() {
 
@@ -116,6 +120,12 @@ class ComposeViewModel @Inject constructor(
     val groups = groupDao.observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<SendGroupWithCount>())
     val settings = settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
+    /** Groups made in the phone's Contacts app. */
+    val deviceGroups = MutableStateFlow<List<PhoneGroup>>(emptyList())
+
+    /** A phone group is being read (big groups take a moment). */
+    val addingGroup = MutableStateFlow(false)
+
     /** Every contact on the phone, sorted, with letter sections. */
     val allContacts = contacts.entries
 
@@ -125,8 +135,34 @@ class ComposeViewModel @Inject constructor(
 
     init {
         onText(text.value)
-        viewModelScope.launch(Dispatchers.IO) { contacts.warmUp() }
+        viewModelScope.launch(Dispatchers.IO) {
+            contacts.warmUp()
+            deviceGroups.value = runCatching { phoneGroups.groups() }.getOrDefault(emptyList())
+        }
         refreshSims()
+    }
+
+    /** Adds one number of every person in a phone group; each gets a separate SMS. */
+    fun addPhoneGroup(group: PhoneGroup) {
+        if (addingGroup.value) return
+        addingGroup.value = true
+        viewModelScope.launch {
+            try {
+                val numbers = phoneGroups.numbers(group)
+                val current = recipients.value.toMutableList()
+                val keys = current.mapTo(HashSet()) { PhoneUtils.matchKey(it.address) }
+                numbers.forEach { (number, name) ->
+                    if (keys.add(PhoneUtils.matchKey(number))) current += Recipient(number, name)
+                }
+                recipients.value = current
+            } finally {
+                addingGroup.value = false
+            }
+        }
+    }
+
+    fun clearRecipients() {
+        recipients.value = emptyList()
     }
 
     /** Re-read on every resume, so a SIM appears right after the phone permission is granted. */
@@ -165,8 +201,9 @@ class ComposeViewModel @Inject constructor(
         viewModelScope.launch {
             val members = groupDao.members(groupId)
             val current = recipients.value.toMutableList()
+            val keys = current.mapTo(HashSet()) { PhoneUtils.matchKey(it.address) }
             members.forEach { m ->
-                if (current.none { PhoneUtils.same(it.address, m.address) }) {
+                if (keys.add(PhoneUtils.matchKey(m.address))) {
                     current += Recipient(m.address, m.name ?: contacts.lookupCached(m.address)?.name)
                 }
             }
@@ -225,6 +262,9 @@ fun ComposeScreen(
     val results by vm.results.collectAsStateWithLifecycle()
     val all by vm.allContacts.collectAsStateWithLifecycle()
     val groups by vm.groups.collectAsStateWithLifecycle()
+    val deviceGroups by vm.deviceGroups.collectAsStateWithLifecycle()
+    val addingGroup by vm.addingGroup.collectAsStateWithLifecycle()
+    var showAllRecipients by remember { mutableStateOf(false) }
     val text by vm.text.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val templates by vm.templates.collectAsStateWithLifecycle()
@@ -291,8 +331,10 @@ fun ComposeScreen(
                     .padding(horizontal = 14.dp, vertical = 10.dp),
             ) {
                 if (recipients.isNotEmpty()) {
+                    // Hundreds of people: show a few names and a summary instead of a wall of chips.
+                    val shown = if (showAllRecipients || recipients.size <= MAX_CHIPS) recipients else recipients.take(MAX_CHIPS)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        recipients.forEach { r ->
+                        shown.forEach { r ->
                             InputChip(
                                 selected = false,
                                 onClick = { vm.remove(r) },
@@ -304,6 +346,24 @@ fun ComposeScreen(
                                     labelColor = scheme.onSecondaryContainer,
                                     trailingIconColor = scheme.onSecondaryContainer,
                                 ),
+                            )
+                        }
+                        if (recipients.size > MAX_CHIPS) {
+                            AssistChip(
+                                onClick = { showAllRecipients = !showAllRecipients },
+                                label = {
+                                    Text(
+                                        if (showAllRecipients) stringResource(R.string.recipients_less)
+                                        else stringResource(R.string.recipients_more, recipients.size - MAX_CHIPS)
+                                    )
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                            )
+                            AssistChip(
+                                onClick = { vm.clearRecipients(); showAllRecipients = false },
+                                label = { Text(stringResource(R.string.recipients_clear)) },
+                                leadingIcon = { Icon(Icons.Outlined.Close, null, Modifier.size(16.dp)) },
+                                shape = RoundedCornerShape(10.dp),
                             )
                         }
                     }
@@ -358,7 +418,9 @@ fun ComposeScreen(
                 )
                 // Someone is chosen: keep the screen calm, the list comes back as soon as you type.
                 recipients.isNotEmpty() -> {
-                    if (groups.isNotEmpty()) GroupChips(groups, vm::addGroup)
+                    if (groups.isNotEmpty() || deviceGroups.isNotEmpty()) {
+                        GroupChips(groups, deviceGroups, addingGroup, vm::addGroup, vm::addPhoneGroup)
+                    }
                     Text(
                         stringResource(R.string.add_more_hint),
                         style = MaterialTheme.typography.bodySmall,
@@ -370,9 +432,13 @@ fun ComposeScreen(
                     entries = all,
                     sectioned = true,
                     onClick = vm::add,
-                    headerCount = if (groups.isNotEmpty()) 1 else 0,
+                    headerCount = if (groups.isNotEmpty() || deviceGroups.isNotEmpty()) 1 else 0,
                     header = {
-                        if (groups.isNotEmpty()) item(key = "groups") { GroupChips(groups, vm::addGroup) }
+                        if (groups.isNotEmpty() || deviceGroups.isNotEmpty()) {
+                            item(key = "groups") {
+                                GroupChips(groups, deviceGroups, addingGroup, vm::addGroup, vm::addPhoneGroup)
+                            }
+                        }
                     },
                 )
             }
@@ -402,20 +468,47 @@ fun ComposeScreen(
     }
 }
 
+private const val MAX_CHIPS = 12
+
+/** Barq's saved groups, then the phone's own contact groups. One tap adds everybody. */
 @Composable
-private fun GroupChips(groups: List<SendGroupWithCount>, onPick: (Long) -> Unit) {
-    LazyRow(
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(groups, key = { it.id }) { g ->
-            AssistChip(
-                onClick = { onPick(g.id) },
-                label = { Text(stringResource(R.string.group_chip, g.name, g.members)) },
-                leadingIcon = { Icon(Icons.Outlined.Groups, null, Modifier.size(18.dp)) },
-                shape = RoundedCornerShape(12.dp),
-                colors = AssistChipDefaults.assistChipColors(leadingIconContentColor = MaterialTheme.colorScheme.primary),
-            )
+private fun GroupChips(
+    groups: List<SendGroupWithCount>,
+    deviceGroups: List<PhoneGroup>,
+    adding: Boolean,
+    onPick: (Long) -> Unit,
+    onPickPhone: (PhoneGroup) -> Unit,
+) {
+    Column {
+        Text(
+            stringResource(if (adding) R.string.groups_adding else R.string.groups_send_to),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(groups, key = { "barq_${it.id}" }) { g ->
+                AssistChip(
+                    onClick = { onPick(g.id) },
+                    label = { Text(stringResource(R.string.group_chip, g.name, g.members)) },
+                    leadingIcon = { Icon(Icons.Outlined.Groups, null, Modifier.size(18.dp)) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = AssistChipDefaults.assistChipColors(leadingIconContentColor = MaterialTheme.colorScheme.primary),
+                )
+            }
+            items(deviceGroups, key = { "phone_${it.title}" }) { g ->
+                AssistChip(
+                    onClick = { onPickPhone(g) },
+                    enabled = !adding,
+                    label = { Text(stringResource(R.string.group_chip, g.title, g.members)) },
+                    leadingIcon = { Icon(Icons.Outlined.Contacts, null, Modifier.size(18.dp)) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = AssistChipDefaults.assistChipColors(leadingIconContentColor = MaterialTheme.colorScheme.tertiary),
+                )
+            }
         }
     }
 }

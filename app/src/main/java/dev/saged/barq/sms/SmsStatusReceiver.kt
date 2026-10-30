@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.telephony.SmsMessage
 import dev.saged.barq.di.barq
+import dev.saged.barq.util.CrashLog
 import dev.saged.barq.util.goAsync
 
 /** Receives "sent" and "delivered" callbacks from the radio. */
@@ -25,9 +26,10 @@ class SmsStatusReceiver : BroadcastReceiver() {
                     val ok = result == Activity.RESULT_OK
                     // Only the last part confirms success; any failing part fails the message.
                     if (!ok || part == parts - 1) {
-                        outgoing.onSendResult(messageId, ok, if (ok) 0 else result)
+                        // A temporary failure is retried by itself and is not reported as failed.
+                        val failedForGood = outgoing.onSendResult(messageId, ok, if (ok) 0 else result)
                         // Bulk sends report failures in their own summary, not one by one.
-                        if (!ok && entry.messageDao().get(messageId)?.batchId == 0L) {
+                        if (failedForGood && entry.messageDao().get(messageId)?.batchId == 0L) {
                             entry.notifier().notifySendFailed(messageId)
                         }
                     }
@@ -35,9 +37,14 @@ class SmsStatusReceiver : BroadcastReceiver() {
                 ACTION_DELIVERED -> {
                     val pdu = intent.getByteArrayExtra("pdu")
                     val format = intent.getStringExtra("format")
-                    val status = runCatching { SmsMessage.createFromPdu(pdu, format).status }.getOrDefault(0)
+                    val status = runCatching { SmsMessage.createFromPdu(pdu, format)?.status }.getOrNull()
                     // TP-Status: 0x00..0x1F delivered, 0x20..0x3F still trying, 0x40+ failed.
+                    // A report that cannot be read is not taken as "delivered" (it used to be).
                     when {
+                        status == null -> CrashLog.warn(
+                            "delivery-report",
+                            IllegalStateException("Unreadable delivery report (format=$format, pdu=${pdu?.size ?: -1} bytes)"),
+                        )
                         status < 0x20 -> outgoing.onDelivery(messageId, true)
                         status >= 0x40 -> outgoing.onDelivery(messageId, false)
                     }

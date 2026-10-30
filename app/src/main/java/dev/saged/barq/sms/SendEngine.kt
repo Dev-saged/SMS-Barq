@@ -4,6 +4,7 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.data.OutgoingRepository
 import dev.saged.barq.data.db.BatchCounts
+import dev.saged.barq.data.db.BatchRow
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.data.settings.SettingsRepository
@@ -42,6 +43,8 @@ class SendEngine @Inject constructor(
 
     val preparing get() = state.preparing
     val paused get() = state.paused
+    val waitingLimitUntil get() = state.waitingLimitUntil
+    val stalled get() = state.stalled
 
     /**
      * The SIM to send from: the one the user picked, else the conversation's SIM, else Barq's
@@ -68,6 +71,14 @@ class SendEngine @Inject constructor(
         val queued = outgoing.enqueue(recipients, body, sub, scheduledAt, autoReply = false, batchId = 0, clearDraft = true)
         afterQueue(queued)
         return queued.count > 0
+    }
+
+    /** A reaction sent as a short SMS: it is attached to [targetId] instead of showing as a bubble. */
+    suspend fun sendReaction(threadId: Long, body: String, targetId: Long) {
+        val conv = conversations.get(threadId) ?: return
+        val recipients = PhoneUtils.splitAddresses(conv.addresses)
+        val sub = resolveSubId(threadId, null)
+        afterQueue(outgoing.enqueue(recipients, body, sub, 0, autoReply = false, batchId = 0, clearDraft = false, reactionTo = targetId))
     }
 
     suspend fun sendAutoReply(address: String, body: String, subId: Int) {
@@ -148,6 +159,21 @@ class SendEngine @Inject constructor(
     }
 
     fun observeBatch(batchId: Long): Flow<BatchCounts> = messages.observeBatch(batchId)
+
+    fun observeBatchRows(batchId: Long): Flow<List<BatchRow>> = messages.observeBatchRows(batchId)
+
+    /** What other apps sent since [since] (a gateway, a bot…), followed live. */
+    fun observeExternal(since: Long): Flow<BatchCounts> = messages.observeExternal(since)
+
+    fun observeExternalRows(since: Long): Flow<List<BatchRow>> = messages.observeExternalRows(since)
+
+    /** Re-sends, from Barq, what another app failed to send since [since]. */
+    suspend fun resendFailedExternal(since: Long) {
+        val failed = messages.failedExternal(since).map { it.id }
+        if (failed.isEmpty()) return
+        outgoing.resetForResend(failed)
+        queue.kick()
+    }
 
     suspend fun dismissBatch() = settings.setLastBatchId(0)
 

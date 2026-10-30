@@ -143,8 +143,13 @@ fun BarqTheme(settings: AppSettings, content: @Composable () -> Unit) {
     }
     val density = LocalDensity.current
     CompositionLocalProvider(
-        // The app is Arabic-first: always right-to-left, whatever the system language.
-        LocalLayoutDirection provides LayoutDirection.Rtl,
+        // Arabic-first: right-to-left whenever the Arabic texts are used (every language except
+        // English, which has its own texts and reads left-to-right).
+        LocalLayoutDirection provides if (context.resources.getBoolean(dev.saged.barq.R.bool.barq_rtl)) {
+            LayoutDirection.Rtl
+        } else {
+            LayoutDirection.Ltr
+        },
         LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
         LocalBarqColors provides BarqExtraColors(dark),
     ) {

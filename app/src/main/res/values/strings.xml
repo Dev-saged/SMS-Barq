@@ -154,7 +154,7 @@
     <string name="date_format">صيغة التاريخ</string>
     <string name="use_24h">نظام 24 ساعة</string>
     <string name="delivery_reports">تقارير التسليم</string>
-    <string name="delivery_reports_sub">إشعار عند وصول الرسالة للمستلم (قد يكلف حسب المشغل)</string>
+    <string name="delivery_reports_sub">علامة «تم التسليم» عند وصول الرسالة للمستلم (يعتمد على دعم شركة الاتصالات)</string>
     <string name="char_counter">عداد الأحرف</string>
     <string name="char_counter_sub">عدد الأجزاء والأحرف المتبقية أثناء الكتابة</string>
     <string name="default_sim">الشريحة الافتراضية</string>
@@ -266,9 +266,9 @@
     <string name="bulk_done_text">أُرسلت %1$d · فشلت %2$d</string>
     <string name="bulk_resend_failed">إعادة إرسال الفاشلة</string>
     <string name="bulk_intro_title">قبل الإرسال الجماعي</string>
-    <string name="bulk_intro_text">سيصل كل مستلم رسالة SMS منفصلة، وتُرسل بالخلفية مع شريط تقدّم وإمكانية الإيقاف والإلغاء.
+    <string name="bulk_intro_text">سيصل كل مستلم رسالة SMS منفصلة في محادثته، وتُرسل بالخلفية مع شريط تقدّم وإمكانية الإيقاف والإلغاء، والرسائل التي تفشل مؤقتاً يُعاد إرسالها تلقائياً.
 
-قد يسألك أندرويد مرة واحدة عن السماح بإرسال عدد كبير من الرسائل: اختر «السماح دائماً».
+أندرويد يسمح افتراضياً بحوالي 30 رسالة في الدقيقة، فيلتزم برق بهذا الحد حتى لا يتوقف الإرسال. لإرسال أسرع ارفع الحد من الإعدادات ← حد الإرسال.
 
 الإرسال السريع جداً لأعداد كبيرة قد يجعل شركة الاتصالات توقف الشريحة مؤقتاً.</string>
     <string name="scheduled_many">تمت جدولة %1$d رسالة</string>
@@ -365,4 +365,107 @@
     <string name="social_facebook">فيسبوك</string>
     <string name="social_x">إكس</string>
     <string name="social_github">غيت هب</string>
+
+    <!-- 1.3.0: shared -->
+    <string name="auto_reply_default_text">أنا مشغول حالياً، سأرد عليك في أقرب وقت.</string>
+    <string name="media_placeholder">[وسائط]</string>
+    <string-array name="default_templates">
+        <item>تمام</item>
+        <item>أنا بالطريق</item>
+        <item>بتواصل معك لاحقاً</item>
+        <item>شكراً لك</item>
+        <item>مشغول حالياً</item>
+    </string-array>
+
+    <!-- 1.3.0: stronger sending -->
+    <string name="bulk_stalled">الشبكة لا ترد. إن ظهر سؤال من أندرويد عن السماح بإرسال رسائل كثيرة اختر «السماح»، أو ارفع حد الإرسال.</string>
+    <string name="bulk_waiting_limit">يلتزم برق بحد أندرويد (حوالي 30 رسالة في الدقيقة). ارفع الحد لإرسال أسرع.</string>
+    <string name="bulk_delivered">وصلت %1$d</string>
+    <string name="bulk_retrying">إعادة محاولة %1$d</string>
+    <string name="bulk_details">التفاصيل</string>
+    <string name="send_limit_short">حد الإرسال</string>
+    <string name="status_retrying">إعادة المحاولة تلقائياً %1$s · %2$s</string>
+    <string name="status_sent_other_app">أُرسلت من تطبيق آخر</string>
+
+    <!-- 1.3.0: sends by other apps -->
+    <string name="external_title">إرسال من تطبيق آخر</string>
+    <string name="external_sending">جارٍ الإرسال %1$d من %2$d</string>
+    <string name="external_done">انتهى · %1$d من %2$d</string>
+    <string name="external_resend">إعادة إرسال الفاشلة من برق</string>
+
+    <!-- 1.3.0: bulk details -->
+    <string name="batch_title">تفاصيل الإرسال</string>
+    <string name="batch_resend_failed">إعادة إرسال الفاشلة (%1$d)</string>
+    <string name="batch_sent">أُرسلت</string>
+    <string name="batch_delivered">وصلت</string>
+    <string name="batch_failed">فشلت</string>
+    <string name="batch_pending">قيد الإرسال</string>
+
+    <!-- 1.3.0: search in a conversation -->
+    <string name="search_in_conversation">بحث في المحادثة</string>
+    <string name="search_in_conversation_hint">ابحث في هذه المحادثة</string>
+    <string name="close_search">إغلاق البحث</string>
+    <string name="search_no_results">لا نتائج</string>
+    <string name="search_older">الأقدم</string>
+    <string name="search_newer">الأحدث</string>
+
+    <!-- 1.3.0: new message -->
+    <string name="recipients_more">+%1$d آخرين</string>
+    <string name="recipients_less">عرض أقل</string>
+    <string name="recipients_clear">مسح الكل</string>
+    <string name="groups_send_to">أرسل لمجموعة كاملة</string>
+    <string name="groups_adding">جارٍ إضافة المجموعة…</string>
+
+    <!-- 1.3.0: reactions -->
+    <string name="reactions_sms">إرسال التفاعل كرسالة</string>
+    <string name="reactions_sms_sub">يصل تفاعلك للطرف الآخر كرسالة SMS قصيرة. إن كان متوقفاً يبقى التفاعل عندك فقط.</string>
+
+    <!-- 1.3.0: app health -->
+    <string name="health_title">جاهزية برق</string>
+    <string name="health_sub">افحص كل ما يحتاجه برق ليعمل بثبات، وأصلحه بلمسة</string>
+    <string name="health_all_good">كل شيء جاهز. برق يعمل بكامل قوته.</string>
+    <string name="health_problems">%1$d أمور تحتاج انتباهك</string>
+    <string name="health_checks">الفحوصات</string>
+    <string name="health_info">معلومات</string>
+    <string name="health_default">برق هو تطبيق الرسائل الافتراضي</string>
+    <string name="health_default_fix">تفعيل</string>
+    <string name="health_sms">إذن الرسائل</string>
+    <string name="health_contacts">إذن جهات الاتصال</string>
+    <string name="health_phone">إذن الهاتف (الشرائح)</string>
+    <string name="health_notifications">الإشعارات مسموحة</string>
+    <string name="health_battery">بدون تقييد البطارية</string>
+    <string name="health_battery_fix">إصلاح</string>
+    <string name="health_exact">المواعيد الدقيقة (الرسائل المجدولة)</string>
+    <string name="health_limit">حد الإرسال مرفوع (اختياري)</string>
+    <string name="health_limit_fix">رفع</string>
+    <string name="health_delivery">تقارير التسليم (اختياري)</string>
+    <string name="health_turn_on">تشغيل</string>
+    <string name="health_open_settings">فتح</string>
+    <string name="health_sims">الشرائح المتاحة: %1$d</string>
+
+    <!-- 1.3.0: Android's sending limit -->
+    <string name="send_limit_title">حد الإرسال</string>
+    <string name="send_limit_sub">ارفع حد أندرويد لإرسال مئات الرسائل بدون توقف</string>
+    <string name="limit_now">الحد الحالي</string>
+    <string name="limit_value">حوالي %1$d رسالة في الدقيقة</string>
+    <string name="limit_raised_value">مرفوع: %1$d رسالة في الدقيقة</string>
+    <string name="limit_explain">هذا حد يضعه أندرويد لكل تطبيق. فوقه يتوقف الإرسال ويسأل أندرويد للسماح، لذلك يلتزم به برق. ارفعه مرة واحدة ليصبح الإرسال الجماعي سريعاً.</string>
+    <string name="limit_raised_explain">الحد مرفوع، والإرسال الجماعي يعمل بأقصى سرعة يسمح بها المودم. هذا الإعداد عام ويفيد أي تطبيق إرسال آخر أيضاً.</string>
+    <string name="limit_raise">رفع الحد</string>
+    <string name="limit_restore">إرجاع الافتراضي</string>
+    <string name="limit_changed">تم تغيير حد الإرسال</string>
+    <string name="limit_how_title">كيف أرفع الحد؟ (مرة واحدة فقط)</string>
+    <string name="limit_step1">فعّل «خيارات المطوّر»: الإعدادات ← حول الهاتف ← معلومات البرنامج، واضغط «رقم الإصدار» 7 مرات.</string>
+    <string name="limit_step2">من خيارات المطوّر شغّل «تصحيح الأخطاء اللاسلكي» (أندرويد 11 فأحدث) وأنت متصل بشبكة Wi‑Fi.</string>
+    <string name="limit_step3">ثبّت تطبيق Termux من F‑Droid، واكتب فيه: pkg install android-tools</string>
+    <string name="limit_step4">في «تصحيح الأخطاء اللاسلكي» اضغط «إقران جهاز برمز»، وافتح Termux بجانبه (تقسيم الشاشة) واكتب: adb pair localhost:المنفذ الرمز، ثم adb connect localhost:المنفذ الظاهر في الصفحة الرئيسية.</string>
+    <string name="limit_step5">انسخ هذا الأمر والصقه في Termux:</string>
+    <string name="limit_step6">ارجع لهذه الشاشة، سيظهر زر «رفع الحد». يمكنك إطفاء تصحيح الأخطاء بعدها.</string>
+    <string name="limit_alt">أو ارفع الحد مباشرة بدون إعطاء برق الصلاحية:</string>
+    <string name="limit_behaviour">سلوك الإرسال</string>
+    <string name="respect_limit">الالتزام بحد أندرويد</string>
+    <string name="respect_limit_sub">يرسل بأسرع ما يسمح به الحد حتى لا يتوقف الإرسال أبداً. أطفئه فقط إن كنت ستوافق على سؤال أندرويد بنفسك.</string>
+    <string name="auto_retry">إعادة المحاولة تلقائياً</string>
+    <string name="auto_retry_sub">الرسالة التي تفشل بسبب انقطاع التغطية أو الحد يعاد إرسالها وحدها حتى 3 مرات.</string>
+    <string name="limit_warning">ملاحظة: الإرسال السريع جداً لأعداد كبيرة قد يجعل شركة الاتصالات تبطئ الشريحة أو توقفها مؤقتاً. برق لا يرسل أي شيء إلا ما تطلبه أنت.</string>
 </resources>

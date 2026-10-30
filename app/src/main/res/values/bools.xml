@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Arabic texts read right-to-left. values-en overrides this for the English texts. -->
+    <bool name="barq_rtl">true</bool>
+</resources>

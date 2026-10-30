@@ -28,7 +28,8 @@ data class AppSettings(
     val fontScale: Float = 1f,
     val datePattern: String = "dd/MM/yyyy",
     val use24h: Boolean = true,
-    val deliveryReports: Boolean = false,
+    /** On by default since 1.3.0: "delivered" marks need it (an explicit "off" is kept). */
+    val deliveryReports: Boolean = true,
     val showCounter: Boolean = true,
     val mmsEnabled: Boolean = false,
     val spamFilter: Boolean = true,
@@ -53,6 +54,14 @@ data class AppSettings(
     val lastBatchId: Long = 0,
     /** Bulk-send explanation (Android asks once to allow many messages) was shown. */
     val bulkIntroShown: Boolean = false,
+    /** Temporary failures (no signal, Android's limit…) are retried automatically. */
+    val autoRetry: Boolean = true,
+    /** Stay under Android's sending limit instead of letting it stop the queue. */
+    val respectLimit: Boolean = true,
+    /** Also send my reactions as a short SMS ("❤️ on “…”") so the other person sees them. */
+    val reactionsAsSms: Boolean = false,
+    /** Messages other apps sent before this time are no longer shown on the inbox card. */
+    val externalSeenAt: Long = 0,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -89,6 +98,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val onboardingDone = booleanPreferencesKey("onboarding_done")
         val lastBatchId = longPreferencesKey("last_batch_id")
         val bulkIntroShown = booleanPreferencesKey("bulk_intro_shown")
+        val autoRetry = booleanPreferencesKey("auto_retry")
+        val respectLimit = booleanPreferencesKey("respect_limit")
+        val reactionsAsSms = booleanPreferencesKey("reactions_as_sms")
+        val externalSeenAt = longPreferencesKey("external_seen_at")
     }
 
     private inline fun <reified T : Enum<T>> Preferences.enumOf(key: Preferences.Key<String>, default: T): T =
@@ -113,7 +126,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             sendDelayMs = p[K.sendDelayMs] ?: d.sendDelayMs,
             autoReplyEnabled = p[K.arEnabled] ?: d.autoReplyEnabled,
             autoReplyMode = p.enumOf(K.arMode, d.autoReplyMode),
-            autoReplyText = p[K.arText] ?: d.autoReplyText,
+            autoReplyText = p[K.arText] ?: context.getString(dev.saged.barq.R.string.auto_reply_default_text),
             autoReplyContactsOnly = p[K.arContactsOnly] ?: d.autoReplyContactsOnly,
             autoReplyCooldownMin = p[K.arCooldown] ?: d.autoReplyCooldownMin,
             autoReplyWindow = p[K.arWindow] ?: d.autoReplyWindow,
@@ -125,6 +138,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
             lastBatchId = p[K.lastBatchId] ?: d.lastBatchId,
             bulkIntroShown = p[K.bulkIntroShown] ?: d.bulkIntroShown,
+            autoRetry = p[K.autoRetry] ?: d.autoRetry,
+            respectLimit = p[K.respectLimit] ?: d.respectLimit,
+            reactionsAsSms = p[K.reactionsAsSms] ?: d.reactionsAsSms,
+            externalSeenAt = p[K.externalSeenAt] ?: d.externalSeenAt,
         )
     }
 
@@ -164,6 +181,10 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setOnboardingDone(v: Boolean) = set(K.onboardingDone, v)
     suspend fun setLastBatchId(v: Long) = set(K.lastBatchId, v)
     suspend fun setBulkIntroShown(v: Boolean) = set(K.bulkIntroShown, v)
+    suspend fun setAutoRetry(v: Boolean) = set(K.autoRetry, v)
+    suspend fun setRespectLimit(v: Boolean) = set(K.respectLimit, v)
+    suspend fun setReactionsAsSms(v: Boolean) = set(K.reactionsAsSms, v)
+    suspend fun setExternalSeenAt(v: Long) = set(K.externalSeenAt, v)
 
     /** Applies settings restored from a backup (everything the user chose, nothing technical). */
     suspend fun restore(s: AppSettings) {
@@ -191,6 +212,9 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             it[K.arFrom] = s.autoReplyFromMin
             it[K.arTo] = s.autoReplyToMin
             it[K.backupFrequency] = s.backupFrequency.name
+            it[K.autoRetry] = s.autoRetry
+            it[K.respectLimit] = s.respectLimit
+            it[K.reactionsAsSms] = s.reactionsAsSms
         }
     }
 }

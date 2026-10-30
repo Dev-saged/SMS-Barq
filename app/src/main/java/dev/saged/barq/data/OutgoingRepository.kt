@@ -11,6 +11,7 @@ import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.telephony.TelephonyProvider
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.sms.ScheduleManager
+import dev.saged.barq.sms.SendQueue
 import dev.saged.barq.sms.SendTracker
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,6 +32,7 @@ class OutgoingRepository @Inject constructor(
     private val scheduler: ScheduleManager,
     private val tracker: SendTracker,
     private val lock: ProviderLock,
+    private val queue: SendQueue,
 ) {
     private val messages = db.messages()
 
@@ -49,6 +51,7 @@ class OutgoingRepository @Inject constructor(
         autoReply: Boolean,
         batchId: Long,
         clearDraft: Boolean,
+        reactionTo: Long = 0,
     ): Queued = withContext(Dispatchers.IO) {
         val text = body.trim()
         val unique = recipients.map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { PhoneUtils.matchKey(it) }
@@ -65,6 +68,7 @@ class OutgoingRepository @Inject constructor(
                     threadId = threadId, address = address, body = text,
                     date = (if (scheduledAt > 0) scheduledAt else now) + i, box = Box.QUEUED,
                     subId = subId, scheduledAt = scheduledAt, autoReply = autoReply, batchId = batchId,
+                    reactionTo = reactionTo,
                 )
                 val id = messages.insert(msg)
                 if (scheduledAt > 0) scheduled += msg.copy(id = id)
@@ -87,7 +91,7 @@ class OutgoingRepository @Inject constructor(
                 subId = message.subId,
             )
             val updated = message.copy(
-                box = Box.OUTBOX, date = now, providerId = providerId, errorCode = 0,
+                box = Box.OUTBOX, date = now, providerId = providerId, errorCode = 0, retryAt = 0,
                 deliveryStatus = if (settings.current().deliveryReports) DeliveryStatus.PENDING else DeliveryStatus.NONE,
             )
             messages.update(updated)
@@ -95,10 +99,26 @@ class OutgoingRepository @Inject constructor(
         }.also { conversations.refresh(it.threadId) }
     }
 
-    suspend fun onSendResult(messageId: Long, success: Boolean, errorCode: Int) = withContext(Dispatchers.IO) {
+    /**
+     * The radio's answer. A temporary failure (no signal, airplane mode, Android's sending limit…)
+     * is not shown as failed: the message goes back to the queue and is tried again a little later,
+     * up to [MAX_RETRIES] times. Returns true only when the message has finally failed.
+     */
+    suspend fun onSendResult(messageId: Long, success: Boolean, errorCode: Int): Boolean = withContext(Dispatchers.IO) {
         tracker.complete(messageId, success)
-        val msg = messages.get(messageId) ?: return@withContext
-        if (msg.box == Box.FAILED && success) return@withContext // an earlier part already failed
+        val msg = messages.get(messageId) ?: return@withContext false
+        if (msg.box == Box.FAILED && success) return@withContext false // an earlier part already failed
+        if (msg.box == Box.QUEUED) return@withContext false // another part already scheduled a retry
+        if (!success && msg.retryCount < MAX_RETRIES && settings.current().autoRetry && isTemporary(errorCode, msg.retryCount)) {
+            val wait = if (errorCode == LIMIT_EXCEEDED) LIMIT_WAIT_MS else RETRY_WAITS_MS[msg.retryCount]
+            val now = System.currentTimeMillis()
+            messages.scheduleRetry(messageId, msg.retryCount + 1, now + wait, errorCode)
+            msg.providerId?.let { provider.updateType(it, Telephony.Sms.MESSAGE_TYPE_QUEUED) }
+            conversations.refresh(msg.threadId)
+            // Wake the queue for the earliest waiting retry, even if Barq is closed by then.
+            queue.kickAt(messages.nextRetryAt(now) ?: (now + wait))
+            return@withContext false
+        }
         val box = if (success) Box.SENT else Box.FAILED
         messages.setBox(messageId, box, if (success) 0 else errorCode)
         msg.providerId?.let {
@@ -108,6 +128,14 @@ class OutgoingRepository @Inject constructor(
             )
         }
         conversations.refresh(msg.threadId)
+        !success
+    }
+
+    /** Failures worth trying again by themselves. A general error is retried once only. */
+    private fun isTemporary(code: Int, attempt: Int): Boolean = when (code) {
+        2, 4, 9, 17, LIMIT_EXCEEDED -> true // radio off, no service, radio unavailable, network error, limit
+        1, SendError.REJECTED -> attempt == 0
+        else -> false
     }
 
     suspend fun onDelivery(messageId: Long, delivered: Boolean) = withContext(Dispatchers.IO) {
@@ -128,7 +156,13 @@ class OutgoingRepository @Inject constructor(
             ids.forEachIndexed { i, id ->
                 val msg = messages.get(id) ?: return@forEachIndexed
                 if (msg.box != Box.FAILED && msg.box != Box.QUEUED) return@forEachIndexed
-                messages.update(msg.copy(box = Box.QUEUED, scheduledAt = 0, errorCode = 0, date = now + i))
+                messages.update(
+                    msg.copy(
+                        box = Box.QUEUED, scheduledAt = 0, errorCode = 0, date = now + i, retryCount = 0, retryAt = 0,
+                        // Resent by Barq: from now on it is Barq's message, not another app's.
+                        fromOtherApp = false,
+                    )
+                )
                 threads += msg.threadId
             }
         }
@@ -147,5 +181,13 @@ class OutgoingRepository @Inject constructor(
         if (batchId == 0L) return@withContext
         messages.cancelBatch(batchId, SendError.CANCELLED)
         conversations.refreshMany(messages.threadsInBatch(batchId))
+    }
+
+    private companion object {
+        const val MAX_RETRIES = 3
+        const val LIMIT_EXCEEDED = 5
+        /** Android counts messages per minute: wait for its window to move on. */
+        const val LIMIT_WAIT_MS = 65_000L
+        val RETRY_WAITS_MS = longArrayOf(20_000L, 60_000L, 180_000L)
     }
 }

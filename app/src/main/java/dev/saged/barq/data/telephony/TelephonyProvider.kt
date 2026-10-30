@@ -22,6 +22,9 @@ data class ProviderSms(
     val subId: Int,
 )
 
+/** Current state of a message in the system's SMS store (used to follow other apps' sends). */
+data class ProviderState(val providerId: Long, val type: Int, val status: Int, val errorCode: Int)
+
 /**
  * Thin wrapper around the system SMS provider. Writing works only while Barq is the default
  * SMS app; every call is defensive so a vendor quirk never crashes the app.
@@ -81,6 +84,31 @@ class TelephonyProvider @Inject constructor(@ApplicationContext private val cont
             }
             if (page.isNotEmpty()) onPage(page)
         }
+    }
+
+    /** Type / delivery status / error of the given rows (rows that no longer exist are absent). */
+    fun readStates(providerIds: List<Long>): List<ProviderState> {
+        if (providerIds.isEmpty()) return emptyList()
+        val out = ArrayList<ProviderState>(providerIds.size)
+        providerIds.distinct().chunked(500).forEach { chunk ->
+            runCatching {
+                resolver.query(
+                    Telephony.Sms.CONTENT_URI,
+                    arrayOf(Telephony.Sms._ID, Telephony.Sms.TYPE, Telephony.Sms.STATUS, Telephony.Sms.ERROR_CODE),
+                    "${Telephony.Sms._ID} IN (${chunk.joinToString(",")})", null, null,
+                )?.use { c ->
+                    while (c.moveToNext()) {
+                        out += ProviderState(
+                            providerId = c.getLong(0),
+                            type = c.getInt(1),
+                            status = if (c.isNull(2)) -1 else c.getInt(2),
+                            errorCode = if (c.isNull(3)) 0 else c.getInt(3),
+                        )
+                    }
+                }
+            }
+        }
+        return out
     }
 
     fun insertSms(

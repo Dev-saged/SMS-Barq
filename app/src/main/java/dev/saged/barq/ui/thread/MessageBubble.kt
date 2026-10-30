@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -187,7 +188,32 @@ fun MessageBubble(
             }
         }
       }
+        Reactions(message, incoming)
         if (!incoming) OutgoingFooter(message, scheduled, settings, onCancelScheduled, onResend)
+    }
+}
+
+/** Reactions under the bubble: the other person's and mine, in a small pill. */
+@Composable
+private fun Reactions(message: MessageEntity, incoming: Boolean) {
+    val list = listOfNotNull(message.theirReaction, message.reaction)
+    if (list.isEmpty()) return
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .offset(y = (-6).dp)
+            .padding(start = if (incoming) 10.dp else 0.dp, end = if (incoming) 0.dp else 10.dp)
+            .clip(RoundedCornerShape(50))
+            .background(scheme.surfaceContainerHighest)
+            .border(1.5.dp, scheme.background, RoundedCornerShape(50))
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        list.distinct().forEach { Text(it, fontSize = 14.sp) }
+        if (list.size == 2 && list[0] == list[1]) {
+            Text("2", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+        }
     }
 }
 
@@ -218,13 +244,18 @@ private fun OutgoingFooter(
     val parts = remember(message.body) {
         runCatching { SmsMessage.calculateLength(message.body, false)[0] }.getOrDefault(1)
     }
+    val retrying = message.box == MsgBox.QUEUED && message.retryAt > 0
     val label = when {
         scheduled -> stringResource(R.string.scheduled_for, TimeFormat.full(message.scheduledAt, settings))
+        retrying -> stringResource(
+            R.string.status_retrying, TimeFormat.clock(message.retryAt, settings), stringResource(SendErrors.reason(message.errorCode)),
+        )
         message.box == MsgBox.FAILED -> stringResource(R.string.failed_tap_retry)
         message.box == MsgBox.QUEUED -> stringResource(R.string.status_queued)
         message.box == MsgBox.OUTBOX -> stringResource(R.string.status_sending)
         message.deliveryStatus == DeliveryStatus.DELIVERED -> stringResource(R.string.status_delivered)
         message.deliveryStatus == DeliveryStatus.FAILED -> stringResource(R.string.status_not_delivered)
+        message.fromOtherApp && message.box == MsgBox.SENT -> stringResource(R.string.status_sent_other_app)
         parts > 1 -> stringResource(R.string.status_sent_parts, parts)
         else -> null
     } ?: return

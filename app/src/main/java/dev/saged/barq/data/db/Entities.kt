@@ -81,6 +81,7 @@ val ConversationEntity.sortTime: Long get() = if (draft != null) maxOf(date, dra
         Index(value = ["box", "scheduledAt"]),
         Index(value = ["otp"]),
         Index(value = ["batchId"]),
+        Index(value = ["fromOtherApp", "date"]),
     ]
 )
 data class MessageEntity(
@@ -108,6 +109,18 @@ data class MessageEntity(
     @ColumnInfo(defaultValue = "0") val batchId: Long = 0,
     /** Normalised body for the full-text index (see [TextNorm]). */
     @ColumnInfo(defaultValue = "''") val searchText: String = TextNorm.indexText(body),
+    /** Automatic retries already made after a temporary failure (no signal, Android's limit…). */
+    @ColumnInfo(defaultValue = "0") val retryCount: Int = 0,
+    /** A queued retry waits until this time (0 = ready now). */
+    @ColumnInfo(defaultValue = "0") val retryAt: Long = 0,
+    /** Sent by another app (a gateway, a bot…) and picked up from the system's SMS store. */
+    @ColumnInfo(defaultValue = "0") val fromOtherApp: Boolean = false,
+    /** My reaction to this message (an emoji), shown under the bubble. */
+    val reaction: String? = null,
+    /** The other person's reaction to this message, recognised from their reaction text. */
+    val theirReaction: String? = null,
+    /** This message is itself a reaction to message [reactionTo]: it is not shown as a bubble. */
+    @ColumnInfo(defaultValue = "0") val reactionTo: Long = 0,
 )
 
 /** Full-text index over [MessageEntity.searchText]; Room keeps it in sync with triggers. */
@@ -172,8 +185,16 @@ data class SendGroupMemberEntity(
 
 data class SendGroupWithCount(val id: Long, val name: String, val createdAt: Long, val members: Int)
 
-/** Progress of one bulk send. */
-data class BatchCounts(val total: Int = 0, val sent: Int = 0, val failed: Int = 0, val pending: Int = 0)
+/** Progress of one bulk send (or of what another app sent). */
+data class BatchCounts(
+    val total: Int = 0,
+    val sent: Int = 0,
+    val failed: Int = 0,
+    val pending: Int = 0,
+    val delivered: Int = 0,
+    /** Waiting for an automatic retry (counted in [pending] too). */
+    val retrying: Int = 0,
+)
 
 /** Outside the class so Room only maps the four counted columns. */
 val BatchCounts.done: Int get() = sent + failed
@@ -190,4 +211,18 @@ data class SearchHit(
     val displayName: String,
     val addresses: String,
     val category: Category,
+)
+
+/** One recipient of a bulk send, for the details screen. */
+data class BatchRow(
+    val id: Long,
+    val threadId: Long,
+    val address: String,
+    val box: Int,
+    val errorCode: Int,
+    val deliveryStatus: Int,
+    val retryCount: Int,
+    val retryAt: Long,
+    val date: Long,
+    val displayName: String?,
 )

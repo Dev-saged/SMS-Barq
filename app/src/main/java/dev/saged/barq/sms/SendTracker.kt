@@ -19,8 +19,9 @@ class SendTracker @Inject constructor() {
         waiters.remove(messageId)?.complete(success)
     }
 
+    /** Stops waiting for this message. The waiter is never cancelled (nobody awaits a cancelled one). */
     fun forget(messageId: Long) {
-        waiters.remove(messageId)?.cancel()
+        waiters.remove(messageId)
     }
 }
 
@@ -41,4 +42,10 @@ class BulkState @Inject constructor() {
     fun resume() {
         _paused.value = 0L
     }
+
+    /** Waiting for Android's per-minute limit until this time (0 = not waiting). */
+    val waitingLimitUntil = MutableStateFlow(0L)
+
+    /** The radio stopped answering (Android may be showing its "allow many messages?" question). */
+    val stalled = MutableStateFlow(false)
 }

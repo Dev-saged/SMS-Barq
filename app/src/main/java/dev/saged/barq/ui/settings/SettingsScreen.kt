@@ -27,6 +27,9 @@ import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
+import androidx.compose.material.icons.outlined.EmojiEmotions
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.FormatSize
@@ -248,6 +251,15 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                 RowDivider()
                 ClickRow(Icons.Outlined.Speed, stringResource(R.string.bulk_speed), label(speedLabels, s.sendDelayMs)) { dialog = Dialog.SPEED }
                 RowDivider()
+                ClickRow(Icons.Outlined.Tune, stringResource(R.string.send_limit_title), stringResource(R.string.send_limit_sub)) {
+                    open(Routes.SEND_LIMIT)
+                }
+                RowDivider()
+                SwitchRow(
+                    Icons.Outlined.EmojiEmotions, stringResource(R.string.reactions_sms), stringResource(R.string.reactions_sms_sub),
+                    s.reactionsAsSms,
+                ) { v -> vm.update { setReactionsAsSms(v) } }
+                RowDivider()
                 SwitchRow(
                     Icons.Outlined.Image, stringResource(R.string.mms_receive), stringResource(R.string.mms_receive_sub),
                     s.mmsEnabled,
@@ -332,6 +344,10 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         }
         item {
             SettingsGroup(stringResource(R.string.group_about)) {
+                ClickRow(Icons.Outlined.VerifiedUser, stringResource(R.string.health_title), stringResource(R.string.health_sub)) {
+                    open(Routes.HEALTH)
+                }
+                RowDivider()
                 ClickRow(Icons.Outlined.Info, stringResource(R.string.app_name), stringResource(R.string.version_value, BuildConfig.VERSION_NAME)) {}
                 RowDivider()
                 ClickRow(

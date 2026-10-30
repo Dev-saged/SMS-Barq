@@ -18,7 +18,8 @@ import javax.inject.Singleton
 @Singleton
 class SmsSender @Inject constructor(@ApplicationContext private val context: Context) {
 
-    fun send(message: MessageEntity, deliveryReports: Boolean) {
+    /** Hands the message to the radio and returns how many SMS parts it uses. */
+    fun send(message: MessageEntity, deliveryReports: Boolean): Int {
         val manager = smsManagerFor(context, message.subId)
         val parts = manager.divideMessage(message.body)
         val count = parts.size.coerceAtLeast(1)
@@ -36,6 +37,7 @@ class SmsSender @Inject constructor(@ApplicationContext private val context: Con
         } else {
             manager.sendMultipartTextMessage(message.address, null, parts, sent, ArrayList(delivered))
         }
+        return count
     }
 
     private fun statusIntent(action: String, messageId: Long, part: Int, parts: Int): PendingIntent {

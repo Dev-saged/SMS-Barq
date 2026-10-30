@@ -1,0 +1,5 @@
+# Barq startup profile: tells Android to compile these classes ahead of time when the app is
+# installed, so the first launch and the first scroll are fast (no warm-up jank). Compose,
+# Room and the other libraries ship their own profiles; this one covers Barq's own code.
+HSPLdev/saged/barq/**->**(**)**
+Ldev/saged/barq/**;

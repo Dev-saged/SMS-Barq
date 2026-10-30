@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -35,7 +36,11 @@ import androidx.compose.material.icons.outlined.Bolt
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.Category
 import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Notifications
@@ -71,6 +76,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -78,6 +85,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -90,6 +98,7 @@ import dev.saged.barq.R
 import dev.saged.barq.data.db.Box as MsgBox
 import dev.saged.barq.data.db.MessageEntity
 import dev.saged.barq.domain.PhoneUtils
+import dev.saged.barq.domain.ReactionText
 import dev.saged.barq.notifications.NotificationActionReceiver
 import dev.saged.barq.ui.components.Avatar
 import dev.saged.barq.ui.components.TimeFormat
@@ -111,6 +120,10 @@ fun ThreadScreen(
     val subId by vm.subId.collectAsStateWithLifecycle()
     val sims by vm.sims.collectAsStateWithLifecycle()
     val focusIndex by vm.focusIndex.collectAsStateWithLifecycle()
+    val searchQuery by vm.searchQuery.collectAsStateWithLifecycle()
+    val searchHits by vm.searchHits.collectAsStateWithLifecycle()
+    val searchIndex by vm.searchIndex.collectAsStateWithLifecycle()
+    val searchTarget by vm.searchTarget.collectAsStateWithLifecycle()
     val pagingItems = vm.messages.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
     var highlightId by remember { mutableStateOf(-1L) }
@@ -157,10 +170,27 @@ fun ThreadScreen(
         highlightId = -1L
     }
 
+    // Search in this conversation: jump to the shown result and keep it highlighted.
+    BackHandler(enabled = searchQuery != null) { vm.closeSearch() }
+    val currentHitId = if (searchQuery != null) searchHits.getOrNull(searchIndex)?.id ?: -1L else -1L
+    LaunchedEffect(searchTarget, pagingItems.itemCount) {
+        if (searchTarget >= 0 && searchTarget < pagingItems.itemCount) listState.scrollToItem(searchTarget)
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
+            if (searchQuery != null) {
+                ThreadSearchBar(
+                    query = searchQuery.orEmpty(),
+                    position = if (searchHits.isEmpty()) 0 else searchIndex + 1,
+                    total = searchHits.size,
+                    onQuery = vm::onSearch,
+                    onOlder = vm::olderHit,
+                    onNewer = vm::newerHit,
+                    onClose = vm::closeSearch,
+                )
+            } else TopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) }
                 },
@@ -204,6 +234,11 @@ fun ThreadScreen(
                     Box {
                         IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, stringResource(R.string.more)) }
                         DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.search_in_conversation)) },
+                                leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                                onClick = { menu = false; vm.openSearch() },
+                            )
                             DropdownMenuItem(
                                 text = { Text(stringResource(if (conv?.pinned == true) R.string.unpin else R.string.pin)) },
                                 leadingIcon = { Icon(Icons.Outlined.PushPin, null) },
@@ -301,7 +336,7 @@ fun ThreadScreen(
                         MessageBubble(
                             message = m,
                             settings = settings,
-                            highlighted = m.id == highlightId,
+                            highlighted = m.id == highlightId || m.id == currentHitId,
                             onLongPress = { messageMenu = m },
                             onResend = { vm.resend(m.id) },
                             onCancelScheduled = { vm.cancelScheduled(m.id) },
@@ -317,6 +352,7 @@ fun ThreadScreen(
                             onForward = { forward(m.body) },
                             onResend = { vm.resend(m.id) },
                             onDelete = { vm.deleteMessage(m.id) },
+                            onReact = { emoji -> vm.react(m.id, emoji) },
                         )
                     }
                 }
@@ -362,9 +398,30 @@ private fun MessageMenu(
     onForward: () -> Unit,
     onResend: () -> Unit,
     onDelete: () -> Unit,
+    onReact: (String) -> Unit,
 ) {
     DropdownMenu(expanded = message != null, onDismissRequest = onDismiss) {
         if (message == null) return@DropdownMenu
+        // Reactions first: one tap, like in chat apps. The same one again removes it.
+        if (message.box != MsgBox.QUEUED || message.scheduledAt == 0L) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                ReactionText.choices.forEach { emoji ->
+                    val chosen = message.reaction == emoji
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(if (chosen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface.copy(alpha = 0f))
+                            .clickable { onDismiss(); onReact(emoji) },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(emoji, fontSize = 22.sp) }
+                }
+            }
+            HorizontalDivider()
+        }
         DropdownMenuItem(
             text = { Text(stringResource(R.string.copy_text)) },
             leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
@@ -395,6 +452,55 @@ private fun MessageMenu(
             onClick = { onDismiss(); onDelete() },
         )
     }
+}
+
+/** The top bar while searching inside the conversation: field, "3 / 12", older / newer, close. */
+@Composable
+private fun ThreadSearchBar(
+    query: String,
+    position: Int,
+    total: Int,
+    onQuery: (String) -> Unit,
+    onOlder: () -> Unit,
+    onNewer: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    TopAppBar(
+        navigationIcon = {
+            IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, stringResource(R.string.close_search)) }
+        },
+        title = {
+            Box(Modifier.fillMaxWidth()) {
+                if (query.isEmpty()) {
+                    Text(stringResource(R.string.search_in_conversation_hint), color = scheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                }
+                BasicTextField(
+                    value = query,
+                    onValueChange = onQuery,
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = scheme.onSurface, textDirection = TextDirection.Content),
+                    cursorBrush = SolidColor(scheme.primary),
+                    modifier = Modifier.fillMaxWidth().focusRequester(focus),
+                )
+            }
+        },
+        actions = {
+            if (query.isNotBlank()) {
+                Text(
+                    if (total == 0) stringResource(R.string.search_no_results) else "$position / $total",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = scheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 4.dp),
+                )
+            }
+            IconButton(onClick = onOlder, enabled = total > 0) { Icon(Icons.Outlined.KeyboardArrowUp, stringResource(R.string.search_older)) }
+            IconButton(onClick = onNewer, enabled = total > 0) { Icon(Icons.Outlined.KeyboardArrowDown, stringResource(R.string.search_newer)) }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = scheme.surfaceContainer),
+    )
 }
 
 @Composable

@@ -41,9 +41,22 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val OTP_FRESH_MS = 15 * 60 * 1000L
+private const val EXTERNAL_WINDOW_MS = 12 * 60 * 60 * 1000L
 
 /** The bulk-send card on top of the inbox. */
-data class BulkUi(val batchId: Long, val counts: BatchCounts, val preparing: Boolean, val paused: Boolean)
+data class BulkUi(
+    val batchId: Long,
+    val counts: BatchCounts,
+    val preparing: Boolean,
+    val paused: Boolean,
+    /** Pacing under Android's per-minute limit. */
+    val waitingLimit: Boolean = false,
+    /** The radio stopped answering (Android may be asking the user something). */
+    val stalled: Boolean = false,
+)
+
+/** What other apps (a gateway, a bot…) sent recently, shown as a card until closed. */
+data class ExternalUi(val since: Long, val counts: BatchCounts)
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class)
 @HiltViewModel
@@ -53,7 +66,7 @@ class InboxViewModel @Inject constructor(
     private val conversations: ConversationRepository,
     private val engine: SendEngine,
     private val notifier: Notifier,
-    settingsRepository: SettingsRepository,
+    private val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
     val filter = MutableStateFlow<Category?>(null)
@@ -102,11 +115,26 @@ class InboxViewModel @Inject constructor(
         .distinctUntilChanged()
         .flatMapLatest { id ->
             if (id == 0L) flowOf(null)
-            else combine(engine.observeBatch(id), engine.preparing, engine.paused) { counts, preparing, paused ->
-                BulkUi(id, counts, preparing, paused == id)
+            else combine(
+                engine.observeBatch(id), engine.preparing, engine.paused, engine.waitingLimitUntil, engine.stalled,
+            ) { counts, preparing, paused, waitUntil, stalled ->
+                BulkUi(id, counts, preparing, paused == id, waitUntil > 0L, stalled)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    /** Sends by other apps since the card was last closed (at most the last 12 hours). */
+    val external: StateFlow<ExternalUi?> = settings
+        .map { it.externalSeenAt }
+        .distinctUntilChanged()
+        .flatMapLatest { seen ->
+            val since = maxOf(seen + 1, System.currentTimeMillis() - EXTERNAL_WINDOW_MS)
+            engine.observeExternal(since).map { c -> if (c.total == 0) null else ExternalUi(since, c) }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun dismissExternal() = viewModelScope.launch { settingsRepository.setExternalSeenAt(System.currentTimeMillis()) }
+    fun resendExternal(since: Long) = viewModelScope.launch { engine.resendFailedExternal(since) }
 
     fun dismissOtp(id: Long) {
         dismissedOtp.value = id
