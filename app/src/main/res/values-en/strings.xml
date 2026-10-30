@@ -457,4 +457,8 @@
     <string name="group_cleaned">Tidied · removed %1$d repeated</string>
     <string name="group_filter">Search by name or number</string>
     <string name="group_chip_phone">%1$s · %2$d (phone)</string>
+    <string name="gateway_share">Share the panel link</string>
+    <string name="gateway_share_sub">The link carries the key: whoever opens it can send from your SIM</string>
+    <string name="gateway_open">Open the panel</string>
+    <string name="gateway_panel_hint">Open this address on any device on the same network to get the sending panel.</string>
 </resources>

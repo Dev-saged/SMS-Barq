@@ -90,6 +90,9 @@ class SendEngine @Inject constructor(
         return outgoing.enqueue(listOf(address), body, sub, 0, autoReply = false, batchId = batchId, clearDraft = false).count > 0
     }
 
+    /** Counts for one batch right now (the gateway's web panel asks for them). */
+    suspend fun batchCounts(batchId: Long): BatchCounts = messages.batchCounts(batchId)
+
     suspend fun sendAutoReply(address: String, body: String, subId: Int) {
         val sub = resolveSubId(null, subId)
         afterQueue(outgoing.enqueue(listOf(address), body, sub, 0, autoReply = true, batchId = 0, clearDraft = false))

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#2F3BA8">
+<title>بوابة برق</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<style>
+@font-face{font-family:Barq;src:url(/f/r.ttf) format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:Barq;src:url(/f/s.ttf) format('truetype');font-weight:600;font-display:swap}
+@font-face{font-family:Barq;src:url(/f/b.ttf) format('truetype');font-weight:700;font-display:swap}
+:root{
+  --bg:#F3F2FA;--card:#fff;--ink:#17182B;--muted:#686A85;--line:#E4E3EF;--soft:#EEF0FF;--field:#F8F8FD;
+  --p:#4355B9;--p1:#4F63E6;--p2:#2F3BA8;--p3:#121747;--glow:#9AA8FF;
+  --ok:#11845B;--okbg:#DDF5EA;--warn:#A15C00;--warnbg:#FFF0D6;--bad:#C62828;--badbg:#FDE3E3;
+  --r:22px;--sh:0 1px 2px rgba(20,24,70,.05),0 12px 32px -16px rgba(47,59,168,.35);
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0B0D24;--card:#151833;--ink:#ECEDFB;--muted:#A3A6C8;--line:#262A4D;--soft:#1E2350;--field:#11142C;
+  --p:#AFBAFF;--ok:#5FD6A1;--okbg:#123A2B;--warn:#FFC266;--warnbg:#3A2A10;--bad:#FF8A8A;--badbg:#3D1717;
+  --sh:0 1px 2px rgba(0,0,0,.3),0 16px 40px -18px rgba(0,0,0,.7)}}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{font-family:Barq,system-ui,'Noto Sans Arabic','Segoe UI',sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.65;
+  min-height:100dvh;max-width:620px;margin-inline:auto}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+svg.i{width:1.3em;height:1.3em;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;flex:none}
+[hidden]{display:none!important}
+
+/* ---------- hero ---------- */
+.hero{position:relative;overflow:hidden;color:#fff;padding:18px 18px 22px;border-radius:0 0 30px 30px;
+  background:radial-gradient(500px 300px at 85% -10%,rgba(154,168,255,.55),transparent 60%),linear-gradient(150deg,var(--p1),var(--p2) 55%,var(--p3));
+  box-shadow:0 20px 40px -24px rgba(18,23,71,.9)}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.14) 45%,transparent 60%);
+  transform:translateX(-120%);animation:sheen 6s var(--ease) infinite 1s;pointer-events:none}
+@keyframes sheen{40%,100%{transform:translateX(120%)}}
+.bolt-bg{position:absolute;left:-40px;bottom:-60px;width:220px;opacity:.09}
+.brand{display:flex;align-items:center;gap:12px;position:relative}
+.brand svg.logo{width:52px;height:52px;border-radius:16px;box-shadow:0 0 0 2px rgba(255,255,255,.25),0 10px 26px rgba(10,14,51,.5)}
+.brand h1{font-size:1.45rem;font-weight:700;line-height:1.2}
+.brand p{font-size:.82rem;opacity:.8}
+.led{margin-inline-start:auto;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;background:rgba(255,255,255,.14);
+  font-size:.78rem;font-weight:600;backdrop-filter:blur(6px);white-space:nowrap}
+.led i{width:9px;height:9px;border-radius:50%;background:#FFB4B4}
+.led.on i{background:#4ADE9B;animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(74,222,155,.6)}50%{box-shadow:0 0 0 7px rgba(74,222,155,0)}}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:18px;position:relative}
+.stat{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:10px 6px;text-align:center;backdrop-filter:blur(8px)}
+.stat b{display:block;font-size:1.3rem;font-weight:700;line-height:1.25;font-variant-numeric:tabular-nums}
+.stat span{font-size:.7rem;opacity:.85}
+.prog{margin-top:14px;position:relative}
+.prog .bar{height:9px;border-radius:9px;background:rgba(255,255,255,.18);overflow:hidden}
+.prog .bar i{display:block;height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#fff,#C9D0FF);transition:width .6s var(--ease)}
+.prog .lbl{display:flex;justify-content:space-between;font-size:.74rem;opacity:.85;margin-top:6px}
+
+/* ---------- content ---------- */
+main{padding:16px 14px 28px;display:flex;flex-direction:column;gap:14px}
+main>*{animation:rise .55s var(--ease) both}
+main>*:nth-child(2){animation-delay:.06s}main>*:nth-child(3){animation-delay:.12s}main>*:nth-child(4){animation-delay:.18s}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+.card{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--sh);border:1px solid var(--line)}
+.card h2{font-size:1.05rem;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.card h2 .ic{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--soft);color:var(--p)}
+.card h2 small{margin-inline-start:auto;font-size:.75rem;color:var(--muted);font-weight:400}
+.lbl{display:block;font-size:.8rem;font-weight:600;color:var(--muted);margin:12px 4px 6px}
+.fld{width:100%;background:var(--field);border:1.5px solid var(--line);border-radius:16px;padding:13px 14px;outline:none;transition:border-color .2s,box-shadow .2s}
+.fld:focus{border-color:var(--p1);box-shadow:0 0 0 4px rgba(79,99,230,.15)}
+textarea.fld{min-height:120px;resize:vertical;line-height:1.7}
+.ltr{direction:ltr;text-align:right}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--field);border:1.5px solid var(--line);border-radius:16px;padding:4px;gap:4px}
+.seg button{padding:10px;border-radius:12px;font-weight:600;color:var(--muted);transition:all .25s var(--ease)}
+.seg button.on{background:linear-gradient(135deg,var(--p1),var(--p2));color:#fff;box-shadow:0 8px 18px -10px rgba(47,59,168,.9)}
+.meta{display:flex;justify-content:space-between;align-items:center;font-size:.76rem;color:var(--muted);margin-top:8px;gap:8px}
+.chipbtn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:12px;background:var(--soft);color:var(--p);font-weight:600;font-size:.8rem}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:56px;margin-top:16px;border-radius:18px;font-weight:700;font-size:1.05rem;color:#fff;
+  background:linear-gradient(135deg,var(--p1),var(--p2));box-shadow:0 14px 28px -14px rgba(47,59,168,.95);transition:transform .15s,opacity .2s;position:relative;overflow:hidden}
+.btn:active{transform:scale(.98)}
+.btn[disabled]{opacity:.6;pointer-events:none}
+.btn .spin{width:20px;height:20px;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.keyok{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--ok);background:var(--okbg);padding:8px 12px;border-radius:12px;margin-bottom:4px}
+.keyok button{margin-inline-start:auto;color:var(--p);font-weight:600;font-size:.78rem}
+.sprog{margin-top:12px}
+.sprog .bar{height:8px;border-radius:8px;background:var(--line);overflow:hidden}
+.sprog .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--p1),var(--glow));transition:width .3s}
+.sprog .lbl2{display:flex;justify-content:space-between;font-size:.76rem;color:var(--muted);margin-top:6px}
+.log{display:flex;flex-direction:column;gap:8px;max-height:420px;overflow:auto}
+.it{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:16px;background:var(--field);border:1px solid var(--line);animation:rise .35s var(--ease) both}
+.it .av{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;flex:none}
+.it .tx{flex:1;min-width:0}
+.it .num{font-weight:700;font-size:.9rem;direction:ltr;text-align:right}
+.it .msg{font-size:.78rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it time{font-size:.7rem;color:var(--muted)}
+.ok .av{background:var(--okbg);color:var(--ok)}.dup .av{background:var(--warnbg);color:var(--warn)}.err .av{background:var(--badbg);color:var(--bad)}
+.empty{text-align:center;color:var(--muted);font-size:.85rem;padding:18px 0}
+pre{direction:ltr;text-align:left;white-space:pre-wrap;word-break:break-all;background:var(--field);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:.74rem;line-height:1.6;font-family:ui-monospace,Menlo,monospace}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,40px);opacity:0;background:#17182B;color:#fff;padding:12px 18px;border-radius:14px;font-size:.88rem;
+  box-shadow:0 14px 30px rgba(0,0,0,.35);transition:all .35s var(--ease);z-index:50;max-width:90vw;text-align:center}
+.toast.show{transform:translate(-50%,0);opacity:1}
+footer{text-align:center;color:var(--muted);font-size:.8rem;padding:6px 14px 34px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.soc{display:flex;gap:10px}
+.soc a{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--card);border:1px solid var(--line);color:var(--muted);transition:transform .15s}
+.soc a:active{transform:scale(.92)}
+.soc svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+footer b{color:var(--ink);font-weight:700}
+.flag{width:22px;height:15px;border-radius:3px;vertical-align:-3px}
+</style>
+</head>
+<body>
+<header class="hero">
+  <svg class="bolt-bg" viewBox="0 0 24 24"><path d="M13 2.5L4.5 13.5h6.5l-1 8l8.5-11h-6.5z" fill="#fff"/></svg>
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 108 108"><defs>
+      <linearGradient id="lb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4F63E6"/><stop offset=".5" stop-color="#2F3BA8"/><stop offset="1" stop-color="#121747"/></linearGradient>
+      <linearGradient id="lt" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5B6EF0"/><stop offset="1" stop-color="#1B2470"/></linearGradient></defs>
+      <rect width="108" height="108" fill="url(#lb)"/>
+      <path d="M54 27C70.6 27 84 38.4 84 52.5C84 66.6 70.6 78 54 78C50.7 78 47.5 77.5 44.6 76.7L33.6 82.6C32.2 83.4 30.6 82.1 31.1 80.6L34.3 70.6C28.2 66 24 59.6 24 52.5C24 38.4 37.4 27 54 27Z" fill="#fff"/>
+      <path d="M58.5 35L42.5 55.5H52.5L49 70L65.5 49H55.5Z" fill="url(#lt)" stroke="url(#lt)" stroke-width="1.6" stroke-linejoin="round"/></svg>
+    <div><h1>بوابة برق</h1><p>رسائل SMS من شريحة هاتفك</p></div>
+    <div class="led" id="led"><i></i><span id="ledTxt">جارٍ الاتصال…</span></div>
+  </div>
+  <div class="stats">
+    <div class="stat"><b id="stIn">–</b><span>استُقبلت</span></div>
+    <div class="stat"><b id="stSent">–</b><span>أُرسلت</span></div>
+    <div class="stat"><b id="stWait">–</b><span>بالانتظار</span></div>
+    <div class="stat"><b id="stFail">–</b><span>فشلت</span></div>
+  </div>
+  <div class="prog" id="prog" hidden>
+    <div class="bar"><i id="progBar"></i></div>
+    <div class="lbl"><span>الدفعة الحالية</span><span id="progTxt"></span></div>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M21 3L10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg></span>إرسال رسالة</h2>
+
+    <div id="keyBox">
+      <label class="lbl" for="key">مفتاح الإرسال</label>
+      <input class="fld ltr" id="key" type="password" autocomplete="off" spellcheck="false" placeholder="الصق المفتاح من برق ← وضع المطوّر">
+    </div>
+    <div class="keyok" id="keyOk" hidden>
+      <svg class="i" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>المفتاح محفوظ على هذا الجهاز<button id="keyChange" type="button">تغيير</button>
+    </div>
+
+    <label class="lbl">المستلمون</label>
+    <div class="seg" role="tablist">
+      <button type="button" class="on" data-mode="one">رقم واحد</button>
+      <button type="button" data-mode="many">عدة أرقام</button>
+    </div>
+    <input class="fld ltr" id="one" type="tel" inputmode="tel" placeholder="059xxxxxxx" style="margin-top:10px">
+    <textarea class="fld ltr" id="many" placeholder="رقم في كل سطر، أو افصل بينها بفاصلة" style="margin-top:10px;min-height:110px" hidden></textarea>
+    <div class="meta" id="manyMeta" hidden><span id="manyCount">0 رقم</span><span>الأرقام المكررة تُحذف تلقائياً</span></div>
+
+    <label class="lbl" for="text">الرسالة</label>
+    <textarea class="fld" id="text" maxlength="4000" placeholder="اكتب رسالتك هنا"></textarea>
+    <div class="meta">
+      <button type="button" class="chipbtn" id="daily"><svg class="i" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></svg>رسالة اليوم</button>
+      <span id="cnt">0 حرف · —</span>
+    </div>
+
+    <button class="btn" id="go" type="button"><svg class="i" viewBox="0 0 24 24" style="transform:scaleX(-1)"><path d="M21 3L10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg><span id="goTxt">إرسال</span></button>
+    <div class="sprog" id="sprog" hidden>
+      <div class="bar"><i id="sbar"></i></div>
+      <div class="lbl2"><span id="sTxt"></span><span id="sRes"></span></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></span>السجل<small><button type="button" class="chipbtn" id="clear">مسح</button></small></h2>
+    <div class="log" id="log"><div class="empty">لا شيء بعد. أي رسالة ترسلها من هنا تظهر في هذا السجل.</div></div>
+  </section>
+
+  <section class="card">
+    <h2><span class="ic"><svg class="i" viewBox="0 0 24 24"><path d="M8.5 7L3.5 12l5 5M15.5 7l5 5-5 5"/></svg></span>للمطوّرين<small>متوافقة مع SMS Sendr</small></h2>
+    <pre id="api"></pre>
+    <div class="meta"><span>بلا حد للطلبات · كل طلب يدخل طابور برق فوراً</span><button type="button" class="chipbtn" id="copyApi">نسخ</button></div>
+  </section>
+</main>
+
+<footer>
+  <div class="soc">
+    <a href="https://wa.me/972597857250" target="_blank" rel="noopener" aria-label="WhatsApp"><svg viewBox="0 0 24 24"><path d="M3.5 20.5 5 16A8.5 8.5 0 1 1 8 19zM9 8.5c0 3.5 3 6.5 6.5 6.5l1-1.5-2-1-1 .8a4.5 4.5 0 0 1-2.3-2.3l.8-1-1-2z"/></svg></a>
+    <a href="https://instagram.com/sajedd.0" target="_blank" rel="noopener" aria-label="Instagram"><svg viewBox="0 0 24 24"><path d="M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM17.3 6.7h.01"/></svg></a>
+    <a href="https://facebook.com/saged.t" target="_blank" rel="noopener" aria-label="Facebook"><svg viewBox="0 0 24 24"><path d="M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8.5A.5.5 0 0 1 14 8z"/></svg></a>
+    <a href="https://x.com/saged_al" target="_blank" rel="noopener" aria-label="X"><svg viewBox="0 0 24 24"><path d="M4 3.5h4.6L20 20.5h-4.6zM19.5 3.5l-6.6 7.4M11.1 13.1L4.5 20.5"/></svg></a>
+    <a href="https://github.com/Dev-saged" target="_blank" rel="noopener" aria-label="GitHub"><svg viewBox="0 0 24 24"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12 12 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg></a>
+  </div>
+  <div><svg class="flag" viewBox="0 0 36 24"><rect width="36" height="8" fill="#000"/><rect y="8" width="36" height="8" fill="#fff"/><rect y="16" width="36" height="8" fill="#007A3D"/><path d="M0 0L13 12L0 24z" fill="#CE1126"/></svg>
+    صُنع بحب من فلسطين — غزة</div>
+  <b>تصميم وتطوير المهندس ساجد العبادلة</b>
+  <div>© 2026 برق · جميع الحقوق محفوظة</div>
+</footer>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+var store={get:function(k){try{return localStorage.getItem(k)||""}catch(e){return""}},set:function(k,v){try{v?localStorage.setItem(k,v):localStorage.removeItem(k)}catch(e){}}};
+var key="";
+try{key=new URLSearchParams(location.search).get("key")||""}catch(e){}
+if(key){store.set("barq_key",key);try{history.replaceState(null,"",location.pathname)}catch(e){}}
+key=key||store.get("barq_key");
+function keyUi(){ $("keyBox").hidden=!!key; $("keyOk").hidden=!key; }
+keyUi();
+$("key").addEventListener("change",function(){key=this.value.trim();store.set("barq_key",key);keyUi();poll()});
+$("keyChange").onclick=function(){key="";store.set("barq_key","");$("key").value="";keyUi();$("key").focus()};
+
+var tt;function toast(t){var e=$("toast");e.textContent=t;e.classList.add("show");clearTimeout(tt);tt=setTimeout(function(){e.classList.remove("show")},2600)}
+function digits(s){return s.replace(/[٠-٩]/g,function(c){return c.charCodeAt(0)-1632}).replace(/[۰-۹]/g,function(c){return c.charCodeAt(0)-1776})}
+function fmt(n){return (n||0).toLocaleString("en-US")}
+
+/* ---- mode ---- */
+var mode="one";
+document.querySelectorAll(".seg button").forEach(function(b){b.onclick=function(){
+  mode=b.dataset.mode;document.querySelectorAll(".seg button").forEach(function(x){x.classList.toggle("on",x===b)});
+  $("one").hidden=mode!=="one";$("many").hidden=mode!=="many";$("manyMeta").hidden=mode!=="many";
+}});
+function parseMany(){
+  var seen={},out=[];
+  digits($("many").value).split(/[\n,،;]+/).forEach(function(s){
+    s=s.trim();var d=s.replace(/\D/g,"");if(d.length<5)return;
+    var k=d.slice(-9);if(seen[k])return;seen[k]=1;out.push(s)});
+  return out}
+$("many").addEventListener("input",function(){$("manyCount").textContent=fmt(parseMany().length)+" رقم"});
+
+/* ---- counter ---- */
+function count(){
+  var t=$("text").value,n=t.length,u=/[^\x00-\x7F]/.test(t),one=u?70:160,multi=u?67:153;
+  var p=n===0?0:(n<=one?1:Math.ceil(n/multi));
+  $("cnt").textContent=n+" حرف · "+(p?(p===1?"رسالة واحدة":p+" أجزاء"):"—")}
+$("text").addEventListener("input",count);count();
+
+/* ---- daily message ---- */
+const DAILY = {
+  all: [
+    '﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾ صباح الخير، فأبشر، الفرج أقرب مما تظن.',
+    '﴿أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ﴾ أسأل الله أن يملأ يومك طمأنينة وسعادة.',
+    '﴿وَلَسَوْفَ يُعْطِيكَ رَبُّكَ فَتَرْضَى﴾ يومٌ مليء بالعطايا والرضا، بإذن الله.',
+    'اللهم اجعل هذا اليوم بداية خير، وافتح لنا فيه أبواب الرزق والفرح.',
+    'تبسّمك في وجه أخيك صدقة، فابتسم، فيومك أجمل بابتسامتك.',
+    'الكلمة الطيبة صدقة، وكلمتي لك اليوم: الله يسعد قلبك ويبارك في أيامك.',
+    '﴿إِنَّ اللَّهَ مَعَ الصَّابِرِينَ﴾ اصبر، فالله معك، والخير قادم بإذنه.',
+    '﴿فَاذْكُرُونِي أَذْكُرْكُمْ﴾ اذكر الله يذكرك، وكل يوم وأنت بخير وقرب منه.',
+    '﴿وَهُوَ مَعَكُمْ أَيْنَمَا كُنتُمْ﴾ فلا تحمل همًّا، فالله معك في كل خطوة.',
+    '﴿وَرَحْمَتِي وَسِعَتْ كُلَّ شَيْءٍ﴾ أحسن الظن بالله، فرحمته أوسع مما تتخيل.',
+    '﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾ يومٌ مبارك ينفعك الله فيه بعلمٍ وعملٍ وفرح.',
+    'أسأل الله أن يجعل يومك نورًا وسرورًا، ويكتب لك فيه كل ما تتمنى من خير.',
+    'سبحان الله وبحمده، سبحان الله العظيم؛ كلمتان خفيفتان على اللسان، ثقيلتان في الميزان.',
+    'اللهم اجعلنا إذا أُعطينا شكرنا، وإذا ابتُلينا صبرنا، وإذا أذنبنا استغفرنا.',
+    '﴿وَمَن يَتَوَكَّلْ عَلَى اللَّهِ فَهُوَ حَسْبُهُ﴾ توكّل واطمئن، فالله كافيك.',
+    '﴿فَإِنِّي قَرِيبٌ ۖ أُجِيبُ دَعْوَةَ الدَّاعِ إِذَا دَعَانِ﴾ ادعُ وأنت موقن بالإجابة، ويومك سعيد.',
+    'صباحٌ يفوح بالأمل، وقلبٌ مطمئن، ودعاءٌ مستجاب بإذن الله.',
+    'ما أجمل أن تبدأ يومك بحمد الله: الحمد لله الذي بنعمته تتم الصالحات.',
+    'لا تيأس، فبعد كل ليلٍ فجر، وبعد كل ضيقٍ فرج، والله لطيفٌ بعباده.',
+    '﴿اللَّهُ لَطِيفٌ بِعِبَادِهِ﴾ أبشر بلطفه، فهو يدبّر لك الخير من حيث لا تدري.',
+    '﴿وَعَسَىٰ أَن تَكْرَهُوا شَيْئًا وَهُوَ خَيْرٌ لَّكُمْ﴾ فارضَ بما قسم الله، فالخير قد يختبئ خلف ما لا نحب.',
+    'اللهم اجعل لنا من كل همٍّ فرجًا، ومن كل ضيقٍ مخرجًا، ومن كل بلاءٍ عافية.',
+    'يومٌ سعيد، وقلبٌ هادئ، ورزقٌ واسع، وصحةٌ تامة؛ هذا ما أتمناه لك من كل قلبي.',
+    '﴿إِنَّ رَحْمَتَ اللَّهِ قَرِيبٌ مِّنَ الْمُحْسِنِينَ﴾ أحسن، فالرحمة أقرب إليك مما تتصور.',
+    '﴿وَاللَّهُ يَرْزُقُ مَن يَشَاءُ بِغَيْرِ حِسَابٍ﴾ أحسن الظن بالله، فرزقك لا يخطئك.',
+    '﴿وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا﴾ نسأل الله لك مخرجًا من كل ضيق وسعةً في كل أمر.',
+    'اللهم بارك لنا في يومنا هذا، وارزقنا فيه علمًا نافعًا ورزقًا طيبًا وعملًا متقبّلًا.'
+  ],
+  fri: [
+    'جمعة مباركة، اللهم اجعلها جمعة خير وبركة وسرور، واجعل لنا فيها ساعة إجابة.',
+    'جمعتكم مباركة، أكثروا فيها من الصلاة على النبي ﷺ ومن الدعاء، فهي يوم عيدٍ للمؤمنين.',
+    'جمعة طيبة، اقرأ سورة الكهف، فهي نورٌ لك بين الجمعتين بإذن الله.'
+  ]
+};
+var lastDaily="";
+$("daily").onclick=function(){
+  var pool=new Date().getDay()===5&&Math.random()<.5?DAILY.fri:DAILY.all,m;
+  do{m=pool[Math.floor(Math.random()*pool.length)]}while(m===lastDaily&&pool.length>1);
+  lastDaily=m;$("text").value=m;count()};
+
+/* ---- log ---- */
+var LOG=[];try{LOG=JSON.parse(sessionStorage.getItem("barq_log")||"[]")}catch(e){}
+var IC={ok:'<path d="M5 12l5 5L20 7"/>',dup:'<path d="M8 8h11v11H8zM5 16V5h11"/>',err:'<path d="M12 8v5M12 16.5v.5M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>'};
+var LBL={ok:"قُبلت",dup:"مكررة",err:"مرفوضة"};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function render(){
+  var el=$("log");
+  if(!LOG.length){el.innerHTML='<div class="empty">لا شيء بعد. أي رسالة ترسلها من هنا تظهر في هذا السجل.</div>';return}
+  el.innerHTML=LOG.slice(0,200).map(function(x){return '<div class="it '+x.s+'"><div class="av"><svg class="i" viewBox="0 0 24 24">'+IC[x.s]+'</svg></div><div class="tx"><div class="num">'+esc(x.p)+'</div><div class="msg">'+esc(x.s==="ok"?x.m:(x.e||LBL[x.s]))+'</div></div><time>'+x.t+'</time></div>'}).join("")}
+function addLog(e){LOG.unshift(e);if(LOG.length>300)LOG.length=300;try{sessionStorage.setItem("barq_log",JSON.stringify(LOG))}catch(x){}render()}
+$("clear").onclick=function(){LOG=[];try{sessionStorage.removeItem("barq_log")}catch(e){}render()};
+render();
+function now(){var d=new Date();return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}
+
+/* ---- send ---- */
+var busy=false;
+function sendOne(phone,msg){
+  return fetch("/send",{method:"POST",headers:{"Content-Type":"application/json","X-Api-Key":key},body:JSON.stringify({phone:phone,message:msg})})
+    .then(function(r){return r.json().catch(function(){return{}}).then(function(j){return{code:r.status,j:j}})})
+    .catch(function(){return{code:0,j:{error:"تعذّر الوصول للهاتف"}}})}
+var AR={"Invalid phone number":"رقم غير صالح","Invalid or missing API key":"المفتاح غير صحيح","Message is required":"الرسالة فارغة","Duplicate message":"نفس الرسالة أُرسلت لهذا الرقم قبل قليل","Message is too long":"الرسالة طويلة جداً"};
+$("go").onclick=function(){
+  if(busy)return;
+  if(!key){key=$("key").value.trim();if(!key){toast("الصق مفتاح الإرسال أولاً");$("key").focus();return}store.set("barq_key",key);keyUi()}
+  var msg=$("text").value.trim();if(!msg){toast("اكتب الرسالة أولاً");$("text").focus();return}
+  var list=mode==="one"?[digits($("one").value.trim())].filter(function(x){return x.replace(/\D/g,"").length>=5}):parseMany();
+  if(!list.length){toast(mode==="one"?"اكتب رقم الهاتف":"أضف الأرقام أولاً");return}
+  busy=true;$("go").disabled=true;$("goTxt").textContent="جارٍ الإرسال…";
+  var sp=document.createElement("i");sp.className="spin";$("go").prepend(sp);
+  var total=list.length,done=0,ok=0,dup=0,bad=0,idx=0,stop=false;
+  $("sprog").hidden=total<2;
+  function upd(){$("sbar").style.width=(100*done/total)+"%";$("sTxt").textContent=fmt(done)+" / "+fmt(total);
+    $("sRes").textContent="قُبلت "+fmt(ok)+(dup?" · مكررة "+fmt(dup):"")+(bad?" · مرفوضة "+fmt(bad):"")}
+  upd();
+  function worker(){
+    if(stop||idx>=total)return Promise.resolve();
+    var p=list[idx++];
+    return sendOne(p,msg).then(function(r){
+      done++;var e=r.j&&r.j.error;var shown=(r.j&&r.j.phone)||p;
+      if(r.code===200){ok++;addLog({s:"ok",p:shown,m:msg,t:now()})}
+      else if(r.code===409){dup++;addLog({s:"dup",p:shown,m:msg,t:now(),e:AR[e]||e})}
+      else{bad++;addLog({s:"err",p:shown,m:msg,t:now(),e:AR[e]||e||("خطأ "+r.code)});if(r.code===401){stop=true;key="";store.set("barq_key","");keyUi()}}
+      upd();return worker()})}
+  var ws=[];for(var w=0;w<Math.min(8,total);w++)ws.push(worker());
+  Promise.all(ws).then(function(){
+    busy=false;$("go").disabled=false;$("goTxt").textContent="إرسال";sp.remove();
+    if(stop)toast("المفتاح غير صحيح، الصقه من جديد");
+    else if(total===1)toast(ok?"تمام! دخلت الرسالة طابور برق":(dup?"مكررة: أُرسلت لهذا الرقم قبل قليل":"لم تُقبل الرسالة"));
+    else toast("قُبلت "+fmt(ok)+" من "+fmt(total));
+    if(ok&&mode==="one")$("one").value="";
+    poll()})};
+
+/* ---- live status ---- */
+function led(on,t){$("led").classList.toggle("on",on);$("ledTxt").textContent=t}
+function setNum(id,v){var e=$(id),n=+v||0,o=+(e.dataset.v||0);e.dataset.v=n;if(o===n&&e.textContent!=="–")return;
+  var t0=performance.now();(function f(t){var k=Math.min(1,(t-t0)/500);e.textContent=fmt(Math.round(o+(n-o)*(1-Math.pow(1-k,3))));if(k<1)requestAnimationFrame(f)})(t0)}
+function poll(){
+  if(!key){fetch("/health").then(function(r){led(r.ok,r.ok?"متصل":"غير متصل")}).catch(function(){led(false,"غير متصل")});return}
+  fetch("/api/status",{headers:{"X-Api-Key":key}}).then(function(r){
+    if(r.status===401){led(true,"متصل");return}
+    return r.json().then(function(s){
+      led(true,"متصل");setNum("stIn",s.received);
+      var b=s.batch||{};setNum("stSent",b.sent);setNum("stWait",b.pending);setNum("stFail",b.failed);
+      if(b.total){$("prog").hidden=false;var d=(b.sent||0)+(b.failed||0);$("progBar").style.width=(100*d/b.total)+"%";$("progTxt").textContent=fmt(d)+" من "+fmt(b.total)}
+    })}).catch(function(){led(false,"غير متصل")})}
+poll();setInterval(poll,2500);
+
+/* ---- api snippet ---- */
+var base=location.origin;
+$("api").textContent='curl -X POST '+base+'/send \\\n  -H "X-Api-Key: <KEY>" \\\n  -H "Content-Type: application/json" \\\n  -d \'{"phone":"0599000000","message":"Barq"}\'';
+$("copyApi").onclick=function(){var t=$("api").textContent.replace("<KEY>",key||"<KEY>");
+  (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){toast("تم النسخ")}).catch(function(){
+    var a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("تم النسخ")}catch(e){}a.remove()})};
+})();
+</script>
+</body>
+</html>

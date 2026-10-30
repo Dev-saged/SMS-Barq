@@ -1,6 +1,9 @@
 package dev.saged.barq.sms.gateway
 
+import android.content.Context
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.BuildConfig
+import dev.saged.barq.R
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.sms.SendEngine
@@ -49,6 +52,7 @@ import javax.inject.Singleton
  */
 @Singleton
 class GatewayServer @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val engine: SendEngine,
     private val settings: SettingsRepository,
 ) {
@@ -138,7 +142,7 @@ class GatewayServer @Inject constructor(
 
     // ---------------------------------------------------------------- HTTP
 
-    private class Request(val method: String, val path: String, val headers: Map<String, String>, val body: ByteArray)
+    private class Request(val method: String, val path: String, val query: String, val headers: Map<String, String>, val body: ByteArray)
 
     private class HttpError(val code: Int, message: String) : Exception(message)
 
@@ -159,21 +163,47 @@ class GatewayServer @Inject constructor(
             return@use // the client went away
         }
         val path = req.path.trimEnd('/').ifEmpty { "/" }
+        val browser = req.headers["accept"]?.contains("text/html") == true
         when {
             req.method == "OPTIONS" -> respond(out, 204, "")
             path in SEND_PATHS ->
-                if (req.method != "POST") respond(out, 405, result(false, false, "method_not_allowed", "Use POST"))
-                else send(req, out)
+                if (req.method == "POST") send(req, out)
+                // Someone opened the API address in a browser: show the panel instead of an error.
+                else if (browser) redirect(out, "/" + req.query.let { if (it.isEmpty()) "" else "?$it" })
+                else respond(out, 405, result(false, false, "method_not_allowed", "Use POST"))
             path == "/health" || path == "/api/health" -> respond(out, 200, health())
-            (path == "/" || path == "/g") && req.method == "GET" -> respond(out, 200, PAGE, "text/html; charset=utf-8")
+            path == "/api/status" -> status(req, out)
+            req.method != "GET" -> respond(out, 405, result(false, false, "method_not_allowed", "Use GET"))
+            path == "/" || path == "/g" || path == "/panel" -> respond(out, 200, page(), "text/html; charset=utf-8")
+            path == "/favicon.svg" -> respond(out, 200, FAVICON, "image/svg+xml", cache = true)
+            path == "/favicon.ico" -> respond(out, 204, "")
+            path in FONTS -> font(out, FONTS.getValue(path))
             else -> respond(out, 404, result(false, false, "not_found", "Not found"))
         }
     }
 
-    private suspend fun send(req: Request, out: OutputStream) {
+    private fun authorized(req: Request): Boolean {
         val given = req.headers["x-api-key"]?.trim()
             ?: req.headers["authorization"]?.trim()?.let { if (it.startsWith("Bearer ", ignoreCase = true)) it.substring(7).trim() else null }
-        if (given.isNullOrEmpty() || key.isEmpty() || !sameKey(given, key)) {
+        return !given.isNullOrEmpty() && key.isNotEmpty() && sameKey(given, key)
+    }
+
+    /** Live numbers for the web panel: what came in, and how the current burst is being sent. */
+    private suspend fun status(req: Request, out: OutputStream) {
+        if (!authorized(req)) return respond(out, 401, result(false, false, "unauthorized", "Invalid or missing API key"))
+        val s = _status.value
+        val c = if (s.batchId != 0L) runCatching { engine.batchCounts(s.batchId) }.getOrNull() else null
+        val batch = JSONObject()
+        if (c != null) batch.put("total", c.total).put("sent", c.sent).put("failed", c.failed).put("pending", c.pending).put("delivered", c.delivered)
+        respond(
+            out, 200,
+            JSONObject().put("running", s.running).put("received", s.received).put("rejected", s.rejected)
+                .put("version", BuildConfig.VERSION_NAME).put("batch", batch).toString(),
+        )
+    }
+
+    private suspend fun send(req: Request, out: OutputStream) {
+        if (!authorized(req)) {
             return reject(out, 401, "unauthorized", "Invalid or missing API key")
         }
         if (req.body.isEmpty()) return reject(out, 400, "bad_request", "JSON body is required")
@@ -267,7 +297,9 @@ class GatewayServer @Inject constructor(
             if (i > 0) headers[h.substring(0, i).trim().lowercase(Locale.ROOT)] = h.substring(i + 1).trim()
         }
         val method = parts[0].uppercase(Locale.ROOT)
-        val path = parts[1].substringBefore('?').substringBefore('#')
+        val target = parts[1].substringBefore('#')
+        val path = target.substringBefore('?')
+        val query = if ('?' in target) target.substringAfter('?') else ""
         val chunked = headers["transfer-encoding"]?.contains("chunked", ignoreCase = true) == true
         val length = headers["content-length"]?.toIntOrNull() ?: 0
         if (length > MAX_BODY) throw HttpError(413, "Request body is too large")
@@ -276,7 +308,7 @@ class GatewayServer @Inject constructor(
             out.flush()
         }
         val body = if (chunked) readChunked(input) else readExactly(input, length)
-        return Request(method, path, headers, body)
+        return Request(method, path, query, headers, body)
     }
 
     private fun readLine(input: InputStream): String? {
@@ -317,8 +349,35 @@ class GatewayServer @Inject constructor(
         return all.toByteArray()
     }
 
-    private fun respond(out: OutputStream, code: Int, body: String, type: String = "application/json; charset=utf-8") {
-        val bytes = body.toByteArray(Charsets.UTF_8)
+    @Volatile private var pageCache: String? = null
+
+    /** The web panel (assets/gateway.html), read once. */
+    private fun page(): String = pageCache ?: runCatching {
+        context.assets.open("gateway.html").bufferedReader().use { it.readText() }
+    }.getOrElse { "<h1>Barq</h1>" }.also { pageCache = it }
+
+    private val fontCache = HashMap<Int, ByteArray>()
+
+    /** Barq's own font, so the panel looks right even with no internet. */
+    private fun font(out: OutputStream, res: Int) {
+        val bytes = synchronized(fontCache) {
+            fontCache.getOrPut(res) { runCatching { context.resources.openRawResource(res).use { it.readBytes() } }.getOrDefault(ByteArray(0)) }
+        }
+        if (bytes.isEmpty()) return respond(out, 404, "")
+        respond(out, 200, bytes, "font/ttf", cache = true)
+    }
+
+    private fun redirect(out: OutputStream, to: String) {
+        runCatching {
+            out.write("HTTP/1.1 302 Found\r\nLocation: $to\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+            out.flush()
+        }
+    }
+
+    private fun respond(out: OutputStream, code: Int, body: String, type: String = "application/json; charset=utf-8", cache: Boolean = false) =
+        respond(out, code, body.toByteArray(Charsets.UTF_8), type, cache)
+
+    private fun respond(out: OutputStream, code: Int, bytes: ByteArray, type: String, cache: Boolean) {
         val head = buildString {
             append("HTTP/1.1 ").append(code).append(' ').append(reason(code)).append("\r\n")
             if (code != 204) append("Content-Type: ").append(type).append("\r\n")
@@ -326,7 +385,7 @@ class GatewayServer @Inject constructor(
             append("Access-Control-Allow-Origin: *\r\n")
             append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
             append("Access-Control-Allow-Headers: Content-Type, X-Api-Key, Authorization\r\n")
-            append("Cache-Control: no-store\r\n")
+            append(if (cache) "Cache-Control: public, max-age=86400\r\n" else "Cache-Control: no-store\r\n")
             append("Connection: close\r\n\r\n")
         }
         runCatching {
@@ -338,6 +397,10 @@ class GatewayServer @Inject constructor(
 
     companion object {
         private val SEND_PATHS = setOf("/send", "/api/send")
+        private val FONTS = mapOf("/f/r.ttf" to R.font.readex_regular, "/f/s.ttf" to R.font.readex_semibold, "/f/b.ttf" to R.font.readex_bold)
+        private const val FAVICON = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 108 108'><rect width='108' height='108' rx='24' fill='#2F3BA8'/>" +
+            "<path d='M54 27C70.6 27 84 38.4 84 52.5C84 66.6 70.6 78 54 78C50.7 78 47.5 77.5 44.6 76.7L33.6 82.6C32.2 83.4 30.6 82.1 31.1 80.6L34.3 70.6C28.2 66 24 59.6 24 52.5C24 38.4 37.4 27 54 27Z' fill='#fff'/>" +
+            "<path d='M58.5 35L42.5 55.5H52.5L49 70L65.5 49H55.5Z' fill='#2F3BA8'/></svg>"
         private val PHONE = Regex("^\\+?\\d{5,15}$")
         private const val BACKLOG = 256
         private const val READ_TIMEOUT_MS = 15_000
@@ -413,31 +476,6 @@ class GatewayServer @Inject constructor(
                 ?.hostAddress
         }.getOrNull()
 
-        /** A small page for trying the gateway from a browser on the same network. */
-        private val PAGE = """
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Barq Gateway</title>
-<style>
-:root{color-scheme:light dark;--a:#4F63E6}
-body{font-family:system-ui,sans-serif;max-width:520px;margin:24px auto;padding:0 16px}
-h1{font-size:20px;margin:0 0 4px}p{opacity:.7;margin:0 0 18px;font-size:14px}
-label{display:block;font-size:13px;margin:12px 0 4px;opacity:.8}
-input,textarea{width:100%;box-sizing:border-box;padding:10px 12px;border-radius:12px;border:1px solid #8884;font:inherit;background:transparent}
-textarea{min-height:90px}
-button{margin-top:16px;width:100%;padding:12px;border:0;border-radius:12px;background:var(--a);color:#fff;font:inherit;font-weight:600}
-pre{direction:ltr;text-align:left;white-space:pre-wrap;background:#8881;padding:10px;border-radius:12px;font-size:12px}
-</style></head><body>
-<h1>Barq Gateway</h1><p>بوابة برق المحلية &middot; POST /send</p>
-<label>API key</label><input id="k" dir="ltr" autocomplete="off">
-<label>الرقم</label><input id="p" dir="ltr" placeholder="059xxxxxxx">
-<label>الرسالة</label><textarea id="m"></textarea>
-<button onclick="go()">إرسال</button><pre id="o"></pre>
-<script>
-async function go(){const o=document.getElementById('o');o.textContent='...';
-try{const r=await fetch('/send',{method:'POST',headers:{'Content-Type':'application/json','X-Api-Key':document.getElementById('k').value},
-body:JSON.stringify({phone:document.getElementById('p').value,message:document.getElementById('m').value})});
-o.textContent=r.status+'\n'+await r.text()}catch(e){o.textContent=String(e)}}
-</script></body></html>
-""".trimIndent()
+
     }
 }

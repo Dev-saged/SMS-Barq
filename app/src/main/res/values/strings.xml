@@ -516,4 +516,8 @@
     <string name="group_cleaned">تم التنظيف · حُذف %1$d مكرر</string>
     <string name="group_filter">ابحث بالاسم أو الرقم</string>
     <string name="group_chip_phone">%1$s · %2$d (الهاتف)</string>
+    <string name="gateway_share">مشاركة رابط اللوحة</string>
+    <string name="gateway_share_sub">الرابط فيه المفتاح: اللي بيفتحه بيقدر يرسل من شريحتك</string>
+    <string name="gateway_open">فتح اللوحة</string>
+    <string name="gateway_panel_hint">افتح هذا العنوان من أي جهاز على نفس الشبكة لتظهر لوحة الإرسال.</string>
 </resources>

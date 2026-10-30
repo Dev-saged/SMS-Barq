@@ -2,6 +2,8 @@ package dev.saged.barq.ui.settings
 
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -16,7 +18,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.FilterAlt
@@ -124,7 +128,13 @@ fun DeveloperScreen(onBack: () -> Unit, open: (String) -> Unit, vm: DeveloperVie
         800L to stringResource(R.string.speed_safe),
     )
     val host = st.address ?: "IP"
-    val url = "http://$host:${s.gatewayPort}/send"
+    val panel = "http://$host:${s.gatewayPort}/"
+    val url = panel + "send"
+    val shareLink = panel + "?key=" + s.gatewayKey
+    val shareTitle = stringResource(R.string.gateway_share)
+    fun openPanel() = runCatching {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(panel)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
 
     SettingsScaffold(title = stringResource(R.string.dev_title), onBack = onBack) {
         item {
@@ -161,7 +171,14 @@ fun DeveloperScreen(onBack: () -> Unit, open: (String) -> Unit, vm: DeveloperVie
                 AnimatedVisibility(s.gatewayEnabled) {
                     Column {
                         RowDivider()
-                        GatewayStatus(st, url, onCopy = { copy(url) })
+                        GatewayStatus(st, panel, onCopy = { copy(panel) }, onOpen = { openPanel() })
+                        RowDivider()
+                        ClickRow(Icons.Outlined.Share, stringResource(R.string.gateway_share), stringResource(R.string.gateway_share_sub)) {
+                            runCatching {
+                                val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareLink)
+                                context.startActivity(Intent.createChooser(send, shareTitle).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                            }
+                        }
                     }
                 }
                 RowDivider()
@@ -247,7 +264,7 @@ fun DeveloperScreen(onBack: () -> Unit, open: (String) -> Unit, vm: DeveloperVie
 }
 
 @Composable
-private fun GatewayStatus(st: GatewayServer.Status, url: String, onCopy: () -> Unit) {
+private fun GatewayStatus(st: GatewayServer.Status, url: String, onCopy: () -> Unit, onOpen: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -278,7 +295,9 @@ private fun GatewayStatus(st: GatewayServer.Status, url: String, onCopy: () -> U
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onCopy) { Icon(Icons.Outlined.ContentCopy, stringResource(R.string.copy), tint = scheme.primary) }
+            IconButton(onClick = onOpen) { Icon(Icons.AutoMirrored.Outlined.OpenInNew, stringResource(R.string.gateway_open), tint = scheme.primary) }
         }
+        Text(stringResource(R.string.gateway_panel_hint), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
         Text(
             stringResource(R.string.gateway_counts, st.received, st.rejected),
             style = MaterialTheme.typography.bodySmall,
