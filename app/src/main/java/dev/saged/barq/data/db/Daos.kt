@@ -186,9 +186,6 @@ interface MessageDao {
     @Query("UPDATE messages SET reaction = :emoji WHERE id = :id")
     suspend fun setReaction(id: Long, emoji: String?)
 
-    @Query("SELECT * FROM messages WHERE threadId = :threadId AND box = 1 ORDER BY date DESC LIMIT 1")
-    suspend fun latestIncoming(threadId: Long): MessageEntity?
-
     @Query("UPDATE messages SET category = :category WHERE threadId = :threadId AND box = 1")
     suspend fun setIncomingCategory(threadId: Long, category: Category)
 
