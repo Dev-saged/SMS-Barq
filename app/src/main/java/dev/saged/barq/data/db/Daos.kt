@@ -44,12 +44,6 @@ interface ConversationDao {
     @Query("SELECT COUNT(*) FROM conversations WHERE deleted = 0 AND category = 'SPAM'")
     fun spamCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM conversations WHERE deleted = 1")
-    fun recycleBinCount(): Flow<Int>
-
-    @Query("SELECT COUNT(*) FROM conversations WHERE deleted = 0 AND archived = 1")
-    fun archivedCount(): Flow<Int>
-
     @Query("SELECT * FROM conversations WHERE threadId = :threadId")
     suspend fun get(threadId: Long): ConversationEntity?
 
@@ -59,14 +53,8 @@ interface ConversationDao {
     @Query("SELECT * FROM conversations")
     suspend fun all(): List<ConversationEntity>
 
-    @Query("SELECT * FROM conversations WHERE threadId IN (:ids)")
-    suspend fun byIds(ids: List<Long>): List<ConversationEntity>
-
     @Upsert
     suspend fun upsert(conversation: ConversationEntity)
-
-    @Upsert
-    suspend fun upsertAll(conversations: List<ConversationEntity>)
 
     @Query("UPDATE conversations SET pinned = :pinned WHERE threadId IN (:ids)")
     suspend fun setPinned(ids: List<Long>, pinned: Boolean)
@@ -223,9 +211,6 @@ interface MessageDao {
     @Query("UPDATE messages SET deliveryStatus = :status WHERE id = :id")
     suspend fun setDelivery(id: Long, status: Int)
 
-    @Query("UPDATE messages SET providerId = :providerId WHERE id = :id")
-    suspend fun setProviderId(id: Long, providerId: Long)
-
     /**
      * Messages ready to go. A normal message never waits behind a bulk send: single messages come
      * first. [pausedBatch] (when not 0) is skipped while the user paused it; retries wait for
@@ -343,9 +328,6 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE box = 6 AND scheduledAt > :now")
     suspend fun futureScheduled(now: Long): List<MessageEntity>
-
-    @Query("SELECT * FROM messages WHERE box = 6 AND scheduledAt > :now ORDER BY scheduledAt ASC")
-    fun observeScheduled(now: Long): Flow<List<MessageEntity>>
 
     /** Messages stuck in OUTBOX after a crash/reboot. */
     @Query("SELECT * FROM messages WHERE box = 4 AND fromOtherApp = 0 AND date < :before")

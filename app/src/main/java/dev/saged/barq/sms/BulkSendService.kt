@@ -30,6 +30,10 @@ import javax.inject.Inject
 /**
  * Sends a bulk message in the foreground, with a live progress notification (sent / failed /
  * remaining) and Pause / Cancel buttons. Android never stops it halfway, however long the list.
+ *
+ * Android 15+ allows this kind of service 6 hours a day in the background. When that time is up
+ * Barq pauses the batch itself (instead of being shut down), asks to finish it from a
+ * notification, and hands other waiting messages to the background queue.
  */
 @AndroidEntryPoint
 class BulkSendService : Service() {
@@ -39,10 +43,13 @@ class BulkSendService : Service() {
     @Inject lateinit var messages: MessageDao
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var notifier: Notifier
+    @Inject @field:dev.saged.barq.di.AppScope lateinit var appScope: CoroutineScope
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    @Volatile private var runningBatch = 0L
+    @Volatile private var timedOut = false
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -72,12 +79,20 @@ class BulkSendService : Service() {
 
     private suspend fun run() {
         val batchId = settings.current().lastBatchId
+        runningBatch = batchId
         // The screen may turn off during a long send: keep the CPU awake until it is finished.
+        // The lock has a time limit as a safety net, so it is renewed while the send goes on.
         wakeLock = runCatching {
             getSystemService(PowerManager::class.java)
                 .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Barq:bulk-send")
                 .apply { setReferenceCounted(false); acquire(MAX_WAKE_MS) }
         }.getOrNull()
+        val keepAwake = scope.launch {
+            while (true) {
+                delay(RENEW_WAKE_MS)
+                runCatching { wakeLock?.acquire(MAX_WAKE_MS) }
+            }
+        }
         val progress = scope.launch {
             combine(
                 messages.observeBatch(batchId), state.preparing, state.paused, state.waitingLimitUntil, state.stalled,
@@ -118,13 +133,33 @@ class BulkSendService : Service() {
             if (t !is kotlinx.coroutines.CancellationException) CrashLog.warn("bulk-run", t)
         } finally {
             progress.cancel()
-            if (batchId != 0L) {
+            keepAwake.cancel()
+            if (batchId != 0L && !timedOut) {
                 val counts = runCatching { messages.batchCounts(batchId) }.getOrNull()
                 if (counts != null && counts.total > 0) notifier.notifyBulkFinished(batchId, counts)
             }
             runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
+        }
+    }
+
+    /** Android 15+: the 6 hours are used up. Stop within seconds, keeping the batch paused. */
+    override fun onTimeout(startId: Int, fgsType: Int) {
+        timedOut = true
+        val batchId = runningBatch
+        if (batchId != 0L) state.pause(batchId)
+        job?.cancel()
+        runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
+        appScope.launch {
+            runCatching {
+                val pending = if (batchId != 0L) messages.batchCounts(batchId).pending else 0
+                if (pending > 0) notifier.notifyBulkTimeLimit(batchId, pending)
+                // Single messages and the gateway keep going through the background queue.
+                SendQueue(applicationContext).kick()
+            }.onFailure { CrashLog.warn("bulk-timeout", it) }
         }
     }
 
@@ -136,6 +171,7 @@ class BulkSendService : Service() {
 
     companion object {
         private const val MAX_WAKE_MS = 3 * 60 * 60 * 1000L
+        private const val RENEW_WAKE_MS = 2 * 60 * 60 * 1000L
         private const val MAX_RETRY_WAIT_MS = 4 * 60 * 1000L
 
         /** Starts (or nudges) the service. Returns false when Android does not allow it right now. */

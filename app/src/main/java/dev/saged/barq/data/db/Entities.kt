@@ -175,8 +175,6 @@ data class AutoReplyRuleEntity(
 @Entity(tableName = "auto_reply_log")
 data class AutoReplyLogEntity(@PrimaryKey val address: String, val lastAt: Long)
 
-data class CategoryCount(val category: Category, val count: Int)
-
 /** A saved list of numbers to send to in one tap. */
 @Entity(tableName = "send_groups")
 data class SendGroupEntity(

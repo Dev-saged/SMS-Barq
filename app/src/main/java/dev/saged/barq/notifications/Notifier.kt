@@ -419,14 +419,31 @@ class Notifier @Inject constructor(
     }
 
     /** The gateway stopped with messages still waiting: finish sending them, or cancel them. */
-    fun notifyGatewayStopped(batchId: Long, pending: Int) {
+    fun notifyGatewayStopped(batchId: Long, pending: Int) = notifySendingStopped(
+        batchId,
+        context.getString(R.string.gateway_stopped_title),
+        context.getString(R.string.gateway_stopped_text, pending),
+    )
+
+    /**
+     * Android 15+ lets a bulk send run in the background for 6 hours a day: Barq paused it in time
+     * and asks to finish it. Opening Barq gives Android's timer a fresh start.
+     */
+    fun notifyBulkTimeLimit(batchId: Long, pending: Int) = notifySendingStopped(
+        batchId,
+        context.getString(R.string.bulk_time_limit_title),
+        context.getString(R.string.bulk_time_limit_text, pending),
+    )
+
+    /** Shared by both cases above (one notification slot: the newest replaces the older one). */
+    private fun notifySendingStopped(batchId: Long, title: String, text: String) {
         if (!canPost()) return
         val n = NotificationCompat.Builder(context, CH_STATUS)
             .setSmallIcon(R.drawable.ic_stat_barq)
             .setColor(ContextCompat.getColor(context, R.color.brand))
-            .setContentTitle(context.getString(R.string.gateway_stopped_title))
-            .setContentText(context.getString(R.string.gateway_stopped_text, pending))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.gateway_stopped_text, pending)))
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setContentIntent(openApp(GATEWAY_STOPPED_ID))
             .setAutoCancel(true)
             .addAction(R.drawable.ic_done, context.getString(R.string.gateway_continue),

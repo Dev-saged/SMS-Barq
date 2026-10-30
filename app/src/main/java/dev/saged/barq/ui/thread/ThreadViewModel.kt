@@ -36,7 +36,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -273,9 +272,6 @@ class ThreadViewModel @Inject constructor(
         conversations.block(listOf(threadId))
         done()
     }
-
-    /** Waits for the conversation row (used when a thread is opened before it exists). */
-    suspend fun awaitConversation(): ConversationEntity? = conversation.first()
 
     /**
      * Leaving the screen: the draft is saved at once (no waiting for the typing pause), and a

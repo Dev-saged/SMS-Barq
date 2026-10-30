@@ -174,7 +174,7 @@
     <string name="backup_daily">Daily</string>
     <string name="backup_weekly">Weekly</string>
     <string name="backup_folder">Backup folder</string>
-    <string name="backup_folder_default">App folder (last 5 backups)</string>
+    <string name="backup_folder_default">App folder (last 3 backups)</string>
     <string name="backup_now">Back up now</string>
     <string name="last_backup">Last backup: %1$s</string>
     <string name="never">Not yet</string>
@@ -316,7 +316,6 @@
     <string name="restore_settings_no">Keep current</string>
     <string name="about_design_dev">Designed and developed by</string>
     <string name="about_name">Eng. Sajed Al-Abadla</string>
-    <string name="about_contact">Get in touch</string>
     <string name="about_rights">© 2026 Sajed Al-Abadla — All rights reserved</string>
     <string name="made_in_gaza">Made with love in Palestine — Gaza</string>
     <string name="social_whatsapp">WhatsApp</string>
@@ -466,6 +465,8 @@
     <string name="gateway_stopped_text">%1$d gateway messages are still waiting. Finish sending them?</string>
     <string name="gateway_continue">Finish sending</string>
     <string name="gateway_cancel_rest">Cancel the rest</string>
+    <string name="bulk_time_limit_title">Bulk sending paused</string>
+    <string name="bulk_time_limit_text">Android allows background sending for 6 hours a day, so Barq paused it before the time ran out. %1$d messages are waiting. Tap “Finish sending”, or continue from the sending card in Barq.</string>
     <string name="gateway_card_title">Barq gateway</string>
     <string name="sim_n">SIM %1$d</string>
     <string name="import_excel">Import from Excel</string>

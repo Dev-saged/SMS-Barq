@@ -191,7 +191,7 @@
     <string name="backup_daily">يومياً</string>
     <string name="backup_weekly">أسبوعياً</string>
     <string name="backup_folder">مجلد النسخ</string>
-    <string name="backup_folder_default">مجلد التطبيق (آخر 5 نسخ)</string>
+    <string name="backup_folder_default">مجلد التطبيق (آخر 3 نسخ)</string>
     <string name="backup_now">نسخ احتياطي الآن</string>
     <string name="last_backup">آخر نسخة: %1$s</string>
     <string name="never">لم يتم بعد</string>
@@ -357,7 +357,6 @@
     <!-- 1.2.0: about card -->
     <string name="about_design_dev">تصميم وتطوير</string>
     <string name="about_name">المهندس ساجد العبادلة</string>
-    <string name="about_contact">تواصل معي</string>
     <string name="about_rights">© 2026 ساجد العبادلة — جميع الحقوق محفوظة</string>
     <string name="made_in_gaza">صُنع بكل حب من فلسطين — غزة</string>
     <string name="social_whatsapp">واتساب</string>
@@ -525,6 +524,8 @@
     <string name="gateway_stopped_text">في %1$d رسالة من البوابة بالانتظار. بدك تكمّل إرسالها؟</string>
     <string name="gateway_continue">إكمال الإرسال</string>
     <string name="gateway_cancel_rest">إلغاء الباقي</string>
+    <string name="bulk_time_limit_title">الإرسال الجماعي توقف مؤقتاً</string>
+    <string name="bulk_time_limit_text">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في %1$d رسالة بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</string>
     <string name="gateway_card_title">بوابة برق</string>
     <string name="sim_n">شريحة %1$d</string>
     <string name="import_excel">استيراد من Excel</string>

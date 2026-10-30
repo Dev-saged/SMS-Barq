@@ -32,6 +32,4 @@ class SimRepository @Inject constructor(@ApplicationContext private val context:
             }.sortedBy { it.slot }
         }.getOrDefault(emptyList())
     }
-
-    fun defaultSmsSubId(): Int = SubscriptionManager.getDefaultSmsSubscriptionId()
 }

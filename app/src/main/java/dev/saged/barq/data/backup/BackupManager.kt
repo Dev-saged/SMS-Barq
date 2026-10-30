@@ -336,8 +336,8 @@ class BackupManager @Inject constructor(
             } else {
                 val dir = File(context.getExternalFilesDir(null), "backups").apply { mkdirs() }
                 File(dir, name).outputStream().use { export(it) }
-                // Keep the 5 most recent automatic backups.
-                dir.listFiles()?.sortedByDescending { it.lastModified() }?.drop(5)?.forEach { it.delete() }
+                // Keep the 3 most recent automatic backups (they live inside Barq's own storage).
+                dir.listFiles()?.sortedByDescending { it.lastModified() }?.drop(KEEP_BACKUPS)?.forEach { it.delete() }
             }
         }.isSuccess
         if (ok) settings.setLastBackupAt(System.currentTimeMillis())
@@ -346,5 +346,6 @@ class BackupManager @Inject constructor(
 
     private companion object {
         const val PAGE = 500
+        const val KEEP_BACKUPS = 3
     }
 }
