@@ -31,7 +31,7 @@ android {
     defaultConfig {
         applicationId = project.property("APP_ID") as String
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = baseVersionCode + (ciRunNumber ?: 0)
         versionName = project.property("VERSION_NAME") as String
         vectorDrawables.useSupportLibrary = true
@@ -108,6 +108,9 @@ ksp {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // App lock (fingerprint / face / phone PIN) through the system's own prompt.
+    implementation(libs.androidx.biometric)
+    implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

@@ -1,7 +1,7 @@
 # برق (Barq) — ملف تعريف المشروع الكامل
 
 > هذا الملف مرجع شامل للمشروع. إذا فتحت محادثة جديدة، أرفق هذا الملف أو الصقه وقل: «هذا مشروعي برق، كمّل عليه».
-> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.4.0 (المرحلة الخامسة) منفّذ في الكود وبانتظار البناء #7** (القسم 6 والقسم 13). الإصدار 1.3.0 نجح وجرّبه المالك، ورفع حد الإرسال عبر Shizuku.
+> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.5.0 (المرحلة السادسة) منفّذ في الكود وبانتظار البناء** (القسم 6 والقسم 14). الإصدار 1.4.0 نجح (البناء #7) وجرّبه المالك.
 > المستودع: **github.com/Dev-saged/SMS-Barq** (الفرع `main`)
 
 ---
@@ -162,7 +162,8 @@
 | Navigation Compose | 2.9.6 |
 | Lifecycle | 2.10.0 · Activity 1.13.0 · Core 1.17.0 |
 | Coroutines | 1.10.2 · kotlinx.serialization 1.9.0 |
-| compileSdk / targetSdk | 36 / 35 |
+| compileSdk / targetSdk | 36 / 36 (منذ 1.5.0) · minSdk 26 |
+| Biometric / Fragment | 1.1.0 / 1.8.5 (قفل التطبيق، 1.5.0) |
 | JDK | 17 |
 
 ### النمط المعماري
@@ -237,7 +238,7 @@ Barq/
             ├── onboarding/ · inbox/ · thread/ · compose/ · settings/ (HealthScreens.kt: الجاهزية وحد الإرسال) · batch/ (تفاصيل الإرسال)
 ```
 
-### قاعدة البيانات (Room، **الإصدار 3**، الملف `barq.db`، وضع WAL)
+### قاعدة البيانات (Room، **الإصدار 4** منذ 1.5.0: عمود `messages.starred` + فهرس `(starred, date)` عبر `Migration3To4`؛ قبلها الإصدار 3، الملف `barq.db`، وضع WAL)
 | الجدول | الحقول المهمة |
 |---|---|
 | `conversations` | threadId (PK)، addresses، displayName، snippet، date، unreadCount، category، categoryLocked، pinned، archived، muted، deleted، deletedAt، draft، subId، lastFromMe، lastBox، **draftAt** |
@@ -276,7 +277,7 @@ Barq/
 - أزرار الإرسال الجماعي في `NotificationActionReceiver`: `BATCH_PAUSE` / `BATCH_RESUME` / `BATCH_CANCEL` / `BATCH_RESEND`.
 
 ### الإعدادات (`AppSettings` في DataStore)
-themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled, spamFilter, recycleBin, swipeStart, swipeEnd, defaultSubId, sendDelayMs (0 = أقصى سرعة)، autoReplyEnabled, autoReplyMode, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow, autoReplyFromMin, autoReplyToMin, backupFrequency, backupTreeUri, lastBackupAt, onboardingDone, **lastBatchId** (بطاقة آخر إرسال جماعي)، **bulkIntroShown**، autoRetry، respectLimit، reactionsAsSms، externalSeenAt، **devMode**، **gatewayEnabled / gatewayPort (8080) / gatewayKey / gatewayDedupe** (1.4.0). `dynamicColor` صار افتراضياً **false** منذ 1.4.0.
+themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled, spamFilter, recycleBin, swipeStart, swipeEnd, defaultSubId, sendDelayMs (0 = أقصى سرعة)، autoReplyEnabled, autoReplyMode, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow, autoReplyFromMin, autoReplyToMin, backupFrequency, backupTreeUri, lastBackupAt, onboardingDone, **lastBatchId** (بطاقة آخر إرسال جماعي)، **bulkIntroShown**، autoRetry، respectLimit، reactionsAsSms، externalSeenAt، **devMode**، **gatewayEnabled / gatewayPort (8080) / gatewayKey / gatewayDedupe** (1.4.0)، **gatewayBatchId، lockEnabled، lockMethod (ANY/BIOMETRIC/DEVICE)، lockAfterSec (0/60/300)، seenVersion، classVersion** (1.5.0). `dynamicColor` صار افتراضياً **false** منذ 1.4.0.
 
 ### صيغة النسخة الاحتياطية (JSON)
 ```json
@@ -333,7 +334,8 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | 4 | المرحلة الثالثة (1.2.0) | `data/MessageRepository.kt:145, 270` → `No value passed for parameter 'draftAt'`، و`:335` → `Unresolved reference 'invalidate'`. الملف حُذف في 1.2.0 لكنه بقي في المستودع لأن رفع الـ zip لا يحذف | استبدال `MessageRepository.kt` بملف فارغ (سطر `package` فقط). ملاحظة: `kspReleaseKotlin` (Room وHilt) نجح، وكل الأخطاء كانت في هذا الملف القديم فقط | ✅ أُصلح |
 | 5 | المرحلة الثالثة (1.2.0) | لا أخطاء | نفس الكود + الملف الفارغ + README جديد بأصول SVG | ✅ **نجح البناء #5** وجرّب المالك 1.2.0 |
 | 6 | المرحلة الرابعة (1.3.0) | لا أخطاء | 14 بنداً (القسم 12)، قاعدة البيانات 3، محرك إرسال جديد، واجهة إنجليزية | ✅ **نجح** وجرّبه المالك؛ رفع حد الإرسال عبر Shizuku + rish في Termux (adb connect رُفض على سامسونج) |
-| 7 | المرحلة الخامسة (1.4.0) | — | تحديث كل المكتبات + وضع المطوّر + البوابة + المجموعات + README (القسم 13) | ⏳ بانتظار البناء. فُحصت الصياغة، وجُرّب خادم البوابة فعلياً بـ curl (كل المسارات والأكواد، 300 طلب متوازٍ < 1 ثانية)، وجُرّب `PhoneUtils.localPs` (16 حالة)، وطابقت 446 نصاً بين العربية والإنجليزية. لا تغيير في قاعدة البيانات |
+| 7 | المرحلة الخامسة (1.4.0) | لا أخطاء | تحديث كل المكتبات + وضع المطوّر + البوابة + المجموعات + README (القسم 13) | ✅ **نجح** وجرّبه المالك («شغال قوي»). بعده zip إضافي بلوحة ويب للبوابة |
+| 8 | المرحلة السادسة (1.5.0) | — | قفل، Excel، أسماء، شريحة، مفضّلة (قاعدة البيانات 4)، تصنيف، إيموجي، أوامر البوابة، targetSdk 36، إصدارات GitHub (القسم 14) | ⏳ بانتظار البناء. فُحصت الصياغة، وجُرّب خادم البوابة فعلياً بكل الأوامر الجديدة، وجُرّب استيراد xlsx/csv حقيقي و`Personalize` والتصنيف الجديد، وطابقت النصوص بين العربية والإنجليزية. **ملف `build.yml` الجديد يلصقه المالك يدوياً** |
 
 > **الخطوة التالية:** ارفع `Barq-project.zip` (1.4.0) وشغّل البناء. إن فشل بسبب Gradle/AGP/Kotlin (أخطاء قبل مرحلة compile) فالسبب تحديث المكتبات (القسم 4)، وإلا فالكود الجديد (القسم 13). إن فشل، نزّل السجل (Actions ← العملية ← ⋯ ← Download log archive)، وأرسله للذكاء الاصطناعي مع هذا الملف، وصلّح **كل** الأخطاء دفعة واحدة. بعد التثبيت: افتح التطبيق مرة ليجري ترحيل قاعدة البيانات، وإن حصل أي عطل انسخ «سجل الأعطال» من الإعدادات.
 >
@@ -542,6 +544,44 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 - لا تغيير في قاعدة البيانات (ما زالت الإصدار 3).
 - `VERSION_NAME = 1.4.0`.
 - الصور في README معاينات؛ إن أرسل المالك لقطات حقيقية تُستبدل بها `docs/readme/screen-inbox.png` و`screen-chat.png` و`screen-groups.png`.
+
+
+---
+
+## 14. المرحلة السادسة (1.5.0): منفّذة في الكود
+
+### التصليحات
+| البند | التنفيذ |
+|---|---|
+| سجل الأعطال للمطوّر فقط | بطاقة العطل في الوارد تظهر فقط إذا `devMode`؛ السجل يُكتب بصمت ويُفتح من وضع المطوّر |
+| ضجيج «gateway-start» | البوابة لا تُشغَّل من `BarqApp` (خلفية)؛ تُعاد من `MainViewModel.onAppVisible` ومن `BootReceiver` فقط |
+| توقف البوابة مع رسائل بالانتظار | `GatewayService.holdPending`: يوقف دفعة البوابة (`pauseBatch`) ويُظهر إشعار `Notifier.notifyGatewayStopped` بزرّي «إكمال الإرسال» (`ACTION_BATCH_RESUME`) و«إلغاء الباقي» (`ACTION_BATCH_CANCEL`) |
+| بطاقة منفصلة للبوابة | إعداد `gatewayBatchId` بدل `lastBatchId`؛ `InboxViewModel.gateway` و`BulkCard(gateway = true)` بعنوان «بوابة برق» |
+| المفتاح القديم | اللوحة تقول «المفتاح تغيّر أو انتهى» وتطلب الرابط الجديد |
+| خفة التطبيق | `MaintenanceWorker`: حذف ملفات الكاش الأقدم من 3 أيام و`PRAGMA wal_checkpoint(TRUNCATE)` |
+| الاختبارات | `PalestineNumberTest`، `SheetImportTest`، `PersonalizeTest`، واختبارات التصنيف الجديدة؛ فشلها في GitHub يظهر كتحذير |
+
+### التطويرات
+| البند | الملفات |
+|---|---|
+| **استيراد Excel/CSV** إلى مجموعة باسم: يكتشف أعمدة الاسم والرقم من العناوين (عربي/إنجليزي) أو وحده، يوحّد الأرقام ويحذف المكرر، يرفض ‎.xls‎ القديم برسالة واضحة. قراءة xlsx بلا مكتبات (zip + XML) | `domain/SheetImport.kt`، `ui/settings/GroupsScreens.kt` (`readFile`، `saveImported`، `ImportDialog`) |
+| **رسائل بالاسم** `{الاسم}` / `{name}` مع معاينة حيّة وزر إدراج؛ من بلا اسم تصله الرسالة نظيفة | `domain/Personalize.kt`، `SendEngine.sendPersonal`، `OutgoingRepository.enqueueEach`، `ComposeScreen.kt` (`NameTokenRow`) |
+| **مفتاح الشريحة** (شريحة 1 · المشغّل / شريحة 2) بكرة منزلقة واهتزاز خفيف، يحل محل أيقونة التقليب | `ui/components/SimSwitch.kt`، `Composer` في `ThreadScreen.kt`، `ThreadViewModel.pickSim` |
+| **أوامر البوابة**: `id` في كل رد، `GET /api/message/{id}` و`GET /api/messages?ids=`، `phones: []` أو `messages: [{phone,message}]` (حتى 5000، نتيجة لكل عنصر)، `sim: 1/2`، `send_at` (ثوانٍ/مللي/ISO). حد الجسم صار 2MB | `sms/gateway/GatewayServer.kt`، `SendEngine.enqueueGatewayMany`، `SendEngine.message` |
+| **قفل التطبيق** (BiometricPrompt بنفس بيانات النظام): ANY = BIOMETRIC_WEAK أو DEVICE_CREDENTIAL، BIOMETRIC، DEVICE (قبل أندرويد 11 يُعرض الاثنان). يقفل عند التشغيل وبعد الغياب أطول من المدة المختارة؛ مهلة دقيقتين عند فتح منتقي ملفات/مشاركة من برق؛ يتجاهل تدوير الشاشة؛ يخفي معاينة «التطبيقات الأخيرة» (13+). أي تغيير في الإعداد يطلب البصمة | `ui/lock/AppLock.kt`، `ui/lock/LockScreen.kt`، `MainActivity` (صار `FragmentActivity`)، `SettingsScreen` (قسم الحماية) |
+| **شو الجديد**: يظهر مرة بعد كل تحديث (حتى من نسخ قبل 1.5.0)، لا يظهر لتثبيت جديد، ومتاح من الإعدادات | `ui/whatsnew/WhatsNew.kt`، `MainViewModel.markVersionSeen` |
+| **targetSdk 36** مع minSdk 26 | `app/build.gradle.kts` |
+| **الرسائل المفضّلة**: نجمة من قائمة الضغط المطوّل، أيقونة على الفقاعة، وشاشة «الرسائل المفضّلة» من قائمة الوارد | `Migration3To4`، `MessageDao.setStarred/observeStarred`، `ui/starred/StarredScreen.kt`، `Routes.STARRED` |
+| **تصنيف أذكى**: جهة الاتصال دائماً شخصية؛ رقم شخص لا يكون «بنك» أبداً و«عروض» فقط مع رابط أو سطر إلغاء اشتراك؛ بطاقة الرمز والويدجت لرسائل `category = OTP` فقط (زر النسخ يبقى في الفقاعة). `ConversationRepository.reclassify` يصحّح القديم مرة (`classVersion = 2`) وبعد كل تغيير في الجهات، ولا يلمس التصنيف اليدوي | `domain/Classifier.kt`، `Daos.kt`، `BarqApp.kt` |
+| **إيموجي Fluent 3D** للتفاعلات (11 صورة WebP بحجم 50KB، رخصة MIT في `NOTICE.md`)؛ غيرها يُعرض بخط الجهاز | `ui/components/FluentEmoji.kt`، `res/drawable-nodpi/emoji_*.webp` |
+| **إصدارات GitHub منفصلة** | `.github/workflows/build.yml` (خطوة «Publish this version as its own release» ووظيفة `backfill`)، `docs/releases/v*.md` |
+
+### إصدارات GitHub
+- كل بناء على فرع ينشر/يحدّث إصدار `v<VERSION_NAME>` بملف `Barq-v<VERSION_NAME>.apk` وملاحظات `docs/releases/v<VERSION_NAME>.md` ويعلّمه «Latest». إعادة بناء نفس الإصدار تستبدل ملفه. `latest-build` يبقى لأن فحص التحديثات داخل التطبيق يقرأه.
+- **تشغيل يدوي** (Run workflow + «Publish older versions») يحوّل APKات البناءات السابقة المحفوظة (90 يوماً) إلى إصدارات v1.0.0… على commit بنائها، ولا يلمس إصداراً موجوداً.
+- **عند كل إصدار جديد:** أنشئ `docs/releases/v<الإصدار>.md` بالعربي، وارفع `VERSION_NAME`.
+- **الرجوع لنسخة أقدم** يتطلب حذف برق أولاً (أندرويد يمنع تثبيت versionCode أقدم)، فيُنصح بنسخة احتياطية قبلها.
+- ملفات الـ workflow لا تُحدَّث من الـ zip (البوت لا يملك صلاحية `workflows`): المالك يلصق `build.yml` يدوياً من GitHub.
 
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.

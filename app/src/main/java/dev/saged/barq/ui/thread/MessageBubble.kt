@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.AttachFile
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ErrorOutline
@@ -176,6 +177,9 @@ fun MessageBubble(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
+                if (message.starred) {
+                    Icon(Icons.Filled.Star, null, Modifier.size(12.dp), tint = if (incoming) scheme.primary else content)
+                }
                 if (message.autoReply) {
                     Icon(Icons.Outlined.SmartToy, null, Modifier.size(12.dp), tint = content.copy(alpha = 0.75f))
                 }
@@ -210,7 +214,7 @@ private fun Reactions(message: MessageEntity, incoming: Boolean) {
         horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        list.distinct().forEach { Text(it, fontSize = 14.sp) }
+        list.distinct().forEach { dev.saged.barq.ui.components.Emoji(it, 18.dp) }
         if (list.size == 2 && list[0] == list[1]) {
             Text("2", style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
         }

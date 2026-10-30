@@ -53,6 +53,8 @@ class GatewayService : Service() {
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var messages: MessageDao
     @Inject lateinit var notifier: Notifier
+    @Inject lateinit var engine: dev.saged.barq.sms.SendEngine
+    @Inject @field:dev.saged.barq.di.AppScope lateinit var appScope: CoroutineScope
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     /** The running gateway; cancelled when it is turned off. */
@@ -182,7 +184,24 @@ class GatewayService : Service() {
         if (runCatching { cm.registerDefaultNetworkCallback(cb) }.isSuccess) networkCallback = cb
     }
 
+    /**
+     * The gateway stopped while some of its messages still wait: they are held (not sent behind
+     * the owner's back) and a notification asks whether to finish sending them or cancel them.
+     */
+    private fun holdPending() {
+        val batchId = server.status.value.batchId
+        if (batchId == 0L) return
+        appScope.launch {
+            val pending = runCatching { messages.batchCounts(batchId).pending }.getOrDefault(0)
+            if (pending > 0) {
+                engine.pauseBatch(batchId)
+                notifier.notifyGatewayStopped(batchId, pending)
+            }
+        }
+    }
+
     private fun shutdown() {
+        if (server.status.value.running) holdPending()
         server.stop()
         session?.cancel()
         session = null
@@ -197,6 +216,7 @@ class GatewayService : Service() {
     }
 
     override fun onDestroy() {
+        if (server.status.value.running) holdPending()
         server.stop()
         runCatching { wifiLock?.takeIf { it.isHeld }?.release() }
         runCatching { wakeLock?.takeIf { it.isHeld }?.release() }

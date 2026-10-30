@@ -123,6 +123,20 @@ class InboxViewModel @Inject constructor(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** The local gateway's current burst, on its own card (never replaces the user's bulk card). */
+    val gateway: StateFlow<BulkUi?> = settings
+        .map { it.gatewayBatchId }
+        .distinctUntilChanged()
+        .flatMapLatest { id ->
+            if (id == 0L) flowOf(null)
+            else combine(engine.observeBatch(id), engine.paused, engine.waitingLimitUntil, engine.stalled) { counts, paused, waitUntil, stalled ->
+                if (counts.total == 0) null else BulkUi(id, counts, false, paused == id, waitUntil > 0L, stalled)
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+
+    fun dismissGateway() = viewModelScope.launch { settingsRepository.setGatewayBatchId(0) }
+
     /** Sends by other apps since the card was last closed (at most the last 12 hours). */
     val external: StateFlow<ExternalUi?> = settings
         .map { it.externalSeenAt }

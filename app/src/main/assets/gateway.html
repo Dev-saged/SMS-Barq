@@ -297,7 +297,7 @@ function sendOne(phone,msg){
   return fetch("/send",{method:"POST",headers:{"Content-Type":"application/json","X-Api-Key":key},body:JSON.stringify({phone:phone,message:msg})})
     .then(function(r){return r.json().catch(function(){return{}}).then(function(j){return{code:r.status,j:j}})})
     .catch(function(){return{code:0,j:{error:"تعذّر الوصول للهاتف"}}})}
-var AR={"Invalid phone number":"رقم غير صالح","Invalid or missing API key":"المفتاح غير صحيح","Message is required":"الرسالة فارغة","Duplicate message":"نفس الرسالة أُرسلت لهذا الرقم قبل قليل","Message is too long":"الرسالة طويلة جداً"};
+var AR={"Invalid phone number":"رقم غير صالح","Invalid or missing API key":"المفتاح تغيّر أو انتهى، اطلب الرابط الجديد","Message is required":"الرسالة فارغة","Duplicate message":"نفس الرسالة أُرسلت لهذا الرقم قبل قليل","Message is too long":"الرسالة طويلة جداً"};
 $("go").onclick=function(){
   if(busy)return;
   if(!key){key=$("key").value.trim();if(!key){toast("الصق مفتاح الإرسال أولاً");$("key").focus();return}store.set("barq_key",key);keyUi()}
@@ -323,7 +323,7 @@ $("go").onclick=function(){
   var ws=[];for(var w=0;w<Math.min(8,total);w++)ws.push(worker());
   Promise.all(ws).then(function(){
     busy=false;$("go").disabled=false;$("goTxt").textContent="إرسال";sp.remove();
-    if(stop)toast("المفتاح غير صحيح، الصقه من جديد");
+    if(stop)toast("المفتاح تغيّر أو انتهى. اطلب الرابط الجديد من صاحب البوابة");
     else if(total===1)toast(ok?"تمام! دخلت الرسالة طابور برق":(dup?"مكررة: أُرسلت لهذا الرقم قبل قليل":"لم تُقبل الرسالة"));
     else toast("قُبلت "+fmt(ok)+" من "+fmt(total));
     if(ok&&mode==="one")$("one").value="";
@@ -336,7 +336,7 @@ function setNum(id,v){var e=$(id),n=+v||0,o=+(e.dataset.v||0);e.dataset.v=n;if(o
 function poll(){
   if(!key){fetch("/health").then(function(r){led(r.ok,r.ok?"متصل":"غير متصل")}).catch(function(){led(false,"غير متصل")});return}
   fetch("/api/status",{headers:{"X-Api-Key":key}}).then(function(r){
-    if(r.status===401){led(true,"متصل");return}
+    if(r.status===401){led(false,"المفتاح انتهى");key="";store.set("barq_key","");keyUi();toast("المفتاح تغيّر أو انتهى. اطلب الرابط الجديد");return}
     return r.json().then(function(s){
       led(true,"متصل");setNum("stIn",s.received);
       var b=s.batch||{};setNum("stSent",b.sent);setNum("stWait",b.pending);setNum("stFail",b.failed);
@@ -346,8 +346,8 @@ poll();setInterval(poll,2500);
 
 /* ---- api snippet ---- */
 var base=location.origin;
-$("api").textContent='curl -X POST '+base+'/send \\\n  -H "X-Api-Key: <KEY>" \\\n  -H "Content-Type: application/json" \\\n  -d \'{"phone":"0599000000","message":"Barq"}\'';
-$("copyApi").onclick=function(){var t=$("api").textContent.replace("<KEY>",key||"<KEY>");
+$("api").textContent='# رسالة واحدة (متوافق مع SMS Sendr)\ncurl -X POST '+base+'/send \\\n  -H "X-Api-Key: <KEY>" -H "Content-Type: application/json" \\\n  -d \'{"phone":"0599000000","message":"Barq"}\'\n\n# عدة أرقام بطلب واحد + الشريحة 2 + جدولة\ncurl -X POST '+base+'/send -H "X-Api-Key: <KEY>" \\\n  -d \'{"phones":["0599000001","0599000002"],"message":"Barq","sim":2,"send_at":"2026-12-01T09:00:00+02:00"}\'\n\n# حالة رسالة (id من الرد)\ncurl '+base+'/api/message/42 -H "X-Api-Key: <KEY>"';
+$("copyApi").onclick=function(){var t=$("api").textContent.split("<KEY>").join(key||"<KEY>");
   (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){toast("تم النسخ")}).catch(function(){
     var a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");toast("تم النسخ")}catch(e){}a.remove()})};
 })();

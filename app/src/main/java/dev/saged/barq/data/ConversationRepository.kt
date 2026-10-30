@@ -1,5 +1,6 @@
 package dev.saged.barq.data
 
+import dev.saged.barq.domain.Classifier
 import android.content.Context
 import androidx.room.withTransaction
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -220,6 +221,27 @@ class ConversationRepository @Inject constructor(
         conversations.all().forEach { conv ->
             val name = contacts.displayName(conv.addresses)
             if (name != conv.displayName) conversations.setDisplayName(conv.threadId, name)
+        }
+        reclassify()
+    }
+
+    /**
+     * Puts conversations back where they belong with today's rules: a saved contact is personal
+     * (never codes, banks or offers), and a person's number is not a bank. Categories the user
+     * chose by hand are never touched. Runs after contacts change and once after updating.
+     */
+    suspend fun reclassify() = withContext(Dispatchers.IO) {
+        val s = settings.current()
+        val ruleList = rules.all()
+        conversations.all().forEach { conv ->
+            if (conv.categoryLocked || conv.category == Category.PERSONAL) return@forEach
+            val address = PhoneUtils.splitAddresses(conv.addresses).singleOrNull() ?: return@forEach
+            val latest = messages.latestIncoming(conv.threadId) ?: return@forEach
+            val category = Classifier.classify(address, latest.body, latest.otp, contacts.isContact(address), s.spamFilter, ruleList)
+            if (category != conv.category) {
+                conversations.setCategory(conv.threadId, category, locked = false)
+                messages.setIncomingCategory(conv.threadId, category)
+            }
         }
     }
 

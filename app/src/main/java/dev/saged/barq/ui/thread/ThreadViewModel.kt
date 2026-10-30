@@ -162,6 +162,13 @@ class ThreadViewModel @Inject constructor(
         onTextChange(if (current.isBlank()) template else "$current $template")
     }
 
+    /** The SIM chosen on the two-SIM switch; remembered for this conversation. */
+    fun pickSim(id: Int) {
+        if (id == subId.value) return
+        subId.value = id
+        viewModelScope.launch { conversations.setSubId(threadId, id) }
+    }
+
     fun cycleSim() {
         val list = sims.value
         if (list.size < 2) return
@@ -238,6 +245,8 @@ class ThreadViewModel @Inject constructor(
         searchTarget.value = if (hit == null) -1 else messageDao.positionInThread(threadId, hit.date, hit.id)
     }
     fun deleteMessage(id: Long) = viewModelScope.launch { conversations.deleteMessage(id) }
+
+    fun setStarred(id: Long, starred: Boolean) = viewModelScope.launch { messageDao.setStarred(id, starred) }
     fun cancelScheduled(id: Long) = viewModelScope.launch { engine.cancelScheduled(id) }
     fun setCategory(category: Category) = viewModelScope.launch { conversations.setCategoryForSender(threadId, category) }
     fun openNotificationSettings() = viewModelScope.launch { notifier.openConversationSettings(threadId) }

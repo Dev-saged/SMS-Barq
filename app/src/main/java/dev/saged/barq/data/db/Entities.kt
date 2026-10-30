@@ -82,6 +82,7 @@ val ConversationEntity.sortTime: Long get() = if (draft != null) maxOf(date, dra
         Index(value = ["otp"]),
         Index(value = ["batchId"]),
         Index(value = ["fromOtherApp", "date"]),
+        Index(value = ["starred", "date"]),
     ]
 )
 data class MessageEntity(
@@ -121,6 +122,14 @@ data class MessageEntity(
     val theirReaction: String? = null,
     /** This message is itself a reaction to message [reactionTo]: it is not shown as a bubble. */
     @ColumnInfo(defaultValue = "0") val reactionTo: Long = 0,
+    /** Starred by the user: kept in "Starred messages". */
+    @ColumnInfo(defaultValue = "0") val starred: Boolean = false,
+)
+
+/** A starred message with the name of its conversation. */
+data class StarredMessage(
+    @androidx.room.Embedded val message: MessageEntity,
+    val displayName: String?,
 )
 
 /** Full-text index over [MessageEntity.searchText]; Room keeps it in sync with triggers. */

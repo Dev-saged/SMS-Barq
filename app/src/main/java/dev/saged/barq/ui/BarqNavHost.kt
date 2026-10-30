@@ -16,6 +16,7 @@ import dev.saged.barq.ui.settings.GroupPickerScreen
 import dev.saged.barq.ui.settings.StatsScreen
 import dev.saged.barq.ui.settings.HealthScreen
 import dev.saged.barq.ui.settings.DeveloperScreen
+import dev.saged.barq.ui.starred.StarredScreen
 import dev.saged.barq.ui.settings.SendLimitScreen
 import dev.saged.barq.ui.batch.BatchScreen
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -60,6 +61,7 @@ object Routes {
     const val SEND_LIMIT = "sendlimit"
     const val HEALTH = "health"
     const val DEVELOPER = "developer"
+    const val STARRED = "starred"
 
     fun thread(id: Long) = "thread/$id"
     fun threadAt(id: Long, messageId: Long) = "thread/$id?focus=$messageId"
@@ -118,6 +120,7 @@ fun BarqNavHost(
                 newMessage = { nav.navigate(Routes.compose()) },
                 openArchive = { nav.navigate(Routes.ARCHIVE) },
                 openBin = { nav.navigate(Routes.BIN) },
+                openStarred = { nav.navigate(Routes.STARRED) },
                 openSettings = { nav.navigate(Routes.SETTINGS) },
                 openContact = { nav.navigate(Routes.contact(it)) },
                 openThreadAt = { thread, message -> nav.navigate(Routes.threadAt(thread, message)) },
@@ -208,6 +211,9 @@ fun BarqNavHost(
             BatchScreen(onBack = back, openThread = { nav.navigate(Routes.thread(it)) })
         }
         composable(Routes.SEND_LIMIT) { SendLimitScreen(onBack = back) }
+        composable(Routes.STARRED) {
+            StarredScreen(onBack = back, openAt = { thread, message -> nav.navigate(Routes.threadAt(thread, message)) })
+        }
         composable(Routes.DEVELOPER) { DeveloperScreen(onBack = back, open = { nav.navigate(it) }) }
         composable(Routes.HEALTH) { HealthScreen(onBack = back, open = { nav.navigate(it) }) }
     }

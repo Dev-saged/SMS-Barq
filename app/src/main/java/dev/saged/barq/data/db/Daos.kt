@@ -186,6 +186,22 @@ interface MessageDao {
     @Query("UPDATE messages SET reaction = :emoji WHERE id = :id")
     suspend fun setReaction(id: Long, emoji: String?)
 
+    @Query("SELECT * FROM messages WHERE threadId = :threadId AND box = 1 ORDER BY date DESC LIMIT 1")
+    suspend fun latestIncoming(threadId: Long): MessageEntity?
+
+    @Query("UPDATE messages SET category = :category WHERE threadId = :threadId AND box = 1")
+    suspend fun setIncomingCategory(threadId: Long, category: Category)
+
+    @Query("UPDATE messages SET starred = :starred WHERE id = :id")
+    suspend fun setStarred(id: Long, starred: Boolean)
+
+    @Query(
+        """SELECT m.*, c.displayName AS displayName FROM messages m
+           LEFT JOIN conversations c ON c.threadId = m.threadId
+           WHERE m.starred = 1 AND c.deleted = 0 ORDER BY m.date DESC"""
+    )
+    fun observeStarred(): kotlinx.coroutines.flow.Flow<List<StarredMessage>>
+
     @Query("UPDATE messages SET theirReaction = :emoji WHERE id = :id")
     suspend fun setTheirReaction(id: Long, emoji: String?)
 
@@ -338,10 +354,12 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE box = 4 AND fromOtherApp = 0 AND date < :before")
     suspend fun staleOutbox(before: Long): List<MessageEntity>
 
-    @Query("SELECT * FROM messages WHERE otp IS NOT NULL ORDER BY date DESC LIMIT 1")
+    // Codes from services only: a number a friend sends keeps its copy button on the bubble but
+    // does not take over the inbox card or the widget.
+    @Query("SELECT * FROM messages WHERE otp IS NOT NULL AND category = 'OTP' ORDER BY date DESC LIMIT 1")
     fun observeLatestOtp(): Flow<MessageEntity?>
 
-    @Query("SELECT * FROM messages WHERE otp IS NOT NULL ORDER BY date DESC LIMIT 1")
+    @Query("SELECT * FROM messages WHERE otp IS NOT NULL AND category = 'OTP' ORDER BY date DESC LIMIT 1")
     suspend fun latestOtp(): MessageEntity?
 
     @Query("SELECT MAX(providerId) FROM messages WHERE isMms = 0")

@@ -18,6 +18,10 @@ import androidx.compose.material.icons.outlined.AlarmOn
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.DeveloperMode
+import androidx.compose.material.icons.outlined.Fingerprint
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.NewReleases
+import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Backup
@@ -71,6 +75,8 @@ import dev.saged.barq.data.backup.BackupManager
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.update.UpdateChecker
 import dev.saged.barq.data.settings.BackupFrequency
+import dev.saged.barq.data.settings.LockMethod
+import dev.saged.barq.ui.lock.AppLock
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.settings.SwipeAction
 import dev.saged.barq.data.settings.ThemeMode
@@ -151,7 +157,13 @@ class SettingsViewModel @Inject constructor(
     fun backupFileName() = backup.backupFileName()
 }
 
-private enum class Dialog { THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP }
+private enum class Dialog { THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP, LOCK_METHOD, LOCK_AFTER }
+
+private tailrec fun android.content.Context.findActivity(): androidx.fragment.app.FragmentActivity? = when (this) {
+    is androidx.fragment.app.FragmentActivity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 private const val TAP_GAP_MS = 800L
 
@@ -169,6 +181,19 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     val failedMsg = stringResource(R.string.operation_failed)
     val backupDoneMsg = stringResource(R.string.backup_now_done)
     val devUnlockedMsg = stringResource(R.string.dev_unlocked)
+    var showWhatsNew by remember { mutableStateOf(false) }
+    val lockUnavailable = stringResource(R.string.lock_unavailable)
+    val activity = remember(context) { context.findActivity() }
+    val lockMethods = listOf(
+        LockMethod.ANY to stringResource(R.string.lock_any),
+        LockMethod.BIOMETRIC to stringResource(R.string.lock_bio),
+        LockMethod.DEVICE to stringResource(R.string.lock_pin),
+    )
+    val lockAfter = listOf(
+        0 to stringResource(R.string.lock_now),
+        60 to stringResource(R.string.lock_1m),
+        300 to stringResource(R.string.lock_5m),
+    )
     var taps by remember { mutableIntStateOf(0) }
     var lastTap by remember { mutableLongStateOf(0L) }
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -271,6 +296,30 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         }
         item {
             SettingsGroup(stringResource(R.string.group_protection)) {
+                // App lock: the phone's own fingerprint / face / screen lock, confirmed before any change.
+                SwitchRow(
+                    Icons.Outlined.Fingerprint, stringResource(R.string.lock_setting), stringResource(R.string.lock_setting_sub),
+                    s.lockEnabled,
+                ) { on ->
+                    val a = activity ?: return@SwitchRow
+                    if (on && !AppLock.available(a, s.lockMethod)) {
+                        toast(lockUnavailable)
+                    } else {
+                        AppLock.prompt(a, s.lockMethod) { ok ->
+                            if (ok) {
+                                if (on) AppLock.unlockNow()
+                                vm.update { setLockEnabled(on) }
+                            }
+                        }
+                    }
+                }
+                if (s.lockEnabled) {
+                    RowDivider()
+                    ClickRow(Icons.Outlined.Lock, stringResource(R.string.lock_method), label(lockMethods, s.lockMethod)) { dialog = Dialog.LOCK_METHOD }
+                    RowDivider()
+                    ClickRow(Icons.Outlined.Timer, stringResource(R.string.lock_after), label(lockAfter, s.lockAfterSec)) { dialog = Dialog.LOCK_AFTER }
+                }
+                RowDivider()
                 SwitchRow(
                     Icons.Outlined.Shield, stringResource(R.string.spam_filter), stringResource(R.string.spam_filter_sub),
                     s.spamFilter,
@@ -351,6 +400,10 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                     }
                 }
                 RowDivider()
+                ClickRow(Icons.Outlined.NewReleases, stringResource(R.string.wn_settings), stringResource(R.string.version_value, BuildConfig.VERSION_NAME)) {
+                    showWhatsNew = true
+                }
+                RowDivider()
                 ClickRow(
                     Icons.Outlined.SystemUpdate, stringResource(R.string.check_updates),
                     stringResource(if (checking) R.string.checking else R.string.check_updates_sub),
@@ -367,6 +420,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         item { AboutCard() }
     }
 
+    if (showWhatsNew) dev.saged.barq.ui.whatsnew.WhatsNewSheet(onClose = { showWhatsNew = false })
     if (pendingSettings != null) {
         AlertDialog(
             onDismissRequest = { vm.pendingSettings.value = null },
@@ -429,6 +483,15 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         }
         Dialog.SWIPE_END -> ChoiceDialog(stringResource(R.string.swipe_end), swipeLabels, s.swipeEnd, { dialog = null }) { v ->
             dialog = null; vm.update { setSwipeEnd(v) }
+        }
+        Dialog.LOCK_METHOD -> ChoiceDialog(stringResource(R.string.lock_method), lockMethods, s.lockMethod, { dialog = null }) { v ->
+            dialog = null
+            val a = activity
+            if (a != null && !AppLock.available(a, v)) toast(lockUnavailable)
+            else if (a != null) AppLock.prompt(a, v) { ok -> if (ok) vm.update { setLockMethod(v) } }
+        }
+        Dialog.LOCK_AFTER -> ChoiceDialog(stringResource(R.string.lock_after), lockAfter, s.lockAfterSec, { dialog = null }) { v ->
+            dialog = null; vm.update { setLockAfter(v) }
         }
         Dialog.BACKUP -> ChoiceDialog(stringResource(R.string.auto_backup), backupLabels, s.backupFrequency, { dialog = null }) { v ->
             dialog = null; vm.update { setBackupFrequency(v) }

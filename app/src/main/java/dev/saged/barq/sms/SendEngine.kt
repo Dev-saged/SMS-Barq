@@ -85,10 +85,24 @@ class SendEngine @Inject constructor(
      * One message from Barq's local gateway (a bot, a script…). It joins [batchId] so the burst is
      * followed like a bulk send; nothing is sent here — the gateway service drains the queue.
      */
-    suspend fun enqueueGateway(address: String, body: String, batchId: Long): Boolean {
-        val sub = resolveSubId(null, null)
-        return outgoing.enqueue(listOf(address), body, sub, 0, autoReply = false, batchId = batchId, clearDraft = false).count > 0
+    suspend fun enqueueGateway(address: String, body: String, batchId: Long, simSlot: Int? = null, scheduledAt: Long = 0): List<Long> =
+        enqueueGatewayMany(listOf(address to body), batchId, simSlot, scheduledAt)
+
+    /**
+     * Many gateway messages in one go (one transaction): (number, text) pairs, already checked and
+     * without repeats. Returns the message ids in the same order. [simSlot] is 1 or 2 (null = the
+     * usual SIM); [scheduledAt] > 0 waits until then.
+     */
+    suspend fun enqueueGatewayMany(items: List<Pair<String, String>>, batchId: Long, simSlot: Int? = null, scheduledAt: Long = 0): List<Long> {
+        val slotSub = simSlot?.let { s -> sims.activeSims().firstOrNull { it.slot == s - 1 }?.subId }
+        val sub = resolveSubId(null, slotSub)
+        val queued = outgoing.enqueueEach(items, sub, scheduledAt, batchId)
+        if (queued.scheduled.isNotEmpty()) queued.scheduled.forEach { scheduler.schedule(it.id, it.scheduledAt) }
+        return queued.ids
     }
+
+    /** One message as it is now (the gateway answers "where is message 42?"). */
+    suspend fun message(id: Long) = messages.get(id)
 
     /** Counts for one batch right now (the gateway's web panel asks for them). */
     suspend fun batchCounts(batchId: Long): BatchCounts = messages.batchCounts(batchId)
@@ -128,6 +142,36 @@ class SendEngine @Inject constructor(
         scope.launch {
             try {
                 outgoing.enqueue(unique, body, sub, 0, false, batchId, clearDraft = false)
+            } finally {
+                state.preparing.value = false
+            }
+            if (!started) queue.kick()
+        }
+        return Outcome.Bulk(batchId, unique.size)
+    }
+
+    /**
+     * A message where every person gets their own text ("مرحبا {الاسم}"). Many people become a
+     * bulk send with live progress, exactly like [sendNew].
+     */
+    suspend fun sendPersonal(items: List<Pair<String, String>>, subId: Int?, scheduledAt: Long = 0): Outcome {
+        val unique = items.map { (a, b) -> PhoneUtils.localPs(a.trim()) to b.trim() }
+            .filter { (a, b) -> a.isNotEmpty() && b.isNotEmpty() }
+            .distinctBy { PhoneUtils.matchKey(it.first) }
+        if (unique.isEmpty()) return Outcome.Empty
+        val sub = resolveSubId(null, subId)
+        if (unique.size == 1 || scheduledAt > 0) {
+            val queued = outgoing.enqueueEach(unique, sub, scheduledAt, 0)
+            afterQueue(queued)
+            return if (queued.threadIds.size == 1) Outcome.Single(queued.threadIds.first()) else Outcome.Bulk(0, queued.count)
+        }
+        val batchId = System.currentTimeMillis()
+        settings.setLastBatchId(batchId)
+        state.preparing.value = true
+        val started = BulkSendService.start(context)
+        scope.launch {
+            try {
+                outgoing.enqueueEach(unique, sub, 0, batchId)
             } finally {
                 state.preparing.value = false
             }

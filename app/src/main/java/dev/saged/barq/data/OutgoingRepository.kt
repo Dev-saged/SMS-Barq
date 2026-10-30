@@ -36,7 +36,7 @@ class OutgoingRepository @Inject constructor(
 ) {
     private val messages = db.messages()
 
-    data class Queued(val threadIds: List<Long>, val scheduled: List<MessageEntity>, val count: Int)
+    data class Queued(val threadIds: List<Long>, val scheduled: List<MessageEntity>, val count: Int, val ids: List<Long> = emptyList())
 
     /**
      * Queues one plain SMS per recipient (never converted to MMS). Long texts are split into
@@ -62,6 +62,7 @@ class OutgoingRepository @Inject constructor(
             unique.map { it to resolver.resolve(it) }
         }
         val scheduled = ArrayList<MessageEntity>()
+        val ids = ArrayList<Long>(targets.size)
         db.withTransaction {
             targets.forEachIndexed { i, (address, threadId) ->
                 val msg = MessageEntity(
@@ -71,6 +72,7 @@ class OutgoingRepository @Inject constructor(
                     reactionTo = reactionTo,
                 )
                 val id = messages.insert(msg)
+                ids += id
                 if (scheduledAt > 0) scheduled += msg.copy(id = id)
             }
         }
@@ -78,7 +80,45 @@ class OutgoingRepository @Inject constructor(
         if (clearDraft) threadIds.forEach { conversations.clearDraft(it) }
         if (subId >= 0 && threadIds.size == 1) conversations.setSubId(threadIds.first(), subId)
         conversations.refreshMany(threadIds, revive = true)
-        Queued(threadIds, scheduled, targets.size)
+        Queued(threadIds, scheduled, targets.size, ids)
+    }
+
+    /**
+     * Like [enqueue], but every recipient gets their own text (a message with each person's name).
+     * [items] are (address, body); the same number twice keeps only the first.
+     */
+    suspend fun enqueueEach(
+        items: List<Pair<String, String>>,
+        subId: Int,
+        scheduledAt: Long,
+        batchId: Long,
+    ): Queued = withContext(Dispatchers.IO) {
+        val unique = items.map { (a, b) -> a.trim() to b.trim() }
+            .filter { (a, b) -> a.isNotEmpty() && b.isNotEmpty() }
+            .distinctBy { PhoneUtils.matchKey(it.first) }
+        if (unique.isEmpty()) return@withContext Queued(emptyList(), emptyList(), 0)
+        val now = System.currentTimeMillis()
+        val targets = lock.withLock {
+            val resolver = conversations.threadResolver()
+            unique.map { (address, body) -> Triple(address, body, resolver.resolve(address)) }
+        }
+        val scheduled = ArrayList<MessageEntity>()
+        val ids = ArrayList<Long>(targets.size)
+        db.withTransaction {
+            targets.forEachIndexed { i, (address, body, threadId) ->
+                val msg = MessageEntity(
+                    threadId = threadId, address = address, body = body,
+                    date = (if (scheduledAt > 0) scheduledAt else now) + i, box = Box.QUEUED,
+                    subId = subId, scheduledAt = scheduledAt, batchId = batchId,
+                )
+                val id = messages.insert(msg)
+                ids += id
+                if (scheduledAt > 0) scheduled += msg.copy(id = id)
+            }
+        }
+        val threadIds = targets.map { it.third }.distinct()
+        conversations.refreshMany(threadIds, revive = true)
+        Queued(threadIds, scheduled, targets.size, ids)
     }
 
     /** Called right before the message is handed to the radio. */

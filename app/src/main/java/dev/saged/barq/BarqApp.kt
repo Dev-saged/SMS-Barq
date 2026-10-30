@@ -38,6 +38,7 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var messages: MessageDao
     @Inject lateinit var sendQueue: SendQueue
     @Inject lateinit var settings: dev.saged.barq.data.settings.SettingsRepository
+    @Inject lateinit var conversations: dev.saged.barq.data.ConversationRepository
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -53,10 +54,13 @@ class BarqApp : Application(), Configuration.Provider {
         scope.launch {
             seedDefaults()
             resumeQueue()
-            // The local gateway was left on: bring it back (Android may refuse while in the background).
-            if (runCatching { settings.current().gatewayEnabled }.getOrDefault(false)) {
-                dev.saged.barq.sms.gateway.GatewayService.start(this@BarqApp)
-            }
+            // 1.5.0: contacts are always personal — fix conversations sorted by the old rules, once.
+            runCatching {
+                if (settings.current().classVersion < CLASS_RULES) {
+                    conversations.reclassify()
+                    settings.setClassVersion(CLASS_RULES)
+                }
+            }.onFailure { CrashLog.warn("reclassify", it) }
         }
     }
 
@@ -80,5 +84,10 @@ class BarqApp : Application(), Configuration.Provider {
         if (autoReply.ruleCount() == 0) {
             AutoReplyEngine.defaultRules.forEach { autoReply.upsertRule(it) }
         }
+    }
+
+    private companion object {
+        /** Bump when the classification rules change, so old conversations are sorted again. */
+        const val CLASS_RULES = 2
     }
 }

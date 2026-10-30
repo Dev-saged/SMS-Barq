@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.outlined.CleaningServices
 import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.UploadFile
 import androidx.compose.material3.Checkbox
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
@@ -72,6 +73,7 @@ import dev.saged.barq.data.db.SendGroupEntity
 import dev.saged.barq.data.db.SendGroupMemberEntity
 import dev.saged.barq.data.db.SendGroupWithCount
 import dev.saged.barq.domain.PhoneUtils
+import dev.saged.barq.domain.SheetImport
 import dev.saged.barq.ui.components.ContactList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
@@ -90,6 +92,7 @@ import javax.inject.Inject
 @OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class GroupsViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     savedState: SavedStateHandle,
     private val dao: GroupDao,
     private val contacts: ContactsRepository,
@@ -181,6 +184,49 @@ class GroupsViewModel @Inject constructor(
             } finally {
                 working.value = false
             }
+        }
+    }
+
+    /** What a chosen Excel / CSV file holds, waiting for the user to name and save it. */
+    val imported = MutableStateFlow<Pair<String, SheetImport.Result>?>(null)
+
+    /** Reads an Excel (.xlsx) or CSV file: names and numbers, numbers tidied, repeats dropped. */
+    fun readFile(uri: android.net.Uri, failed: (Boolean) -> Unit) {
+        if (working.value) return
+        working.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val name = runCatching {
+                    context.contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+                        ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+                }.getOrNull()?.substringBeforeLast('.').orEmpty()
+                val result = context.contentResolver.openInputStream(uri)?.use { SheetImport.read(it) }
+                kotlinx.coroutines.withContext(Dispatchers.Main) {
+                    if (result == null || result.people.isEmpty()) failed(false) else imported.value = name to result
+                }
+            } catch (e: SheetImport.UnsupportedFormat) {
+                kotlinx.coroutines.withContext(Dispatchers.Main) { failed(true) }
+            } catch (t: Throwable) {
+                dev.saged.barq.util.CrashLog.warn("import", t)
+                kotlinx.coroutines.withContext(Dispatchers.Main) { failed(false) }
+            } finally {
+                working.value = false
+            }
+        }
+    }
+
+    /** Saves the imported people as a new group with the given name, then opens it. */
+    fun saveImported(name: String, done: (Long) -> Unit) {
+        val data = imported.value?.second ?: return
+        if (name.isBlank()) return
+        imported.value = null
+        viewModelScope.launch {
+            val id = db.withTransaction {
+                val id = dao.insert(SendGroupEntity(name = name.trim()))
+                dao.addMembers(data.people.map { SendGroupMemberEntity(id, it.phone, it.name) })
+                id
+            }
+            done(id)
         }
     }
 
@@ -285,6 +331,14 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
     var merging by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val mergedMsg = stringResource(R.string.group_merged)
+    val imported by vm.imported.collectAsStateWithLifecycle()
+    val importEmpty = stringResource(R.string.import_empty)
+    val importXls = stringResource(R.string.import_xls)
+    val fileLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri != null) vm.readFile(uri) { oldExcel -> Toast.makeText(context, if (oldExcel) importXls else importEmpty, Toast.LENGTH_LONG).show() }
+    }
 
     SettingsScaffold(
         title = stringResource(R.string.groups_title),
@@ -298,13 +352,33 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
             )
-            if (groups.size + deviceGroups.size >= 2) {
-                FilledTonalButton(onClick = { merging = true }, enabled = !working, modifier = Modifier.padding(bottom = 8.dp)) {
-                    Icon(Icons.Outlined.SelectAll, null)
-                    Text(
-                        stringResource(if (working) R.string.groups_adding else R.string.group_merge),
-                        modifier = Modifier.padding(start = 6.dp),
-                    )
+            FlowRow(
+                modifier = Modifier.padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                FilledTonalButton(
+                    onClick = {
+                        fileLauncher.launch(
+                            arrayOf(
+                                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                "text/csv", "text/comma-separated-values", "text/plain", "application/vnd.ms-excel", "*/*",
+                            )
+                        )
+                    },
+                    enabled = !working,
+                ) {
+                    Icon(Icons.Outlined.UploadFile, null)
+                    Text(stringResource(R.string.import_excel), modifier = Modifier.padding(start = 6.dp))
+                }
+                if (groups.size + deviceGroups.size >= 2) {
+                    FilledTonalButton(onClick = { merging = true }, enabled = !working) {
+                        Icon(Icons.Outlined.SelectAll, null)
+                        Text(
+                            stringResource(if (working) R.string.groups_adding else R.string.group_merge),
+                            modifier = Modifier.padding(start = 6.dp),
+                        )
+                    }
                 }
             }
         }
@@ -316,6 +390,14 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
         }
     }
 
+    imported?.let { (fileName, result) ->
+        ImportDialog(
+            fileName = fileName,
+            result = result,
+            onDismiss = { vm.imported.value = null },
+            onSave = { name -> vm.saveImported(name) { openGroup(it) } },
+        )
+    }
     if (merging) {
         MergeDialog(
             groups = groups,
@@ -616,4 +698,66 @@ private fun CheckLine(label: String, checked: Boolean, onToggle: () -> Unit) {
         Checkbox(checked = checked, onCheckedChange = { onToggle() })
         Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
     }
+}
+
+// ---------------------------------------------------------------------------------- import
+
+/** What the Excel / CSV file holds: how many people, which columns, a preview, and a name to save it under. */
+@Composable
+private fun ImportDialog(fileName: String, result: SheetImport.Result, onDismiss: () -> Unit, onSave: (String) -> Unit) {
+    var name by remember { mutableStateOf(fileName) }
+    val scheme = MaterialTheme.colorScheme
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Outlined.UploadFile, null, tint = scheme.primary) },
+        title = { Text(stringResource(R.string.import_found, result.people.size)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                if (result.repeated > 0 || result.invalid > 0) {
+                    Text(
+                        stringResource(R.string.import_skipped, result.repeated, result.invalid),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                if (result.nameColumn != null || result.phoneColumn != null) {
+                    Text(
+                        stringResource(R.string.import_columns, result.nameColumn ?: "—", result.phoneColumn ?: "—"),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(scheme.surfaceContainerHigh)
+                        .padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    result.people.take(4).forEach { p ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(p.name ?: "—", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f), maxLines = 1)
+                            Text(p.phone, style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr), color = scheme.onSurfaceVariant)
+                        }
+                    }
+                    if (result.people.size > 4) {
+                        Text(stringResource(R.string.import_more, result.people.size - 4), style = MaterialTheme.typography.labelSmall, color = scheme.primary)
+                    }
+                }
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.group_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(stringResource(R.string.import_name_hint), style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+            }
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = { onSave(name) }) { Text(stringResource(R.string.import_save)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
 }

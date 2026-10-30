@@ -418,6 +418,27 @@ class Notifier @Inject constructor(
             .build()
     }
 
+    /** The gateway stopped with messages still waiting: finish sending them, or cancel them. */
+    fun notifyGatewayStopped(batchId: Long, pending: Int) {
+        if (!canPost()) return
+        val n = NotificationCompat.Builder(context, CH_STATUS)
+            .setSmallIcon(R.drawable.ic_stat_barq)
+            .setColor(ContextCompat.getColor(context, R.color.brand))
+            .setContentTitle(context.getString(R.string.gateway_stopped_title))
+            .setContentText(context.getString(R.string.gateway_stopped_text, pending))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(context.getString(R.string.gateway_stopped_text, pending)))
+            .setContentIntent(openApp(GATEWAY_STOPPED_ID))
+            .setAutoCancel(true)
+            .addAction(R.drawable.ic_done, context.getString(R.string.gateway_continue),
+                action(NotificationActionReceiver.ACTION_BATCH_RESUME, -1, batchId = batchId))
+            .addAction(R.drawable.ic_done, context.getString(R.string.gateway_cancel_rest),
+                action(NotificationActionReceiver.ACTION_BATCH_CANCEL, -1, batchId = batchId))
+            .build()
+        runCatching { manager.notify(GATEWAY_STOPPED_ID, n) }
+    }
+
+    fun cancelGatewayStopped() = manager.cancel(GATEWAY_STOPPED_ID)
+
     fun updateGateway(status: GatewayServer.Status, counts: BatchCounts) {
         if (!canPost() || !status.running) return
         runCatching { manager.notify(GATEWAY_ID, gateway(status, counts)) }
@@ -446,6 +467,7 @@ class Notifier @Inject constructor(
         const val SENDING_ID = 999_300
         const val BULK_ID = 999_200
         const val GATEWAY_ID = 999_400
+        const val GATEWAY_STOPPED_ID = 999_401
         private const val BULK_DONE_ID = 999_201
         private const val SUMMARY_ID = 999_100
         private const val FAILED_ID_BASE = 1_000_000

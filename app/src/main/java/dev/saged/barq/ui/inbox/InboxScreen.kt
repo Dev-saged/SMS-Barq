@@ -35,6 +35,8 @@ import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.StarOutline
+import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
@@ -134,6 +136,7 @@ fun InboxScreen(
     newMessage: () -> Unit,
     openArchive: () -> Unit,
     openBin: () -> Unit,
+    openStarred: () -> Unit,
     openSettings: () -> Unit,
     openContact: (Long) -> Unit,
     openCrashLog: () -> Unit,
@@ -152,6 +155,7 @@ fun InboxScreen(
     val hits by vm.messageHits.collectAsStateWithLifecycle()
     val bulk by vm.bulk.collectAsStateWithLifecycle()
     val external by vm.external.collectAsStateWithLifecycle()
+    val gateway by vm.gateway.collectAsStateWithLifecycle()
     val isDefault by mainViewModel.isDefault.collectAsStateWithLifecycle()
     val sync by mainViewModel.syncProgress.collectAsStateWithLifecycle()
     val crashPending by mainViewModel.crashPending.collectAsStateWithLifecycle()
@@ -187,7 +191,7 @@ fun InboxScreen(
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             if (selection.isEmpty()) {
-                InboxTopBar(openArchive, openBin, openSettings)
+                InboxTopBar(openArchive, openBin, openSettings, openStarred)
             } else {
                 // The buttons follow what is selected: all pinned → "unpin", all muted → "unmute".
                 val chosen = pagingItems.itemSnapshotList.items.filter { it.threadId in selection }
@@ -236,7 +240,8 @@ fun InboxScreen(
                     )
                 }
             }
-            if (crashPending) {
+            // Crashes are for the developer only: normal users never see a crash card.
+            if (crashPending && settings.devMode) {
                 item(key = "crash", contentType = "card") {
                     InfoCard(
                         icon = Icons.Outlined.BugReport,
@@ -265,6 +270,23 @@ fun InboxScreen(
                         onDetails = { openBatch(b.batchId) },
                         onLimit = openSendLimit,
                     )
+                }
+            }
+            gateway?.let { g ->
+                if (!searching) {
+                    item(key = "gateway", contentType = "card") {
+                        BulkCard(
+                            ui = g,
+                            gateway = true,
+                            onPause = { vm.pauseBulk(g.batchId) },
+                            onResume = vm::resumeBulk,
+                            onCancel = { vm.cancelBulk(g.batchId) },
+                            onResend = { vm.resendFailed(g.batchId) },
+                            onClose = { vm.dismissGateway() },
+                            onDetails = { openBatch(g.batchId) },
+                            onLimit = openSendLimit,
+                        )
+                    }
                 }
             }
             external?.let { e ->
@@ -352,7 +374,7 @@ fun InboxScreen(
 }
 
 @Composable
-private fun InboxTopBar(openArchive: () -> Unit, openBin: () -> Unit, openSettings: () -> Unit) {
+private fun InboxTopBar(openArchive: () -> Unit, openBin: () -> Unit, openSettings: () -> Unit, openStarred: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
     TopAppBar(
         title = {
@@ -367,6 +389,11 @@ private fun InboxTopBar(openArchive: () -> Unit, openBin: () -> Unit, openSettin
                     Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.more))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.starred_title)) },
+                        leadingIcon = { Icon(Icons.Outlined.StarOutline, null) },
+                        onClick = { menu = false; openStarred() },
+                    )
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.archive)) },
                         leadingIcon = { Icon(Icons.Outlined.Archive, null) },
@@ -593,6 +620,7 @@ private fun OtpCard(message: MessageEntity, onCopied: () -> Unit, onDismiss: () 
 @Composable
 private fun BulkCard(
     ui: BulkUi,
+    gateway: Boolean = false,
     onPause: () -> Unit,
     onResume: () -> Unit,
     onCancel: () -> Unit,
@@ -624,9 +652,19 @@ private fun BulkCard(
                 Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(scheme.primaryContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.AutoMirrored.Outlined.Send, null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                Icon(
+                    if (gateway) Icons.Outlined.Wifi else Icons.AutoMirrored.Outlined.Send, null,
+                    tint = scheme.onPrimaryContainer, modifier = Modifier.size(18.dp),
+                )
             }
-            Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            if (gateway) {
+                Column(Modifier.weight(1f)) {
+                    Text(stringResource(R.string.gateway_card_title), style = MaterialTheme.typography.titleSmall)
+                    Text(title, style = MaterialTheme.typography.labelMedium, color = scheme.onSurfaceVariant)
+                }
+            } else {
+                Text(title, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+            }
             if (finished) {
                 Icon(
                     Icons.Outlined.Close, stringResource(R.string.dismiss), tint = scheme.onSurfaceVariant,

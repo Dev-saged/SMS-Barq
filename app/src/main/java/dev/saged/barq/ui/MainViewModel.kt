@@ -65,6 +65,9 @@ class MainViewModel @Inject constructor(
             sync.reconcile(repairFailed = !repairedThisLaunch)
             repairedThisLaunch = true
             if (_isDefault.value) engine.kick()
+            // The local gateway was left on: bring it back now that Barq is on screen (Android
+            // refuses foreground services started from the background, so it is never tried there).
+            if (settingsRepository.current().gatewayEnabled) dev.saged.barq.sms.gateway.GatewayService.start(context)
         }
     }
 
@@ -91,7 +94,15 @@ class MainViewModel @Inject constructor(
         @Volatile var repairedThisLaunch = false
     }
 
+    /** "What's new" was seen (or this is a fresh install): remember the current version. */
+    fun markVersionSeen() {
+        viewModelScope.launch { settingsRepository.setSeenVersion(dev.saged.barq.BuildConfig.VERSION_NAME) }
+    }
+
     fun finishOnboarding() {
-        viewModelScope.launch { settingsRepository.setOnboardingDone(true) }
+        viewModelScope.launch {
+            settingsRepository.setSeenVersion(dev.saged.barq.BuildConfig.VERSION_NAME)
+            settingsRepository.setOnboardingDone(true)
+        }
     }
 }

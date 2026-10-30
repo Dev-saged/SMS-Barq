@@ -39,7 +39,7 @@ class Converters {
         SendGroupEntity::class,
         SendGroupMemberEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -53,7 +53,7 @@ abstract class BarqDatabase : RoomDatabase() {
     abstract fun groups(): GroupDao
 
     companion object {
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3, Migration3To4)
     }
 }
 
@@ -136,5 +136,13 @@ object Migration2To3 : Migration(2, 3) {
         db.execSQL(
             "CREATE INDEX IF NOT EXISTS `index_messages_fromOtherApp_date` ON `messages` (`fromOtherApp`, `date`)"
         )
+    }
+}
+
+/** Version 3 → 4 (Barq 1.5.0): starred messages. Nothing else changes, nothing is lost. */
+object Migration3To4 : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `messages` ADD COLUMN `starred` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_starred_date` ON `messages` (`starred`, `date`)")
     }
 }

@@ -21,6 +21,8 @@ enum class ThemeMode { SYSTEM, LIGHT, DARK }
 enum class SwipeAction { NONE, ARCHIVE, DELETE, READ, PIN, MUTE }
 enum class AutoReplyMode { FIXED, SMART }
 enum class BackupFrequency { OFF, DAILY, WEEKLY }
+/** How Barq is unlocked: fingerprint/face or the phone's PIN, only fingerprint/face, or only the PIN. */
+enum class LockMethod { ANY, BIOMETRIC, DEVICE }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -72,6 +74,17 @@ data class AppSettings(
     val gatewayKey: String = "",
     /** The same text to the same number within a few minutes is answered as a duplicate (409). */
     val gatewayDedupe: Boolean = true,
+    /** The gateway's current burst, shown on its own inbox card (0 = none). Not backed up. */
+    val gatewayBatchId: Long = 0,
+    /** App lock with the phone's own fingerprint / face / screen lock. */
+    val lockEnabled: Boolean = false,
+    val lockMethod: LockMethod = LockMethod.ANY,
+    /** Seconds away from Barq before it asks again (0 = every time). */
+    val lockAfterSec: Int = 0,
+    /** Last version whose "what's new" was shown (empty on a fresh install). */
+    val seenVersion: String = "",
+    /** Version of the classification rules last applied to old conversations. */
+    val classVersion: Int = 0,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -117,6 +130,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val gatewayPort = intPreferencesKey("gateway_port")
         val gatewayKey = stringPreferencesKey("gateway_key")
         val gatewayDedupe = booleanPreferencesKey("gateway_dedupe")
+        val gatewayBatchId = longPreferencesKey("gateway_batch_id")
+        val lockEnabled = booleanPreferencesKey("lock_enabled")
+        val lockMethod = stringPreferencesKey("lock_method")
+        val lockAfter = intPreferencesKey("lock_after")
+        val seenVersion = stringPreferencesKey("seen_version")
+        val classVersion = intPreferencesKey("class_version")
     }
 
     private inline fun <reified T : Enum<T>> Preferences.enumOf(key: Preferences.Key<String>, default: T): T =
@@ -162,6 +181,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             gatewayPort = p[K.gatewayPort] ?: d.gatewayPort,
             gatewayKey = p[K.gatewayKey] ?: d.gatewayKey,
             gatewayDedupe = p[K.gatewayDedupe] ?: d.gatewayDedupe,
+            gatewayBatchId = p[K.gatewayBatchId] ?: d.gatewayBatchId,
+            lockEnabled = p[K.lockEnabled] ?: d.lockEnabled,
+            lockMethod = p.enumOf(K.lockMethod, d.lockMethod),
+            lockAfterSec = p[K.lockAfter] ?: d.lockAfterSec,
+            seenVersion = p[K.seenVersion] ?: d.seenVersion,
+            classVersion = p[K.classVersion] ?: d.classVersion,
         )
     }
 
@@ -210,6 +235,12 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setGatewayPort(v: Int) = set(K.gatewayPort, v)
     suspend fun setGatewayKey(v: String) = set(K.gatewayKey, v)
     suspend fun setGatewayDedupe(v: Boolean) = set(K.gatewayDedupe, v)
+    suspend fun setGatewayBatchId(v: Long) = set(K.gatewayBatchId, v)
+    suspend fun setLockEnabled(v: Boolean) = set(K.lockEnabled, v)
+    suspend fun setLockMethod(v: LockMethod) = set(K.lockMethod, v.name)
+    suspend fun setLockAfter(v: Int) = set(K.lockAfter, v)
+    suspend fun setSeenVersion(v: String) = set(K.seenVersion, v)
+    suspend fun setClassVersion(v: Int) = set(K.classVersion, v)
 
     /** Applies settings restored from a backup (everything the user chose, nothing technical). */
     suspend fun restore(s: AppSettings) {

@@ -3,8 +3,14 @@ package dev.saged.barq
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.LaunchedEffect
+import androidx.fragment.app.FragmentActivity
+import dev.saged.barq.ui.lock.AppLock
+import dev.saged.barq.ui.lock.LockScreen
+import dev.saged.barq.ui.whatsnew.WhatsNewHost
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -29,7 +35,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : FragmentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
@@ -44,10 +50,16 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
         setContent {
             val settings by viewModel.settings.collectAsStateWithLifecycle()
+            val locked by AppLock.locked.collectAsStateWithLifecycle()
             val s = settings
             if (s == null) {
                 Box(Modifier.fillMaxSize())
             } else {
+                LaunchedEffect(s.lockEnabled) {
+                    if (!s.lockEnabled) AppLock.onForeground(false, 0)
+                    // The recent-apps preview hides Barq's messages while the lock is on (Android 13+).
+                    if (Build.VERSION.SDK_INT >= 33) setRecentsScreenshotEnabled(!s.lockEnabled)
+                }
                 BarqTheme(s) {
                     CompositionLocalProvider(LocalContacts provides contacts) {
                         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
@@ -56,6 +68,14 @@ class MainActivity : ComponentActivity() {
                                 pendingRoute = pendingRoute,
                                 mainViewModel = viewModel,
                             )
+                            if (s.lockEnabled && locked && s.onboardingDone) {
+                                BackHandler { moveTaskToBack(true) }
+                                LockScreen(s.lockMethod) {
+                                    AppLock.prompt(this@MainActivity, s.lockMethod) { ok -> if (ok) AppLock.open() }
+                                }
+                            } else if (s.onboardingDone) {
+                                WhatsNewHost(viewModel)
+                            }
                         }
                     }
                 }
@@ -70,7 +90,26 @@ class MainActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        viewModel.settings.value?.let { AppLock.onForeground(it.lockEnabled, it.lockAfterSec) }
         viewModel.onAppVisible()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        if (!isChangingConfigurations) AppLock.onBackground()
+    }
+
+    // Barq opening a picker, a share sheet or a link is not "leaving": the lock gives a short grace.
+    override fun startActivity(intent: Intent?, options: Bundle?) {
+        AppLock.leavingForPicker()
+        super.startActivity(intent, options)
+    }
+
+    @Deprecated("Called by the activity-result APIs")
+    override fun startActivityForResult(intent: Intent, requestCode: Int, options: Bundle?) {
+        AppLock.leavingForPicker()
+        @Suppress("DEPRECATION")
+        super.startActivityForResult(intent, requestCode, options)
     }
 
     private fun handleIntent(intent: Intent?) {

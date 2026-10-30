@@ -36,6 +36,7 @@ class MaintenanceWorker @AssistedInject constructor(
     private val repository: ConversationRepository,
     private val backup: BackupManager,
     private val settings: SettingsRepository,
+    private val db: dev.saged.barq.data.db.BarqDatabase,
 ) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
@@ -47,6 +48,14 @@ class MaintenanceWorker @AssistedInject constructor(
         File(applicationContext.cacheDir, "mms").listFiles()
             ?.filter { System.currentTimeMillis() - it.lastModified() > day }
             ?.forEach { it.delete() }
+
+        // Keep Barq light: leftovers in the cache older than 3 days go, and the database journal is
+        // folded back into the main file so it never grows on its own.
+        val threeDays = 3 * day
+        applicationContext.cacheDir.walkBottomUp()
+            .filter { it != applicationContext.cacheDir && System.currentTimeMillis() - it.lastModified() > threeDays }
+            .forEach { if (it.isFile || it.list().isNullOrEmpty()) it.delete() }
+        runCatching { db.openHelper.writableDatabase.query("PRAGMA wal_checkpoint(TRUNCATE)").use { it.moveToFirst() } }
 
         val s = settings.current()
         val interval = when (s.backupFrequency) {

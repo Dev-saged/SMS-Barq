@@ -5,7 +5,12 @@ import dev.saged.barq.data.db.CategoryRuleEntity
 
 /**
  * Local, offline message classification. Nothing leaves the phone.
- * Priority: user rule → OTP → spam → bank → offers → personal.
+ *
+ * Priority: user rule → a saved contact is always personal → OTP → spam → bank / offers → personal.
+ * Banks and shops send from names ("MyBank") or short codes, never from a person's mobile number,
+ * so an unknown mobile number is only "offers" when it looks like a marketing blast (a link or an
+ * unsubscribe line), and never "bank". A code from a friend keeps its copy button on the bubble;
+ * only the conversation's category stays personal.
  */
 object Classifier {
 
@@ -24,6 +29,9 @@ object Classifier {
             "congratulations|you have won|you won|winner|claim (your|now)|prize|click (here|the link|below)|account (suspended|locked)|" +
             "verify your account|bitcoin|crypto|investment|loan approved|قرض فوري|ربح يومي|استثمار مضمون)"
     )
+
+    /** Lines only marketing messages carry. */
+    private val optOut = Regex("(?i)(لإلغاء الاشتراك|لالغاء الاشتراك|إلغاء الاشتراك|ارسل stop|أرسل stop|send stop|reply stop|text stop|unsubscribe|opt out)")
 
     private val url = Regex("(?i)(https?://|www\\.|\\b[a-z0-9-]+\\.(com|net|org|xyz|top|info|click|link|ly|me|io)\\b)")
 
@@ -44,10 +52,16 @@ object Classifier {
         rules: List<CategoryRuleEntity>,
     ): Category {
         matchRule(address, rules)?.let { return it.category }
+        if (isContact) return Category.PERSONAL
         if (otp != null) return Category.OTP
-        if (spamFilter && !isContact && spamScore(address, body) >= 3) return Category.SPAM
-        if (bank.containsMatchIn(body)) return Category.BANK
-        if (!isContact && offers.containsMatchIn(body)) return Category.OFFERS
+        if (spamFilter && spamScore(address, body) >= 3) return Category.SPAM
+        val person = PhoneUtils.isReplyable(address)
+        if (!person) {
+            if (bank.containsMatchIn(body)) return Category.BANK
+            if (offers.containsMatchIn(body)) return Category.OFFERS
+        } else if (offers.containsMatchIn(body) && (url.containsMatchIn(body) || optOut.containsMatchIn(body))) {
+            return Category.OFFERS
+        }
         return Category.PERSONAL
     }
 

@@ -4,6 +4,8 @@ import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.BuildConfig
 import dev.saged.barq.R
+import dev.saged.barq.data.db.Box
+import dev.saged.barq.data.db.DeliveryStatus
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.sms.SendEngine
@@ -173,6 +175,13 @@ class GatewayServer @Inject constructor(
                 else respond(out, 405, result(false, false, "method_not_allowed", "Use POST"))
             path == "/health" || path == "/api/health" -> respond(out, 200, health())
             path == "/api/status" -> status(req, out)
+            path.startsWith("/api/message/") -> messageState(req, out, listOfNotNull(path.substringAfterLast('/').toLongOrNull()), single = true)
+            path == "/api/messages" -> messageState(
+                req, out,
+                Regex("(?:^|&)ids=([^&]*)").find(req.query)?.groupValues?.get(1).orEmpty()
+                    .replace("%2C", ",", ignoreCase = true).split(',').mapNotNull { it.trim().toLongOrNull() }.distinct().take(MAX_ITEMS),
+                single = false,
+            )
             req.method != "GET" -> respond(out, 405, result(false, false, "method_not_allowed", "Use GET"))
             path == "/" || path == "/g" || path == "/panel" -> respond(out, 200, page(), "text/html; charset=utf-8")
             path == "/favicon.svg" -> respond(out, 200, FAVICON, "image/svg+xml", cache = true)
@@ -212,6 +221,16 @@ class GatewayServer @Inject constructor(
         } catch (t: Throwable) {
             return reject(out, 400, "bad_request", "Invalid JSON body")
         }
+        // Optional, Barq only: which SIM (1 or 2) and when to send (scheduling).
+        val sim = json.optInt("sim", 0).takeIf { it == 1 || it == 2 }
+        val at = when (val t = sendAt(json)) {
+            null -> return reject(out, 422, "invalid_send_at", "Invalid send_at")
+            else -> t
+        }
+        // Many messages in one request: "phones": [...] with one "message", or "messages": [{phone, message}].
+        val many = manyItems(json) ?: return reject(out, 422, "invalid_message", "messages / phones must be a list")
+        if (many.isNotEmpty()) return sendMany(out, many, sim, at)
+
         val rawPhone = json.firstString("phone", "to", "number", "recipient")
         val message = json.firstString("message", "text", "body").trim()
         val phone = PhoneUtils.localPs(rawPhone)
@@ -224,20 +243,153 @@ class GatewayServer @Inject constructor(
             _status.update { it.copy(rejected = it.rejected + 1) }
             return respond(out, 409, result(false, true, "duplicate", "Duplicate message", phone))
         }
-        val queued = try {
-            engine.enqueueGateway(phone, message, batchFor(System.currentTimeMillis()))
+        val ids = try {
+            engine.enqueueGateway(phone, message, batchFor(System.currentTimeMillis()), sim, at)
         } catch (t: Throwable) {
             CrashLog.warn("gateway-enqueue", t)
             forget(dupKey)
             return reject(out, 500, "queue_error", "Could not queue the message, try again")
         }
-        if (!queued) {
+        if (ids.isEmpty()) {
             forget(dupKey)
             return reject(out, 422, "invalid_message", "Message could not be queued")
         }
         _status.update { it.copy(received = it.received + 1) }
         _accepted.trySend(Unit)
-        respond(out, 200, result(true, false, "accepted", null, phone))
+        respond(out, 200, JSONObject(result(true, false, "accepted", null, phone)).put("id", ids.first()).also {
+            if (at > 0) it.put("scheduled_at", iso(at))
+        }.toString())
+    }
+
+    /** "phones" + "message", or "messages": [{phone, message}]. Empty = not a many-message request; null = malformed. */
+    private fun manyItems(json: JSONObject): List<Pair<String, String>>? {
+        json.optJSONArray("messages")?.let { arr ->
+            return (0 until arr.length()).map { i ->
+                val o = arr.optJSONObject(i) ?: return null
+                o.firstString("phone", "to", "number", "recipient") to o.firstString("message", "text", "body").trim()
+            }
+        }
+        json.optJSONArray("phones")?.let { arr ->
+            val message = json.firstString("message", "text", "body").trim()
+            return (0 until arr.length()).map { i -> arr.optString(i).trim() to message }
+        }
+        if (json.has("messages") || json.has("phones")) return null
+        return emptyList()
+    }
+
+    /** The many-message request: each item is checked on its own; the good ones are queued in one go. */
+    private suspend fun sendMany(out: OutputStream, items: List<Pair<String, String>>, sim: Int?, at: Long) {
+        if (items.size > MAX_ITEMS) return reject(out, 413, "too_many", "At most $MAX_ITEMS messages per request")
+        val results = arrayOfNulls<JSONObject>(items.size)
+        val good = ArrayList<Pair<String, String>>()
+        val goodIndex = ArrayList<Int>()
+        val keys = ArrayList<String>()
+        val seen = HashSet<String>()
+        var duplicates = 0
+        var invalid = 0
+        items.forEachIndexed { i, (raw, message) ->
+            val phone = PhoneUtils.localPs(raw)
+            val base = JSONObject().put("phone", phone.ifEmpty { raw })
+            val error = when {
+                !PHONE.matches(phone) -> "Invalid phone number"
+                message.isEmpty() -> "Message is required"
+                message.length > MAX_MESSAGE -> "Message is too long"
+                else -> null
+            }
+            if (error != null) {
+                invalid++
+                results[i] = base.put("success", false).put("duplicate", false).put("error", error)
+                return@forEachIndexed
+            }
+            val key = PhoneUtils.matchKey(phone) + '\u0000' + message
+            if (!seen.add(key) || (dedupe && !reserve(key))) {
+                duplicates++
+                results[i] = base.put("success", false).put("duplicate", true).put("error", "Duplicate message")
+                return@forEachIndexed
+            }
+            good += phone to message
+            goodIndex += i
+            keys += key
+        }
+        val ids = if (good.isEmpty()) emptyList() else try {
+            engine.enqueueGatewayMany(good, batchFor(System.currentTimeMillis()), sim, at)
+        } catch (t: Throwable) {
+            CrashLog.warn("gateway-enqueue", t)
+            keys.forEach { forget(it) }
+            return reject(out, 500, "queue_error", "Could not queue the messages, try again")
+        }
+        goodIndex.forEachIndexed { k, i ->
+            val id = ids.getOrNull(k)
+            results[i] = JSONObject().put("phone", good[k].first).put("success", id != null).put("duplicate", false)
+                .put("error", if (id != null) JSONObject.NULL else "Could not queue").apply { if (id != null) put("id", id) }
+        }
+        val accepted = ids.size
+        _status.update { it.copy(received = it.received + accepted, rejected = it.rejected + duplicates + invalid) }
+        if (accepted > 0) _accepted.trySend(Unit)
+        val body = JSONObject()
+            .put("success", accepted > 0)
+            .put("duplicate", accepted == 0 && duplicates > 0)
+            .put("detail", if (accepted > 0) "accepted" else "rejected")
+            .put("error", if (accepted > 0) JSONObject.NULL else "No message was accepted")
+            .put("accepted", accepted).put("duplicates", duplicates).put("invalid", invalid)
+            .put("ids", org.json.JSONArray(ids))
+            .put("results", org.json.JSONArray(results.map { it ?: JSONObject() }))
+        if (at > 0) body.put("scheduled_at", iso(at))
+        respond(out, if (accepted > 0) 200 else if (duplicates > 0 && invalid == 0) 409 else 422, body.toString())
+    }
+
+    /** "send_at": epoch seconds or milliseconds, or an ISO time. 0 = now; null = not understood. */
+    private fun sendAt(json: JSONObject): Long? {
+        val key = listOf("send_at", "sendAt", "schedule", "at").firstOrNull { json.has(it) && !json.isNull(it) } ?: return 0L
+        val v = json.opt(key)
+        val at = when (v) {
+            is Number -> v.toLong().let { if (it < 100_000_000_000L) it * 1000 else it }
+            is String -> v.trim().let { s ->
+                s.toLongOrNull()?.let { if (it < 100_000_000_000L) it * 1000 else it }
+                    ?: runCatching { java.time.OffsetDateTime.parse(s).toInstant().toEpochMilli() }.getOrNull()
+                    ?: runCatching { java.time.Instant.parse(s).toEpochMilli() }.getOrNull()
+                    ?: runCatching { java.time.LocalDateTime.parse(s).atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() }.getOrNull()
+            }
+            else -> null
+        } ?: return null
+        return if (at <= System.currentTimeMillis() + 5_000) 0L else at
+    }
+
+    /** Where one or more messages are now: queued, scheduled, sending, sent, delivered or failed. */
+    private suspend fun messageState(req: Request, out: OutputStream, ids: List<Long>, single: Boolean) {
+        if (!authorized(req)) return respond(out, 401, result(false, false, "unauthorized", "Invalid or missing API key"))
+        if (ids.isEmpty()) return respond(out, 422, result(false, false, "invalid_id", "Message id is required"))
+        val now = System.currentTimeMillis()
+        val list = ids.map { id ->
+            val m = runCatching { engine.message(id) }.getOrNull()
+            if (m == null) {
+                JSONObject().put("id", id).put("status", "not_found")
+            } else {
+                val state = when (m.box) {
+                    Box.QUEUED -> when {
+                        m.scheduledAt > now -> "scheduled"
+                        m.retryAt > 0 -> "retrying"
+                        else -> "queued"
+                    }
+                    Box.OUTBOX -> "sending"
+                    Box.SENT -> if (m.deliveryStatus == DeliveryStatus.DELIVERED) "delivered" else "sent"
+                    Box.FAILED -> "failed"
+                    else -> "unknown"
+                }
+                JSONObject().put("id", id).put("phone", m.address).put("status", state)
+                    .put("delivered", m.deliveryStatus == DeliveryStatus.DELIVERED)
+                    .put("delivery_failed", m.deliveryStatus == DeliveryStatus.FAILED)
+                    .put("error_code", m.errorCode)
+                    .put("time", iso(m.date))
+                    .apply { if (m.scheduledAt > now) put("scheduled_at", iso(m.scheduledAt)) }
+            }
+        }
+        if (single) {
+            val o = list.first()
+            respond(out, if (o.optString("status") == "not_found") 404 else 200, o.put("success", o.optString("status") != "not_found").toString())
+        } else {
+            respond(out, 200, JSONObject().put("success", true).put("messages", org.json.JSONArray(list)).toString())
+        }
     }
 
     private fun reject(out: OutputStream, code: Int, detail: String, error: String) {
@@ -252,7 +404,7 @@ class GatewayServer @Inject constructor(
             _status.update { it.copy(lastAt = now) }
             return@withLock s.batchId
         }
-        settings.setLastBatchId(now)
+        settings.setGatewayBatchId(now)
         _status.update { it.copy(batchId = now, lastAt = now) }
         now
     }
@@ -404,10 +556,12 @@ class GatewayServer @Inject constructor(
         private val PHONE = Regex("^\\+?\\d{5,15}$")
         private const val BACKLOG = 256
         private const val READ_TIMEOUT_MS = 15_000
-        private const val MAX_BODY = 16 * 1024
+        /** Sendr's limit was 16 KB; Barq allows bigger bodies for many-message requests. */
+        private const val MAX_BODY = 2 * 1024 * 1024
         private const val MAX_LINE = 8 * 1024
         private const val MAX_HEADERS = 64
         private const val MAX_MESSAGE = 4_000
+        private const val MAX_ITEMS = 5_000
         private const val BURST_GAP_MS = 10 * 60 * 1000L
         private const val DEDUPE_WINDOW_MS = 10 * 60 * 1000L
         private const val DEDUPE_MAX = 50_000

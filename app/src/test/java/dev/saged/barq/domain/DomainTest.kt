@@ -38,6 +38,10 @@ class ClassifierTest {
     @Test fun offer() = assertEquals(Category.OFFERS, classify("Shop", "خصم 30% على كل المنتجات حتى الجمعة"))
     @Test fun spam() = assertEquals(Category.SPAM, classify("+970599111222", "مبروك لقد فزت بجائزة! اضغط على الرابط bit.ly/x"))
     @Test fun contactIsPersonal() = assertEquals(Category.PERSONAL, classify("+970599111222", "وينك؟", contact = true))
+    @Test fun contactCodeStaysPersonal() = assertEquals(Category.PERSONAL, classify("0599111222", "رمز التحقق 4821", contact = true))
+    @Test fun personIsNeverBank() = assertEquals(Category.PERSONAL, classify("0599111222", "حولتلك المبلغ على حسابك"))
+    @Test fun personChatAboutOffers() = assertEquals(Category.PERSONAL, classify("0599111222", "في عرض حلو بالسوق اليوم"))
+    @Test fun marketingFromANumber() = assertEquals(Category.OFFERS, classify("0599111222", "عرض خاص خصم 50% www.shop.com"))
 
     @Test fun ruleWins() {
         val rules = listOf(CategoryRuleEntity(id = 1, sender = "Shop", category = Category.BANK))
@@ -80,4 +84,61 @@ class NumberTextTest {
         assertEquals("الرقم 0599999999 والمبلغ 45.00", names("الرقم 0599999999 والمبلغ 45.00"))
         assertEquals("رمزك 482913", names("رمزك 482913"))
     }
+}
+
+class PalestineNumberTest {
+    @Test fun internationalFormsBecomeLocal() {
+        for (n in listOf("+970599123456", "+970 59 912 3456", "00970599123456", "00972599123456", "970599123456", "972599123456")) {
+            assertEquals(n, "0599123456", PhoneUtils.localPs(n))
+        }
+    }
+
+    @Test fun missingZeroIsAdded() {
+        assertEquals("0599123456", PhoneUtils.localPs("599123456"))
+        assertEquals("0569123456", PhoneUtils.localPs("569123456"))
+    }
+
+    @Test fun arabicDigitsAndSeparators() {
+        assertEquals("0599123456", PhoneUtils.localPs("٠٥٩٩١٢٣٤٥٦"))
+        assertEquals("0599123456", PhoneUtils.localPs("059-912-3456"))
+        assertEquals("0599123456", PhoneUtils.localPs("+9720599123456"))
+    }
+
+    @Test fun otherNumbersAndSendersStay() {
+        assertEquals("+201001234567", PhoneUtils.localPs("+201001234567"))
+        assertEquals("MyBank", PhoneUtils.localPs("MyBank"))
+        assertEquals("123", PhoneUtils.localPs("123"))
+    }
+
+    @Test fun duplicatesInAnyFormAreRemoved() {
+        assertEquals(listOf("0599123456", "0569000000"), PhoneUtils.localPsAll(listOf("+970599123456", "0599123456", "569000000", "00972599123456")))
+    }
+}
+
+class SheetImportTest {
+    @Test fun csvWithArabicHeaders() {
+        val r = SheetImport.pick(SheetImport.readCsv("الاسم,رقم الجوال\nأحمد,970599123456\nسارة,0599111222\nمكرر,+970599123456\nغلط,abc\n"))
+        assertEquals(listOf(SheetImport.Person("أحمد", "0599123456"), SheetImport.Person("سارة", "0599111222")), r.people)
+        assertEquals(1, r.repeated)
+        assertEquals(1, r.invalid)
+        assertEquals("الاسم", r.nameColumn)
+    }
+
+    @Test fun noHeaderFindsThePhoneColumn() {
+        val r = SheetImport.pick(listOf(listOf("599777888", "خالد"), listOf("0569123123", "ليلى")))
+        assertEquals(listOf(SheetImport.Person("خالد", "0599777888"), SheetImport.Person("ليلى", "0569123123")), r.people)
+    }
+
+    @Test fun quotedCellsAndSemicolons() {
+        val rows = SheetImport.readCsv("Name;Phone\n\"Ali, Jr\";00972599000111\n")
+        assertEquals(listOf("Ali, Jr", "00972599000111"), rows[1])
+    }
+}
+
+class PersonalizeTest {
+    @Test fun nameIsPutInPlace() = assertEquals("مرحبا أحمد، كيفك؟", Personalize.apply("مرحبا {الاسم}، كيفك؟", "أحمد"))
+
+    @Test fun noNameLeavesCleanText() = assertEquals("مرحبا، كيفك؟", Personalize.apply("مرحبا {الاسم}، كيفك؟", null))
+
+    @Test fun englishTokenToo() = assertTrue(Personalize.has("Hi { name }"))
 }

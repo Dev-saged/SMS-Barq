@@ -208,6 +208,7 @@ fun DeveloperScreen(onBack: () -> Unit, open: (String) -> Unit, vm: DeveloperVie
                             "-d '{\"phone\":\"0599000000\",\"message\":\"Barq\"}'",
                     ) { copy(it) }
                     Text(stringResource(R.string.gateway_numbers_note), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
+                    Text(stringResource(R.string.gateway_api_extra), style = MaterialTheme.typography.bodySmall, color = scheme.onSurfaceVariant)
                 }
             }
         }

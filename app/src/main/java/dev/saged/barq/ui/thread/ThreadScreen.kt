@@ -48,6 +48,8 @@ import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarOutline
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SimCard
 import androidx.compose.material.icons.outlined.VerifiedUser
@@ -290,10 +292,11 @@ fun ThreadScreen(
                     count = count,
                     showCounter = settings.showCounter,
                     templates = templates.map { it.text },
-                    simLabel = sims.takeIf { it.size > 1 }?.firstOrNull { it.subId == subId }?.let { "SIM ${it.slot + 1}" },
+                    sims = sims,
+                    subId = subId,
                     onText = vm::onTextChange,
                     onTemplate = vm::insertTemplate,
-                    onSim = vm::cycleSim,
+                    onPickSim = vm::pickSim,
                     onSchedule = { showSchedule = true },
                     onSend = { vm.send() },
                 )
@@ -353,6 +356,7 @@ fun ThreadScreen(
                             onResend = { vm.resend(m.id) },
                             onDelete = { vm.deleteMessage(m.id) },
                             onReact = { emoji -> vm.react(m.id, emoji) },
+                            onStar = { vm.setStarred(m.id, !m.starred) },
                         )
                     }
                 }
@@ -399,6 +403,7 @@ private fun MessageMenu(
     onResend: () -> Unit,
     onDelete: () -> Unit,
     onReact: (String) -> Unit,
+    onStar: () -> Unit,
 ) {
     DropdownMenu(expanded = message != null, onDismissRequest = onDismiss) {
         if (message == null) return@DropdownMenu
@@ -417,7 +422,7 @@ private fun MessageMenu(
                             .background(if (chosen) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface.copy(alpha = 0f))
                             .clickable { onDismiss(); onReact(emoji) },
                         contentAlignment = Alignment.Center,
-                    ) { Text(emoji, fontSize = 22.sp) }
+                    ) { dev.saged.barq.ui.components.Emoji(emoji, 30.dp) }
                 }
             }
             HorizontalDivider()
@@ -434,6 +439,11 @@ private fun MessageMenu(
                 onClick = { onDismiss(); onCopyCode(code) },
             )
         }
+        DropdownMenuItem(
+            text = { Text(stringResource(if (message.starred) R.string.unstar else R.string.star)) },
+            leadingIcon = { Icon(if (message.starred) Icons.Outlined.StarOutline else Icons.Outlined.Star, null) },
+            onClick = { onDismiss(); onStar() },
+        )
         DropdownMenuItem(
             text = { Text(stringResource(R.string.forward)) },
             leadingIcon = { Icon(Icons.AutoMirrored.Outlined.ArrowForward, null) },
@@ -509,10 +519,11 @@ fun Composer(
     count: SmsCount,
     showCounter: Boolean,
     templates: List<String>,
-    simLabel: String?,
+    sims: List<dev.saged.barq.data.sim.SimInfo>,
+    subId: Int,
     onText: (String) -> Unit,
     onTemplate: (String) -> Unit,
-    onSim: () -> Unit,
+    onPickSim: (Int) -> Unit,
     onSchedule: () -> Unit,
     onSend: () -> Unit,
 ) {
@@ -526,6 +537,7 @@ fun Composer(
             .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
+        dev.saged.barq.ui.components.SimSwitch(sims, subId, onPickSim)
         if (templates.isNotEmpty()) {
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -575,20 +587,6 @@ fun Composer(
                         fontWeight = if (count.parts > 1) FontWeight.SemiBold else FontWeight.Normal,
                         modifier = Modifier.padding(horizontal = 4.dp),
                     )
-                }
-                if (simLabel != null) {
-                    IconButton(onClick = onSim, modifier = Modifier.size(40.dp)) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.SimCard, null, tint = scheme.primary)
-                            Text(
-                                simLabel.takeLast(1),
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = scheme.primary,
-                                modifier = Modifier.padding(top = 3.dp),
-                            )
-                        }
-                    }
                 }
                 IconButton(onClick = onSchedule, modifier = Modifier.size(40.dp)) {
                     Icon(Icons.Outlined.Schedule, stringResource(R.string.schedule_send), tint = scheme.primary)

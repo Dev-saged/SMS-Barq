@@ -43,8 +43,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 }
             }
             ACTION_BATCH_PAUSE -> if (batchId != 0L) entry.engine().pauseBatch(batchId)
-            ACTION_BATCH_RESUME -> entry.engine().resumeBatch()
-            ACTION_BATCH_CANCEL -> if (batchId != 0L) goAsync { entry.engine().cancelBatch(batchId) }
+            ACTION_BATCH_RESUME -> {
+                entry.notifier().cancelGatewayStopped()
+                entry.engine().resumeBatch()
+            }
+            ACTION_BATCH_CANCEL -> {
+                entry.notifier().cancelGatewayStopped()
+                if (batchId != 0L) goAsync { entry.engine().cancelBatch(batchId) }
+            }
             ACTION_BATCH_RESEND -> if (batchId != 0L) goAsync {
                 entry.notifier().cancelBulkFinished()
                 entry.engine().resendFailed(batchId)

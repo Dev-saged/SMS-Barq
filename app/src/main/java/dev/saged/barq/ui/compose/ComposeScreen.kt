@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.AlertDialog
@@ -77,6 +78,7 @@ import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.sim.SimInfo
 import dev.saged.barq.data.sim.SimRepository
 import dev.saged.barq.domain.PhoneUtils
+import dev.saged.barq.domain.Personalize
 import dev.saged.barq.sms.SendEngine
 import dev.saged.barq.ui.components.ContactList
 import dev.saged.barq.ui.thread.Composer
@@ -246,6 +248,12 @@ class ComposeViewModel @Inject constructor(
         parts.forEach { add(it) }
     }
 
+    /** Adds "{الاسم}" at the end of the text (each person will see their own name there). */
+    fun insertName() {
+        val t = text.value
+        onText(if (t.isBlank()) Personalize.TOKEN + " " else t.trimEnd() + " " + Personalize.TOKEN)
+    }
+
     fun remove(r: Recipient) {
         recipients.value = recipients.value - r
     }
@@ -273,7 +281,15 @@ class ComposeViewModel @Inject constructor(
         val body = text.value
         if (to.isEmpty() || body.isBlank()) return
         viewModelScope.launch {
-            done(engine.sendNew(to, body, subId.value.takeIf { it >= 0 }, scheduledAt))
+            val sim = subId.value.takeIf { it >= 0 }
+            done(
+                if (Personalize.has(body)) {
+                    // "{الاسم}": each person gets the message with their own name.
+                    engine.sendPersonal(recipients.value.map { it.address to Personalize.apply(body, it.name) }, sim, scheduledAt)
+                } else {
+                    engine.sendNew(to, body, sim, scheduledAt)
+                }
+            )
         }
     }
 }
@@ -348,10 +364,11 @@ fun ComposeScreen(
                 count = count,
                 showCounter = true,
                 templates = templates.map { it.text },
-                simLabel = sims.takeIf { it.size > 1 }?.firstOrNull { it.subId == subId }?.let { "SIM ${it.slot + 1}" },
+                sims = sims,
+                subId = subId,
                 onText = vm::onText,
                 onTemplate = { t -> vm.onText(if (text.isBlank()) t else "$text $t") },
-                onSim = vm::cycleSim,
+                onPickSim = { vm.subId.value = it },
                 onSchedule = { showSchedule = true },
                 onSend = { trySend(0) },
             )
@@ -445,6 +462,7 @@ fun ComposeScreen(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 2.dp),
                 )
             }
+            if (recipients.isNotEmpty()) NameTokenRow(text, recipients, onInsert = { vm.insertName() })
 
             val searching = query.isNotBlank()
             when {
@@ -506,6 +524,50 @@ fun ComposeScreen(
 }
 
 private const val MAX_CHIPS = 12
+
+/**
+ * "{الاسم}": a button to put it in the message, and once it is there a live preview with the first
+ * recipient's name (or a note that people without a name get the message without it).
+ */
+@Composable
+private fun NameTokenRow(text: String, recipients: List<Recipient>, onInsert: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val has = Personalize.has(text)
+    Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (!has) {
+            AssistChip(
+                onClick = onInsert,
+                label = { Text(stringResource(R.string.name_insert)) },
+                leadingIcon = { Icon(Icons.Outlined.Badge, null, Modifier.size(16.dp), tint = scheme.primary) },
+                shape = RoundedCornerShape(12.dp),
+            )
+        } else {
+            val named = recipients.firstOrNull { !it.name.isNullOrBlank() }
+            val missing = recipients.count { it.name.isNullOrBlank() }
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(scheme.primaryContainer.copy(alpha = 0.55f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+            ) {
+                Text(stringResource(R.string.name_preview), style = MaterialTheme.typography.labelMedium, color = scheme.primary)
+                Text(
+                    Personalize.apply(text, named?.name ?: ""),
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 3,
+                )
+                if (missing > 0) {
+                    Text(
+                        stringResource(R.string.name_missing, missing),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
 
 /** Barq's saved groups, then the phone's own contact groups. One tap adds everybody. */
 @Composable
