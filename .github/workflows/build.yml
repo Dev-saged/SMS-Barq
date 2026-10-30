@@ -1,6 +1,11 @@
 # Builds the Barq APK on GitHub — no computer needed.
-# - Every push builds an APK (Actions tab → run → Artifacts) and refreshes the "latest-build" release.
-# - Pushing a tag like v1.0.0 creates a proper GitHub Release with the APK attached.
+# - Every push builds an APK (Actions tab → run → Artifacts) and refreshes the "latest-build" release
+#   (the in-app update check reads it).
+# - Every version (VERSION_NAME in gradle.properties) gets its own release "v1.5.0" with
+#   Barq-v1.5.0.apk and Arabic notes from docs/releases/v1.5.0.md. Building the same version again
+#   replaces its APK. Older versions stay listed, so anyone can go back.
+# - Run manually (Actions → Build Barq APK → Run workflow) with "Publish older versions" ticked to
+#   turn the APKs of earlier builds still kept by GitHub (90 days) into releases too.
 # - Uploading the project as a single .zip from a phone also works: this workflow unpacks it first.
 name: Build Barq APK
 
@@ -9,6 +14,11 @@ on:
     branches: ['**']
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      backfill:
+        description: 'Publish older versions as releases (from saved builds)'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -19,6 +29,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_dispatch' || !inputs.backfill
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -41,7 +52,7 @@ jobs:
           if [ -z "$SETTINGS" ]; then echo "::error::The zip does not contain settings.gradle.kts"; exit 1; fi
           SRC=$(dirname "$SETTINGS")
           # Workflow files cannot be committed by the bot; the one you created stays in place.
-          (cd "$SRC" && tar --exclude='./.github' -cf - .) | tar -xf -
+          (cd "$SRC" && tar --exclude='./.github' -cf - .) | tar -xmf -
           git rm -q "$ZIP"
           if [ "$GITHUB_REF_TYPE" = "branch" ]; then
             git config user.name "github-actions[bot]"
@@ -117,14 +128,73 @@ jobs:
           prerelease: true
           files: dist/Barq-latest.apk
 
-      - name: Publish tagged release
-        if: steps.check.outputs.ready == 'true' && startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/Barq-v*.apk
-          generate_release_notes: true
+      - name: Publish this version as its own release
+        if: steps.check.outputs.ready == 'true' && github.ref_type == 'branch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          VERSION=$(grep '^VERSION_NAME=' gradle.properties | cut -d= -f2)
+          TAG="v$VERSION"
+          cp dist/Barq-latest.apk "dist/Barq-$TAG.apk"
+          NOTES="docs/releases/$TAG.md"
+          if [ ! -f "$NOTES" ]; then echo "## برق $VERSION" > /tmp/notes.md; NOTES=/tmp/notes.md; fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "dist/Barq-$TAG.apk" --clobber
+            gh release edit "$TAG" --title "برق $VERSION" --notes-file "$NOTES" --latest
+          else
+            gh release create "$TAG" "dist/Barq-$TAG.apk" --title "برق $VERSION" --notes-file "$NOTES" --target "$(git rev-parse HEAD)" --latest
+          fi
 
       - name: Unit tests
         if: steps.check.outputs.ready == 'true'
+        id: tests
         continue-on-error: true
         run: ./gradlew --no-daemon testDebugUnitTest
+
+      - name: Report failed tests
+        if: steps.check.outputs.ready == 'true' && steps.tests.outcome == 'failure'
+        run: echo "::warning::Some unit tests failed (the APK was still published). Open the 'Unit tests' step to see which."
+
+  # One-time helper: earlier builds' APKs (kept by GitHub for 90 days) become releases v1.0.0, v1.1.0…
+  backfill:
+    if: github.event_name == 'workflow_dispatch' && inputs.backfill
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Publish older versions from saved builds
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p /tmp/old && cd /tmp/old
+          gh api "repos/$GH_REPO/actions/artifacts?per_page=100" --paginate \
+            -q '.artifacts[] | select(.name | startswith("Barq-APK-")) | select(.expired | not) | "\(.id) \(.workflow_run.head_sha)"' > list.txt
+          echo "Saved builds found: $(wc -l < list.txt)"
+          while read -r ID SHA; do
+            gh api "repos/$GH_REPO/actions/artifacts/$ID/zip" > a.zip 2>/dev/null || continue
+            rm -rf x && mkdir x && unzip -q -o a.zip -d x || continue
+            for f in x/Barq-v*-build*.apk; do
+              [ -f "$f" ] || continue
+              n=$(basename "$f"); VER=${n#Barq-v}; VER=${VER%%-build*}; B=${n##*-build}; B=${B%.apk}
+              # Keep the newest build of each version.
+              if [ ! -f "best-$VER" ] || [ "$B" -gt "$(cat "best-$VER")" ]; then
+                echo "$B" > "best-$VER"; cp "$f" "Barq-v$VER.apk"; echo "$SHA" > "sha-$VER"
+              fi
+            done
+          done < list.txt
+          cd "$GITHUB_WORKSPACE"
+          for apk in /tmp/old/Barq-v*.apk; do
+            [ -f "$apk" ] || { echo "No saved APKs left (older than 90 days?)"; break; }
+            VER=$(basename "$apk" .apk); VER=${VER#Barq-v}; TAG="v$VER"
+            if gh release view "$TAG" >/dev/null 2>&1; then echo "$TAG already published"; continue; fi
+            NOTES="docs/releases/$TAG.md"
+            if [ ! -f "$NOTES" ]; then echo "## برق $VER" > /tmp/n.md; NOTES=/tmp/n.md; fi
+            gh release create "$TAG" "$apk" --title "برق $VER" --notes-file "$NOTES" --target "$(cat "/tmp/old/sha-$VER")" --latest=false
+            echo "Published $TAG"
+          done
