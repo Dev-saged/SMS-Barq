@@ -79,8 +79,17 @@ private val ITEMS = listOf(
 fun WhatsNewHost(vm: MainViewModel) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val seen = settings?.seenVersion ?: return
-    if (seen != BuildConfig.VERSION_NAME) WhatsNewSheet(onClose = vm::markVersionSeen)
+    val current = BuildConfig.VERSION_NAME
+    when {
+        seen == current -> Unit
+        // A fix-up release (1.5.0 → 1.5.1) has nothing new to show: just remember it quietly.
+        featureVersion(seen) == featureVersion(current) -> LaunchedEffect(current) { vm.markVersionSeen() }
+        else -> WhatsNewSheet(onClose = vm::markVersionSeen)
+    }
 }
+
+/** "1.5.1" → "1.5": the part of the version that changes when there are new features. */
+private fun featureVersion(version: String): String = version.split('.').take(2).joinToString(".")
 
 @Composable
 fun WhatsNewSheet(onClose: () -> Unit) {
