@@ -22,6 +22,9 @@
     <!-- Bulk sending keeps going in the foreground with a progress notification -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Barq's local gateway (developer mode): an HTTP server on the local network that bots use to send -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Optional: lets Barq raise Android's SMS sending limit by itself. It is never granted
          automatically; the owner gives it once with "adb shell pm grant" (see Settings → Sending limit). -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
@@ -133,6 +136,16 @@
             android:name=".sms.BulkSendService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- Local SMS gateway: LAN-only HTTP server that queues messages into Barq (off by default) -->
+        <service
+            android:name=".sms.gateway.GatewayService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="local_sms_gateway_http_server" />
+        </service>
 
         <!-- Expedited sending on older Android versions runs through WorkManager's service -->
         <service

@@ -87,9 +87,10 @@ private fun typography(): Typography {
         titleSmall = base.titleSmall.r().copy(fontWeight = FontWeight.Medium),
         bodyLarge = base.bodyLarge.r().copy(lineHeight = 24.sp),
         bodyMedium = base.bodyMedium.r().copy(lineHeight = 21.sp),
-        bodySmall = base.bodySmall.r(),
+        // Arabic letters need a little more height than Latin ones to read comfortably.
+        bodySmall = base.bodySmall.r().copy(lineHeight = 18.sp),
         labelLarge = base.labelLarge.r().copy(fontWeight = FontWeight.SemiBold),
-        labelMedium = base.labelMedium.r(), labelSmall = base.labelSmall.r(),
+        labelMedium = base.labelMedium.r().copy(lineHeight = 18.sp), labelSmall = base.labelSmall.r(),
     )
 }
 

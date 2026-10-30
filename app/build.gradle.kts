@@ -26,7 +26,7 @@ val baseVersionCode = (project.property("VERSION_CODE") as String).toInt()
 
 android {
     namespace = "dev.saged.barq"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = project.property("APP_ID") as String
@@ -72,14 +72,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs += listOf(
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
-        )
-    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -94,6 +86,18 @@ android {
     dependenciesInfo {
         includeInApk = false
         includeInBundle = false
+    }
+}
+
+// Kotlin 2.2: compiler options live in the kotlin {} block (kotlinOptions {} was removed).
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        freeCompilerArgs.addAll(
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
+        )
     }
 }
 

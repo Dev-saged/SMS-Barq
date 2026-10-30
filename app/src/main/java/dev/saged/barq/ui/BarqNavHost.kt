@@ -15,6 +15,7 @@ import dev.saged.barq.ui.settings.GroupsScreen
 import dev.saged.barq.ui.settings.GroupPickerScreen
 import dev.saged.barq.ui.settings.StatsScreen
 import dev.saged.barq.ui.settings.HealthScreen
+import dev.saged.barq.ui.settings.DeveloperScreen
 import dev.saged.barq.ui.settings.SendLimitScreen
 import dev.saged.barq.ui.batch.BatchScreen
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -58,6 +59,7 @@ object Routes {
     const val BATCH = "batch/{batchId}?since={since}"
     const val SEND_LIMIT = "sendlimit"
     const val HEALTH = "health"
+    const val DEVELOPER = "developer"
 
     fun thread(id: Long) = "thread/$id"
     fun threadAt(id: Long, messageId: Long) = "thread/$id?focus=$messageId"
@@ -206,6 +208,7 @@ fun BarqNavHost(
             BatchScreen(onBack = back, openThread = { nav.navigate(Routes.thread(it)) })
         }
         composable(Routes.SEND_LIMIT) { SendLimitScreen(onBack = back) }
+        composable(Routes.DEVELOPER) { DeveloperScreen(onBack = back, open = { nav.navigate(it) }) }
         composable(Routes.HEALTH) { HealthScreen(onBack = back, open = { nav.navigate(it) }) }
     }
 }

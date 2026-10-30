@@ -201,10 +201,10 @@ class ContactsRepository @Inject constructor(@ApplicationContext private val con
 
     /** Contact name(s) for a conversation; unknown numbers stay as they are. */
     fun displayName(addresses: String): String =
-        PhoneUtils.splitAddresses(addresses).joinToString("، ") { nameFor(it) ?: it }
+        PhoneUtils.splitAddresses(addresses).joinToString("، ") { nameFor(it) ?: PhoneUtils.localPs(it) }
 
     /** Main-thread-safe name for one address (falls back to the address itself). */
-    fun cachedName(address: String): String = lookupCached(address)?.name ?: address
+    fun cachedName(address: String): String = lookupCached(address)?.name ?: PhoneUtils.localPs(address)
 
     /** Numbers inside a message replaced by saved names (display only, safe on the main thread). */
     fun withNames(text: String): String =

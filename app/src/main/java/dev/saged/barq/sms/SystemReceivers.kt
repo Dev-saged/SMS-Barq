@@ -29,6 +29,8 @@ class BootReceiver : BroadcastReceiver() {
             dao.staleOutbox(System.currentTimeMillis() - 60_000).forEach { dao.setBox(it.id, Box.FAILED, 0) }
             entry.maintenance().ensureScheduled()
             entry.sendQueue().kick()
+            // The local gateway comes back after a restart when it was left on.
+            if (entry.settings().current().gatewayEnabled) dev.saged.barq.sms.gateway.GatewayService.start(context)
         }
     }
 }

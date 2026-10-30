@@ -55,6 +55,39 @@ object PhoneUtils {
         return false
     }
 
+    /**
+     * Palestinian numbers in the local form people dial: +970 59…, +972 56…, 00970…, 00972…,
+     * 970…/972… (12 digits) and 59…/56… without the zero all become 059…/056…. Spaces, dashes
+     * and Arabic digits are cleaned. Other numbers are only cleaned (an international one keeps
+     * its +), and sender IDs are returned as they are.
+     */
+    fun localPs(address: String): String {
+        val raw = normalizeDigits(address.trim())
+        if (!isPhoneNumber(raw)) return address.trim()
+        var digits = raw.filter { it.isDigit() }
+        var international = raw.startsWith("+")
+        if (!international && digits.startsWith("00")) {
+            digits = digits.drop(2)
+            international = true
+        }
+        val ps = digits.startsWith("970") || digits.startsWith("972")
+        val national = if (ps) digits.drop(3).trimStart('0') else ""
+        return when {
+            // +970 / +972 / 00970 / 00972 followed by the national number (8–9 digits, even "+9720 59…").
+            international && ps && national.length in 8..9 -> "0$national"
+            // 970599123456 / 972599123456 written without + or 00.
+            !international && ps && digits.length == 12 && national.length == 9 -> "0$national"
+            // 599123456 / 569123456: a mobile number that lost its leading zero.
+            !international && digits.length == 9 && (digits.startsWith("59") || digits.startsWith("56")) -> "0$digits"
+            international -> "+$digits"
+            else -> digits
+        }
+    }
+
+    /** [localPs] for every address, without duplicates of the same real number. */
+    fun localPsAll(addresses: List<String>): List<String> =
+        addresses.map { localPs(it) }.filter { it.isNotEmpty() }.distinctBy { matchKey(it) }
+
     fun splitAddresses(addresses: String): List<String> =
         addresses.split(',', ';').map { it.trim() }.filter { it.isNotEmpty() }
 

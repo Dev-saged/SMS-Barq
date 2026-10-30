@@ -81,6 +81,15 @@ class SendEngine @Inject constructor(
         afterQueue(outgoing.enqueue(recipients, body, sub, 0, autoReply = false, batchId = 0, clearDraft = false, reactionTo = targetId))
     }
 
+    /**
+     * One message from Barq's local gateway (a bot, a script…). It joins [batchId] so the burst is
+     * followed like a bulk send; nothing is sent here — the gateway service drains the queue.
+     */
+    suspend fun enqueueGateway(address: String, body: String, batchId: Long): Boolean {
+        val sub = resolveSubId(null, null)
+        return outgoing.enqueue(listOf(address), body, sub, 0, autoReply = false, batchId = batchId, clearDraft = false).count > 0
+    }
+
     suspend fun sendAutoReply(address: String, body: String, subId: Int) {
         val sub = resolveSubId(null, subId)
         afterQueue(outgoing.enqueue(listOf(address), body, sub, 0, autoReply = true, batchId = 0, clearDraft = false))
@@ -98,7 +107,8 @@ class SendEngine @Inject constructor(
         scheduledAt: Long = 0,
         allowService: Boolean = true,
     ): Outcome {
-        val unique = recipients.map { it.trim() }.filter { it.isNotEmpty() }.distinctBy { PhoneUtils.matchKey(it) }
+        // Palestinian numbers in any form are sent to their local 05x form; the same person once.
+        val unique = PhoneUtils.localPsAll(recipients.map { it.trim() }.filter { it.isNotEmpty() })
         if (unique.isEmpty() || body.isBlank()) return Outcome.Empty
         val sub = resolveSubId(null, subId)
         if (unique.size == 1 || scheduledAt > 0 || !allowService) {

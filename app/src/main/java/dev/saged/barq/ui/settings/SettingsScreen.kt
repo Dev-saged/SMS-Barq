@@ -3,6 +3,7 @@ package dev.saged.barq.ui.settings
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -16,7 +17,7 @@ import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AlarmOn
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.DeveloperMode
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Backup
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.EmojiEmotions
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.FolderOpen
@@ -39,8 +39,6 @@ import androidx.compose.material.icons.outlined.Numbers
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.SimCard
-import androidx.compose.material.icons.outlined.SmartToy
-import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.SwipeLeft
 import androidx.compose.material.icons.outlined.SwipeRight
 import androidx.compose.material.icons.outlined.Upload
@@ -50,6 +48,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -151,7 +151,9 @@ class SettingsViewModel @Inject constructor(
     fun backupFileName() = backup.backupFileName()
 }
 
-private enum class Dialog { THEME, FONT, DATE, SIM, SPEED, SWIPE_START, SWIPE_END, BACKUP }
+private enum class Dialog { THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP }
+
+private const val TAP_GAP_MS = 800L
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewModel = hiltViewModel()) {
@@ -166,6 +168,9 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     val importedMsg = stringResource(R.string.import_done)
     val failedMsg = stringResource(R.string.operation_failed)
     val backupDoneMsg = stringResource(R.string.backup_now_done)
+    val devUnlockedMsg = stringResource(R.string.dev_unlocked)
+    var taps by remember { mutableIntStateOf(0) }
+    var lastTap by remember { mutableLongStateOf(0L) }
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -192,12 +197,6 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     val datePatterns = listOf("dd/MM/yyyy", "MM/dd/yyyy", "yyyy-MM-dd", "d MMMM yyyy").map { p ->
         p to java.text.SimpleDateFormat(p, java.util.Locale.getDefault()).format(java.util.Date())
     }
-    val speedLabels = listOf(
-        0L to stringResource(R.string.speed_max),
-        100L to stringResource(R.string.speed_fast),
-        250L to stringResource(R.string.speed_balanced),
-        800L to stringResource(R.string.speed_safe),
-    )
     val swipeLabels = listOf(
         SwipeAction.NONE to stringResource(R.string.swipe_none),
         SwipeAction.ARCHIVE to stringResource(R.string.archive),
@@ -213,7 +212,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     )
     fun <T> label(list: List<Pair<T, String>>, v: T) = list.firstOrNull { it.first == v }?.second.orEmpty()
 
-    SettingsScaffold(title = stringResource(R.string.settings), onBack = onBack) {
+    SettingsScaffold(title = stringResource(R.string.settings), onBack = onBack, bottomPadding = 16.dp) {
         item {
             SettingsGroup(stringResource(R.string.group_appearance)) {
                 ClickRow(Icons.Outlined.DarkMode, stringResource(R.string.theme), label(themeLabels, s.themeMode)) { dialog = Dialog.THEME }
@@ -247,12 +246,6 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                     RowDivider()
                     val simName = vm.sims.firstOrNull { it.subId == s.defaultSubId }?.label ?: stringResource(R.string.ask_system)
                     ClickRow(Icons.Outlined.SimCard, stringResource(R.string.default_sim), simName) { dialog = Dialog.SIM }
-                }
-                RowDivider()
-                ClickRow(Icons.Outlined.Speed, stringResource(R.string.bulk_speed), label(speedLabels, s.sendDelayMs)) { dialog = Dialog.SPEED }
-                RowDivider()
-                ClickRow(Icons.Outlined.Tune, stringResource(R.string.send_limit_title), stringResource(R.string.send_limit_sub)) {
-                    open(Routes.SEND_LIMIT)
                 }
                 RowDivider()
                 SwitchRow(
@@ -291,11 +284,6 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         item {
             SettingsGroup(stringResource(R.string.group_tools)) {
                 ClickRow(Icons.Outlined.Bolt, stringResource(R.string.templates_title), stringResource(R.string.templates_sub)) { open(Routes.TEMPLATES) }
-                RowDivider()
-                ClickRow(
-                    Icons.Outlined.SmartToy, stringResource(R.string.auto_reply_title),
-                    stringResource(if (s.autoReplyEnabled) R.string.on else R.string.off),
-                ) { open(Routes.AUTO_REPLY) }
                 RowDivider()
                 ClickRow(Icons.Outlined.Groups, stringResource(R.string.groups_title), stringResource(R.string.groups_sub)) {
                     open(Routes.GROUPS)
@@ -348,19 +336,35 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                     open(Routes.HEALTH)
                 }
                 RowDivider()
-                ClickRow(Icons.Outlined.Info, stringResource(R.string.app_name), stringResource(R.string.version_value, BuildConfig.VERSION_NAME)) {}
+                // Tapping the version 3 times in a row unlocks developer mode.
+                ClickRow(Icons.Outlined.Info, stringResource(R.string.app_name), stringResource(R.string.version_value, BuildConfig.VERSION_NAME)) {
+                    val now = SystemClock.uptimeMillis()
+                    taps = if (now - lastTap < TAP_GAP_MS) taps + 1 else 1
+                    lastTap = now
+                    if (taps >= 3) {
+                        taps = 0
+                        if (!s.devMode) {
+                            vm.update { setDevMode(true) }
+                            toast(devUnlockedMsg)
+                        }
+                        open(Routes.DEVELOPER)
+                    }
+                }
                 RowDivider()
                 ClickRow(
                     Icons.Outlined.SystemUpdate, stringResource(R.string.check_updates),
                     stringResource(if (checking) R.string.checking else R.string.check_updates_sub),
                 ) { vm.checkUpdates() }
-                RowDivider()
-                ClickRow(Icons.Outlined.BugReport, stringResource(R.string.crash_log_title), stringResource(R.string.crash_log_sub)) {
-                    open(Routes.CRASHES)
+                if (s.devMode) {
+                    RowDivider()
+                    ClickRow(Icons.Outlined.DeveloperMode, stringResource(R.string.dev_open), stringResource(R.string.dev_open_sub)) {
+                        open(Routes.DEVELOPER)
+                    }
                 }
             }
-            AboutCard()
         }
+        // The very last thing in Settings, with nothing under it.
+        item { AboutCard() }
     }
 
     if (pendingSettings != null) {
@@ -419,9 +423,6 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
             ChoiceDialog(stringResource(R.string.default_sim), options, s.defaultSubId, { dialog = null }) { v ->
                 dialog = null; vm.update { setDefaultSubId(v) }
             }
-        }
-        Dialog.SPEED -> ChoiceDialog(stringResource(R.string.bulk_speed), speedLabels, s.sendDelayMs, { dialog = null }) { v ->
-            dialog = null; vm.update { setSendDelayMs(v) }
         }
         Dialog.SWIPE_START -> ChoiceDialog(stringResource(R.string.swipe_start), swipeLabels, s.swipeStart, { dialog = null }) { v ->
             dialog = null; vm.update { setSwipeStart(v) }

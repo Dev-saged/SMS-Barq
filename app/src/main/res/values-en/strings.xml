@@ -409,4 +409,52 @@
         <item>Thank you</item>
         <item>Busy right now</item>
     </string-array>
+
+    <!-- 1.4.0: developer mode and local gateway -->
+    <string name="dev_title">Developer mode</string>
+    <string name="dev_intro">Advanced tools for people who know what they are doing: the local gateway, sending speed and limit, auto-reply and the crash log. Normal settings stay simple.</string>
+    <string name="dev_open">Developer mode</string>
+    <string name="dev_open_sub">Local gateway, speed, limit and log</string>
+    <string name="dev_unlocked">Developer mode is on</string>
+    <string name="dev_sending">Sending</string>
+    <string name="dev_diagnostics">Diagnostics</string>
+    <string name="dev_hide">Hide developer mode</string>
+    <string name="dev_hide_sub">Removed from Settings; tap the version 3 times to bring it back</string>
+    <string name="gateway_title">Barq local gateway</string>
+    <string name="gateway_enable">Run the gateway</string>
+    <string name="gateway_enable_sub">A bot or any program on the same network sends through Barq directly, with no request limit</string>
+    <string name="gateway_running">The gateway is running and accepting requests</string>
+    <string name="gateway_starting">Starting…</string>
+    <string name="gateway_no_network">No local network (turn on Wi-Fi or the hotspot)</string>
+    <string name="gateway_error">Could not start: %1$s</string>
+    <string name="gateway_start_failed">Android did not allow the gateway to start now. Open Barq and try again</string>
+    <string name="gateway_counts">Received %1$d messages · refused %2$d requests</string>
+    <string name="gateway_key">API key</string>
+    <string name="gateway_key_none">Created when the gateway starts</string>
+    <string name="gateway_new_key">New key</string>
+    <string name="gateway_new_key_sub">The old key stops working at once</string>
+    <string name="gateway_new_key_confirm">Any bot using the current key will stop until you give it the new one. Continue?</string>
+    <string name="gateway_new_key_yes">Create key</string>
+    <string name="gateway_port">Port</string>
+    <string name="gateway_port_hint">1024 to 65535 (default 8080)</string>
+    <string name="gateway_dedupe">Block duplicates</string>
+    <string name="gateway_dedupe_sub">The same text to the same number within 10 minutes is refused as a duplicate (409)</string>
+    <string name="gateway_how">How to use it</string>
+    <string name="gateway_how_text">Compatible with SMS Sendr: the same /send address, request and answers. Put the gateway address and key in your bot instead of Sendr. Every request joins Barq\'s queue at once and is sent as fast as Android allows.</string>
+    <string name="gateway_numbers_note">Palestinian numbers in any form (+970, +972, 00970 or without the zero) become 05x automatically.</string>
+    <string name="gateway_notif_title">Barq gateway is running</string>
+    <string name="gateway_notif_text">%1$s · received %2$d · sent %3$d · failed %4$d · waiting %5$d</string>
+    <string name="gateway_stop">Stop</string>
+    <!-- 1.4.0: groups merge / tidy -->
+    <string name="groups_all">All groups</string>
+    <string name="groups_added">Added %1$d numbers</string>
+    <string name="groups_added_dups">Added %1$d numbers · removed %2$d repeated</string>
+    <string name="group_merge">Merge groups</string>
+    <string name="group_merge_do">Merge</string>
+    <string name="group_merge_hint">They become one new group, each number once, with Palestinian numbers in the 05x form.</string>
+    <string name="group_merged">The new group has %1$d numbers · removed %2$d repeated</string>
+    <string name="group_clean">Tidy and remove repeats</string>
+    <string name="group_cleaned">Tidied · removed %1$d repeated</string>
+    <string name="group_filter">Search by name or number</string>
+    <string name="group_chip_phone">%1$s · %2$d (phone)</string>
 </resources>

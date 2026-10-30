@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.saged.barq.R
 
@@ -44,6 +45,8 @@ fun SettingsScaffold(
     title: String,
     onBack: () -> Unit,
     floating: @Composable () -> Unit = {},
+    /** Room left under the list (for a floating button); Settings ends on its about card instead. */
+    bottomPadding: Dp = 96.dp,
     content: LazyListScope.() -> Unit,
 ) {
     Scaffold(
@@ -61,7 +64,7 @@ fun SettingsScaffold(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 96.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomPadding),
             content = content,
         )
     }

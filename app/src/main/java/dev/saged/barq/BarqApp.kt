@@ -37,6 +37,7 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var providerWatcher: ProviderWatcher
     @Inject lateinit var messages: MessageDao
     @Inject lateinit var sendQueue: SendQueue
+    @Inject lateinit var settings: dev.saged.barq.data.settings.SettingsRepository
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -52,6 +53,10 @@ class BarqApp : Application(), Configuration.Provider {
         scope.launch {
             seedDefaults()
             resumeQueue()
+            // The local gateway was left on: bring it back (Android may refuse while in the background).
+            if (runCatching { settings.current().gatewayEnabled }.getOrDefault(false)) {
+                dev.saged.barq.sms.gateway.GatewayService.start(this@BarqApp)
+            }
         }
     }
 

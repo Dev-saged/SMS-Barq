@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Groups
+import androidx.compose.material.icons.outlined.SelectAll
 import androidx.compose.material.icons.outlined.PersonAdd
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -148,13 +149,7 @@ class ComposeViewModel @Inject constructor(
         addingGroup.value = true
         viewModelScope.launch {
             try {
-                val numbers = phoneGroups.numbers(group)
-                val current = recipients.value.toMutableList()
-                val keys = current.mapTo(HashSet()) { PhoneUtils.matchKey(it.address) }
-                numbers.forEach { (number, name) ->
-                    if (keys.add(PhoneUtils.matchKey(number))) current += Recipient(number, name)
-                }
-                recipients.value = current
+                addAll(phoneGroups.numbers(group))
             } finally {
                 addingGroup.value = false
             }
@@ -188,7 +183,7 @@ class ComposeViewModel @Inject constructor(
     fun add(entry: ContactEntry) = add(entry.number, entry.name)
 
     fun add(address: String, name: String? = null) {
-        val a = address.trim()
+        val a = PhoneUtils.localPs(address)
         if (a.isEmpty()) return
         if (recipients.value.none { PhoneUtils.same(it.address, a) }) {
             recipients.value = recipients.value + Recipient(a, name ?: contacts.lookupCached(a)?.name)
@@ -199,16 +194,50 @@ class ComposeViewModel @Inject constructor(
     /** Adds every member of a saved group. */
     fun addGroup(groupId: Long) {
         viewModelScope.launch {
-            val members = groupDao.members(groupId)
-            val current = recipients.value.toMutableList()
-            val keys = current.mapTo(HashSet()) { PhoneUtils.matchKey(it.address) }
-            members.forEach { m ->
-                if (keys.add(PhoneUtils.matchKey(m.address))) {
-                    current += Recipient(m.address, m.name ?: contacts.lookupCached(m.address)?.name)
-                }
-            }
-            recipients.value = current
+            addAll(groupDao.members(groupId).map { it.address to (it.name ?: contacts.lookupCached(it.address)?.name) })
         }
+    }
+
+    /** Every group at once (Barq's and the phone's), merged: each real number only once. */
+    fun addAllGroups() {
+        if (addingGroup.value) return
+        addingGroup.value = true
+        viewModelScope.launch {
+            try {
+                val all = ArrayList<Pair<String, String?>>()
+                groups.value.forEach { g ->
+                    groupDao.members(g.id).mapTo(all) { it.address to (it.name ?: contacts.lookupCached(it.address)?.name) }
+                }
+                deviceGroups.value.forEach { g -> all += phoneGroups.numbers(g) }
+                addAll(all)
+            } finally {
+                addingGroup.value = false
+            }
+        }
+    }
+
+    /** What the last group added: new numbers and the repeated ones that were skipped. */
+    val added = MutableStateFlow<Pair<Int, Int>?>(null)
+
+    /**
+     * Adds many numbers: written in the local form (Palestinian numbers become 05x) and a number
+     * already in the list (in any form) is skipped, so nobody gets the message twice.
+     */
+    private fun addAll(numbers: List<Pair<String, String?>>) {
+        val current = recipients.value.toMutableList()
+        val keys = current.mapTo(HashSet()) { PhoneUtils.matchKey(it.address) }
+        var new = 0
+        var repeated = 0
+        numbers.forEach { (number, name) ->
+            if (!PhoneUtils.isPhoneNumber(number)) return@forEach
+            val local = PhoneUtils.localPs(number)
+            if (keys.add(PhoneUtils.matchKey(local))) {
+                current += Recipient(local, name)
+                new++
+            } else repeated++
+        }
+        recipients.value = current
+        added.value = new to repeated
     }
 
     /** Pasted lists ("0599…, 0598…" or one per line) become many recipients at once. */
@@ -264,6 +293,14 @@ fun ComposeScreen(
     val groups by vm.groups.collectAsStateWithLifecycle()
     val deviceGroups by vm.deviceGroups.collectAsStateWithLifecycle()
     val addingGroup by vm.addingGroup.collectAsStateWithLifecycle()
+    val added by vm.added.collectAsStateWithLifecycle()
+    val addedMsg = stringResource(R.string.groups_added)
+    val addedDupMsg = stringResource(R.string.groups_added_dups)
+    LaunchedEffect(added) {
+        val (n, d) = added ?: return@LaunchedEffect
+        Toast.makeText(context, if (d > 0) String.format(addedDupMsg, n, d) else String.format(addedMsg, n), Toast.LENGTH_SHORT).show()
+        vm.added.value = null
+    }
     var showAllRecipients by remember { mutableStateOf(false) }
     val text by vm.text.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
@@ -419,7 +456,7 @@ fun ComposeScreen(
                 // Someone is chosen: keep the screen calm, the list comes back as soon as you type.
                 recipients.isNotEmpty() -> {
                     if (groups.isNotEmpty() || deviceGroups.isNotEmpty()) {
-                        GroupChips(groups, deviceGroups, addingGroup, vm::addGroup, vm::addPhoneGroup)
+                        GroupChips(groups, deviceGroups, addingGroup, vm::addGroup, vm::addPhoneGroup, vm::addAllGroups)
                     }
                     Text(
                         stringResource(R.string.add_more_hint),
@@ -436,7 +473,7 @@ fun ComposeScreen(
                     header = {
                         if (groups.isNotEmpty() || deviceGroups.isNotEmpty()) {
                             item(key = "groups") {
-                                GroupChips(groups, deviceGroups, addingGroup, vm::addGroup, vm::addPhoneGroup)
+                                GroupChips(groups, deviceGroups, addingGroup, vm::addGroup, vm::addPhoneGroup, vm::addAllGroups)
                             }
                         }
                     },
@@ -478,6 +515,7 @@ private fun GroupChips(
     adding: Boolean,
     onPick: (Long) -> Unit,
     onPickPhone: (PhoneGroup) -> Unit,
+    onPickAll: () -> Unit,
 ) {
     Column {
         Text(
@@ -490,6 +528,22 @@ private fun GroupChips(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            if (groups.size + deviceGroups.size > 1) {
+                item(key = "all_groups") {
+                    AssistChip(
+                        onClick = onPickAll,
+                        enabled = !adding,
+                        label = { Text(stringResource(R.string.groups_all)) },
+                        leadingIcon = { Icon(Icons.Outlined.SelectAll, null, Modifier.size(18.dp)) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            labelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            leadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        ),
+                    )
+                }
+            }
             items(groups, key = { "barq_${it.id}" }) { g ->
                 AssistChip(
                     onClick = { onPick(g.id) },

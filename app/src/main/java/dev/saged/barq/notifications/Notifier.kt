@@ -36,6 +36,8 @@ import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.sms.SendErrors
+import dev.saged.barq.sms.gateway.GatewayServer
+import dev.saged.barq.sms.gateway.GatewayService
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -392,6 +394,35 @@ class Notifier @Inject constructor(
 
     fun cancelBulkFinished() = manager.cancel(BULK_DONE_ID)
 
+    /** The local gateway's notification: where to reach it and what it received / sent. */
+    fun gateway(status: GatewayServer.Status, counts: BatchCounts): Notification {
+        val where = status.address?.let { "$it:${status.port}" } ?: context.getString(R.string.gateway_no_network)
+        val text = context.getString(
+            R.string.gateway_notif_text, where, status.received, counts.sent, counts.failed, counts.pending,
+        )
+        val stop = PendingIntent.getService(
+            context, GATEWAY_ID, GatewayService.stopIntent(context),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, CH_SENDING)
+            .setSmallIcon(R.drawable.ic_stat_barq)
+            .setColor(ContextCompat.getColor(context, R.color.brand))
+            .setContentTitle(context.getString(R.string.gateway_notif_title))
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setOngoing(true)
+            .setSilent(true)
+            .setOnlyAlertOnce(true)
+            .setContentIntent(openApp(GATEWAY_ID))
+            .addAction(R.drawable.ic_done, context.getString(R.string.gateway_stop), stop)
+            .build()
+    }
+
+    fun updateGateway(status: GatewayServer.Status, counts: BatchCounts) {
+        if (!canPost() || !status.running) return
+        runCatching { manager.notify(GATEWAY_ID, gateway(status, counts)) }
+    }
+
     fun notifyMmsDisabled(from: String) {
         if (!canPost()) return
         val n = NotificationCompat.Builder(context, CH_STATUS)
@@ -414,6 +445,7 @@ class Notifier @Inject constructor(
         const val GROUP_MESSAGES = "barq_messages"
         const val SENDING_ID = 999_300
         const val BULK_ID = 999_200
+        const val GATEWAY_ID = 999_400
         private const val BULK_DONE_ID = 999_201
         private const val SUMMARY_ID = 999_100
         private const val FAILED_ID_BASE = 1_000_000

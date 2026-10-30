@@ -378,7 +378,7 @@ private fun Step(n: Int, text: String) {
 }
 
 @Composable
-private fun CommandBox(command: String, onCopy: (String) -> Unit) {
+internal fun CommandBox(command: String, onCopy: (String) -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier

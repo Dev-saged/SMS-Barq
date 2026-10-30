@@ -1,7 +1,7 @@
 # برق (Barq) — ملف تعريف المشروع الكامل
 
 > هذا الملف مرجع شامل للمشروع. إذا فتحت محادثة جديدة، أرفق هذا الملف أو الصقه وقل: «هذا مشروعي برق، كمّل عليه».
-> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.3.0 (المرحلة الرابعة) منفّذ في الكود وبانتظار البناء #6** (القسم 6 والقسم 12). الإصدار 1.2.0 نجح في البناء #5 وجرّبه المالك.
+> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.4.0 (المرحلة الخامسة) منفّذ في الكود وبانتظار البناء #7** (القسم 6 والقسم 13). الإصدار 1.3.0 نجح وجرّبه المالك، ورفع حد الإرسال عبر Shizuku.
 > المستودع: **github.com/Dev-saged/SMS-Barq** (الفرع `main`)
 
 ---
@@ -148,20 +148,21 @@
 ### المكتبات والإصدارات (`gradle/libs.versions.toml`)
 | المكتبة | الإصدار |
 |---|---|
-| AGP | 8.7.3 |
-| Kotlin / Compose compiler plugin | 2.1.0 |
-| KSP | 2.1.0-1.0.29 |
-| Gradle wrapper | 8.11.1 |
-| Compose BOM | 2024.12.01 (Material3 1.3.x) |
-| Hilt | 2.53.1 · androidx.hilt 1.2.0 |
-| Room | 2.6.1 (مع room-paging) |
-| Paging | 3.3.5 |
-| WorkManager | 2.10.0 |
-| DataStore Preferences | 1.1.1 |
+| AGP | 8.13.2 (تجنّبنا AGP 9 عمداً: يغيّر نموذج البناء) |
+| Kotlin / Compose compiler plugin | 2.2.21 (خيارات المترجم في كتلة `kotlin { compilerOptions }`) |
+| KSP | 2.3.0 |
+| Gradle wrapper | 8.13 |
+| Compose BOM | 2026.03.00 (material-icons-extended يبقى 1.7.8 من الـ BOM) |
+| Hilt | 2.58 (2.59+ يحتاج AGP 9) · androidx.hilt 1.3.0 |
+| Room | 2.8.4 (مع room-paging) |
+| Paging | 3.4.1 |
+| WorkManager | 2.11.0 |
+| DataStore Preferences | 1.2.0 |
 | Glance | 1.1.1 |
-| Navigation Compose | 2.8.5 |
-| Lifecycle | 2.8.7 · Activity 1.9.3 · Core 1.15.0 |
-| Coroutines | 1.9.0 · kotlinx.serialization 1.7.3 |
+| Navigation Compose | 2.9.6 |
+| Lifecycle | 2.10.0 · Activity 1.13.0 · Core 1.17.0 |
+| Coroutines | 1.10.2 · kotlinx.serialization 1.9.0 |
+| compileSdk / targetSdk | 36 / 35 |
 | JDK | 17 |
 
 ### النمط المعماري
@@ -213,6 +214,8 @@ Barq/
         │   ├── SendEngine.kt          # المدخل الوحيد للإرسال (الشريحة، فردي/جماعي، إعادة، إلغاء)
         │   ├── SendDrainer.kt         # المكان الوحيد الذي يسلّم الرسائل للمودم (قفل يمنع التكرار)
         │   ├── BulkSendService.kt     # خدمة بالمقدّمة للإرسال الجماعي مع إشعار تقدّم
+        │   ├── gateway/GatewayServer.kt   # بوابة HTTP محلية متوافقة مع SMS Sendr (1.4.0)
+        │   ├── gateway/GatewayService.kt  # خدمة specialUse تشغّل البوابة وترسل ما يصلها فوراً
         │   ├── SendTracker.kt         # انتظار تأكيد المودم + BulkState (تحضير/إيقاف مؤقت)
         │   ├── SendErrors.kt          # رمز الخطأ ← سبب عربي
         │   ├── SendLimit.kt           # حد أندرويد للإرسال: قراءة / رفع / إرجاع
@@ -273,7 +276,7 @@ Barq/
 - أزرار الإرسال الجماعي في `NotificationActionReceiver`: `BATCH_PAUSE` / `BATCH_RESUME` / `BATCH_CANCEL` / `BATCH_RESEND`.
 
 ### الإعدادات (`AppSettings` في DataStore)
-themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled, spamFilter, recycleBin, swipeStart, swipeEnd, defaultSubId, sendDelayMs (0 = أقصى سرعة)، autoReplyEnabled, autoReplyMode, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow, autoReplyFromMin, autoReplyToMin, backupFrequency, backupTreeUri, lastBackupAt, onboardingDone, **lastBatchId** (بطاقة آخر إرسال جماعي)، **bulkIntroShown**
+themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled, spamFilter, recycleBin, swipeStart, swipeEnd, defaultSubId, sendDelayMs (0 = أقصى سرعة)، autoReplyEnabled, autoReplyMode, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow, autoReplyFromMin, autoReplyToMin, backupFrequency, backupTreeUri, lastBackupAt, onboardingDone, **lastBatchId** (بطاقة آخر إرسال جماعي)، **bulkIntroShown**، autoRetry، respectLimit، reactionsAsSms، externalSeenAt، **devMode**، **gatewayEnabled / gatewayPort (8080) / gatewayKey / gatewayDedupe** (1.4.0). `dynamicColor` صار افتراضياً **false** منذ 1.4.0.
 
 ### صيغة النسخة الاحتياطية (JSON)
 ```json
@@ -288,7 +291,7 @@ themeMode, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCo
 الاستيراد يقبل النسختين 1 و2، ويتجاهل الرسائل المكررة (فحص سريع بمفتاح «الرقم|الوقت» ثم النص عند التطابق). المجموعات تُدمج بالاسم. إن كانت فيها إعدادات يسأل المستخدم قبل استبدال الحالية.
 
 ### الأذونات
-READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PHONE_STATE، POST_NOTIFICATIONS، SCHEDULE_EXACT_ALARM، RECEIVE_BOOT_COMPLETED، **FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC** (الإرسال الجماعي)، INTERNET (تنزيل MMS عبر النظام، وفحص التحديثات عند الضغط فقط).
+READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PHONE_STATE، POST_NOTIFICATIONS، SCHEDULE_EXACT_ALARM، RECEIVE_BOOT_COMPLETED، **FOREGROUND_SERVICE + FOREGROUND_SERVICE_DATA_SYNC** (الإرسال الجماعي)، **FOREGROUND_SERVICE_SPECIAL_USE + ACCESS_WIFI_STATE** (البوابة المحلية، 1.4.0)، WRITE_SECURE_SETTINGS (رفع الحد، يُمنح يدوياً)، INTERNET (تنزيل MMS عبر النظام، وفحص التحديثات عند الضغط فقط).
 
 **متطلبات دور الرسائل الافتراضي (كلها موجودة في المانيفست):** SMS_DELIVER، WAP_PUSH_DELIVER، نشاط SENDTO لـ sms/smsto/mms/mmsto، وخدمة RESPOND_VIA_MESSAGE.
 
@@ -329,9 +332,10 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | 3 | المرحلة الثانية (1.1.0) | لا أخطاء | تحسينات جهات الاتصال والقائمة (القسم 8) | ✅ **نجح البناء #3** (7m 16s)، والـ APK في إصدار `latest-build` |
 | 4 | المرحلة الثالثة (1.2.0) | `data/MessageRepository.kt:145, 270` → `No value passed for parameter 'draftAt'`، و`:335` → `Unresolved reference 'invalidate'`. الملف حُذف في 1.2.0 لكنه بقي في المستودع لأن رفع الـ zip لا يحذف | استبدال `MessageRepository.kt` بملف فارغ (سطر `package` فقط). ملاحظة: `kspReleaseKotlin` (Room وHilt) نجح، وكل الأخطاء كانت في هذا الملف القديم فقط | ✅ أُصلح |
 | 5 | المرحلة الثالثة (1.2.0) | لا أخطاء | نفس الكود + الملف الفارغ + README جديد بأصول SVG | ✅ **نجح البناء #5** وجرّب المالك 1.2.0 |
-| 6 | المرحلة الرابعة (1.3.0) | — | 14 بنداً (القسم 12)، قاعدة البيانات 3، محرك إرسال جديد، واجهة إنجليزية | ⏳ بانتظار البناء. فُحصت صياغة كل الملفات بمترجم Kotlin 2.0، وجُرّب SQL الترحيل 2→3 على SQLite، وجُرّب `ReactionText` فعلياً، وطابقت كل النصوص الـ401 بين العربية والإنجليزية (أسماء ومتغيّرات) |
+| 6 | المرحلة الرابعة (1.3.0) | لا أخطاء | 14 بنداً (القسم 12)، قاعدة البيانات 3، محرك إرسال جديد، واجهة إنجليزية | ✅ **نجح** وجرّبه المالك؛ رفع حد الإرسال عبر Shizuku + rish في Termux (adb connect رُفض على سامسونج) |
+| 7 | المرحلة الخامسة (1.4.0) | — | تحديث كل المكتبات + وضع المطوّر + البوابة + المجموعات + README (القسم 13) | ⏳ بانتظار البناء. فُحصت الصياغة، وجُرّب خادم البوابة فعلياً بـ curl (كل المسارات والأكواد، 300 طلب متوازٍ < 1 ثانية)، وجُرّب `PhoneUtils.localPs` (16 حالة)، وطابقت 446 نصاً بين العربية والإنجليزية. لا تغيير في قاعدة البيانات |
 
-> **الخطوة التالية:** ارفع `Barq-project.zip` (1.3.0) وشغّل البناء. إن فشل، نزّل السجل (Actions ← العملية ← ⋯ ← Download log archive)، وأرسله للذكاء الاصطناعي مع هذا الملف، وصلّح **كل** الأخطاء دفعة واحدة. بعد التثبيت: افتح التطبيق مرة ليجري ترحيل قاعدة البيانات، وإن حصل أي عطل انسخ «سجل الأعطال» من الإعدادات.
+> **الخطوة التالية:** ارفع `Barq-project.zip` (1.4.0) وشغّل البناء. إن فشل بسبب Gradle/AGP/Kotlin (أخطاء قبل مرحلة compile) فالسبب تحديث المكتبات (القسم 4)، وإلا فالكود الجديد (القسم 13). إن فشل، نزّل السجل (Actions ← العملية ← ⋯ ← Download log archive)، وأرسله للذكاء الاصطناعي مع هذا الملف، وصلّح **كل** الأخطاء دفعة واحدة. بعد التثبيت: افتح التطبيق مرة ليجري ترحيل قاعدة البيانات، وإن حصل أي عطل انسخ «سجل الأعطال» من الإعدادات.
 >
 > **مكان التنزيل:** `github.com/Dev-saged/SMS-Barq/releases` ← إصدار **latest-build** (عليه شارة Pre-release) ← Assets ← `Barq-latest.apk`. أو من صفحة البناء ← Artifacts.
 - ⚠️ لم تُختبر بعد على الجهاز: استقبال MMS (يختلف باختلاف المشغّل) والشريحتين.
@@ -489,7 +493,7 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | 7 | تفاعلات الإيموجي (محلية + SMS اختياري + التعرّف على الواردة) | `domain/ReactionText.kt`، `data/ReactionRepository.kt`، `IncomingProcessor.kt`، `ThreadScreen.kt` (MessageMenu)، `MessageBubble.kt` (Reactions) |
 | 8 | تقارير التسليم: افتراضياً مفعّلة، لا «تم التسليم» لتقرير غير مقروء، تشخيص | `SettingsRepository`، `SmsStatusReceiver.kt` |
 | 9 | بطاقة المطوّر أصغر ومرتبة | `ui/settings/AboutCard.kt` |
-| 10 | تحديث المكتبات | **مؤجّل عمداً لبناء مستقل بعد نجاح 1.3.0** (انظر أدناه) |
+| 10 | تحديث المكتبات | **نُفّذ في 1.4.0** (القسم 4 والقسم 13) |
 | 11 | واجهة إنجليزية | `res/values-en/strings.xml`، `res/values*/bools.xml` (`barq_rtl`)، `Theme.kt`، `BarqNavHost.kt` (اتجاه الانتقال) |
 | 12 | فتح أسرع | `app/src/main/baseline-prof.txt` (profileinstaller يأتي مع Compose) |
 | 13 | بحث داخل المحادثة | `ThreadViewModel` (search*)، `ThreadScreen.kt` (ThreadSearchBar)، `Daos.searchInThread`، صفحات بـ placeholders دائماً |
@@ -502,6 +506,40 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 - الحالي: Compose BOM 2024.12.01، Room 2.6.1، WorkManager 2.10.0، Navigation 2.8.5، Lifecycle 2.8.7، Paging 3.3.5، DataStore 1.1.1، Activity 1.9.3، Kotlin 2.1.0، AGP 8.7.3.
 - الأحدث المستقر (أكتوبر 2026، من صفحة AndroidX): Room 2.8.5، WorkManager 2.12.0، Navigation 2.10.1، Compose 1.12.x (BOM 2026.08+)، Paging 3.4.1، DataStore 1.2.0، Lifecycle 2.11، Activity 1.13.
 - **لماذا مؤجّل:** بيئة التطوير لا تصل لمستودعات Google، فلا يمكن التأكد من توافق الإصدارات (Kotlin/KSP/AGP/compileSdk) إلا بالبناء على GitHub. خلطها مع 14 بنداً جديداً يجعل أي فشل غامض المصدر. الخطوة التالية بعد نجاح البناء #6: zip فيه تغيير `gradle/libs.versions.toml` (و`compileSdk` إن لزم) فقط.
+
+
+---
+
+## 13. المرحلة الخامسة (1.4.0): منفّذة في الكود
+
+> طلبها المالك بعد نجاح 1.3.0: تطبيق SMS Sendr يرسل ببطء (تأخير ≥ 800ms لكل رسالة وحد 40 طلباً بالدقيقة لكل IP) ويبقى طابوره معلّقاً، وبرق لا يستطيع أخذ طابور تطبيق آخر. الحل: بوابة برق الخاصة. بانتظار البناء #7.
+
+### البنود المنفّذة
+| # | البند | الملفات الأساسية |
+|---|---|---|
+| 1 | **تحديث كل المكتبات** لآخر إصدار متوافق مع AGP 8 | `gradle/libs.versions.toml`، `gradle/wrapper/gradle-wrapper.properties` (8.13)، `app/build.gradle.kts` (compileSdk 36، `kotlin { compilerOptions }`) |
+| 2 | **وضع المطوّر المخفي**: 3 ضغطات متتالية (≤ 800ms بينها) على سطر «الإصدار» في الإعدادات. فيه: البوابة، سرعة الإرسال الجماعي، حد الإرسال، الرد التلقائي، سجل الأعطال، وإخفاء الوضع. نُقلت هذه البنود من الإعدادات العادية | `ui/settings/DeveloperScreen.kt`، `SettingsScreen.kt`، `Routes.DEVELOPER` |
+| 3 | **بوابة برق المحلية** (بديل Sendr) | `sms/gateway/GatewayServer.kt`، `GatewayService.kt`، `SendEngine.enqueueGateway`، `Notifier.gateway`، المانيفست، `BootReceiver`، `BarqApp` |
+| 4 | **المجموعات**: زر «جميع المجموعات» في رسالة جديدة، «دمج مجموعات» (برق + الهاتف) بلا تكرار، «توحيد وحذف المكرر» وبحث داخل المجموعة | `ui/compose/ComposeScreen.kt` (addAll/addAllGroups)، `ui/settings/GroupsScreens.kt` (merge/cleanUp/MergeDialog) |
+| 5 | **توحيد الأرقام الفلسطينية**: ‎+970/+972/00970/00972/970…/972… (12 رقماً)/59…/56… ← ‎05x‎. يطبَّق على الإدخال والمجموعات والإرسال الجديد والبوابة وعرض الأرقام بلا اسم. `matchKey` لم يتغيّر | `domain/PhoneUtils.localPs` و`localPsAll`، `ContactsRepository.displayName/cachedName`، `SendEngine.sendNew` |
+| 6 | **بطاقة «تصميم وتطوير»**: آخر عنصر في الإعدادات، في المنتصف، بلا خلفية متدرّجة (ألوان الثيم)، أزرار تواصل دائرية، ولا فراغ تحتها (`SettingsScaffold(bottomPadding)`) | `ui/settings/AboutCard.kt`، `SettingsComponents.kt` |
+| 7 | **راحة العين والثبات**: ألوان برق افتراضياً على كل الأجهزة (`dynamicColor = false`)، ارتفاع سطر أكبر لـ bodySmall/labelMedium | `SettingsRepository`، `ui/theme/Theme.kt` |
+| 8 | **README جديد بالكامل**: غلاف، 4 شارات، زر تنزيل، 6 بطاقات مزايا، 3 معاينات شاشات (مرسومة بألوان وخط برق، **ليست لقطات حقيقية** ومكتوب ذلك)، الجديد، التثبيت، بطاقة مطوّر وبطاقات حسابات صغيرة. حُذفت الأقسام التقنية | `README.md`، `docs/readme/*` (ملفات فارغة مكان `chip-stack.svg` و`chip-license.svg` و`feature-arabic.svg`) |
+
+### البوابة: المواصفات (متوافقة مع SMS Sendr)
+- `POST /send` أو `/api/send` (مع أو بدون `/` في الآخر). الجسم JSON: `{"phone","message"}` (ويقبل أيضاً `to`/`number` و`text`/`body`). حد الجسم 16KB، ويدعم chunked و`Expect: 100-continue`.
+- المفتاح في `X-Api-Key` أو `Authorization: Bearer`، وهو 32 حرفاً hex يُنشأ عند أول تشغيل، ويمكن إنشاء جديد. المقارنة بزمن ثابت.
+- الرد `{"success","duplicate","detail","error","phone"}`: 200 `accepted`، 409 مكرر (نفس النص لنفس الرقم خلال 10 دقائق، قابل للإيقاف)، 422 رقم/نص غير صالح، 400 جسم فارغ أو JSON خاطئ، 401 مفتاح خاطئ، 413 جسم كبير، 405 `Use POST`، 404، و500 عند فشل الطابور (قابل لإعادة المحاولة).
+- `GET /health`: `{"status":"ok","service":"Barq","compatible":"SMS Sendr","version","running":true,"received","time"}`. `GET /` و`/g`: صفحة تجربة صغيرة. OPTIONS ← 204 مع CORS.
+- **لا حد للطلبات ولا تأخير**: كل طلب يُكتب في طابور برق فوراً (`batchId` واحد لكل دفعة متقاربة < 10 دقائق، فتظهر بطاقة التقدّم في الوارد)، وخدمة البوابة تشغّل `SendDrainer` فوراً بعد كل طلب. الإرسال الفعلي يتبع محرك برق (السرعة والحد وإعادة المحاولة).
+- **الشبكة المحلية فقط**: يُرفض أي عنوان ليس loopback أو خاصاً (10/172.16/192.168) أو link-local أو 100.64/10 أو IPv6 ULA (403).
+- خدمة بالمقدّمة من نوع `specialUse` (subtype `local_sms_gateway_http_server`) مع WakeLock (يُجدَّد كل 3 ساعات) وWifiLock، وإشعار فيه العنوان والأعداد وزر «إيقاف». تعود بعد إعادة التشغيل إن كانت مفعّلة، وتتابع تغيّر الشبكة لتحديث العنوان.
+- جُرّب الخادم فعلياً على JVM مع بدائل للتبعيات: كل الحالات أعلاه + 300 طلب متوازٍ قُبلت كلها في أقل من ثانية.
+
+### ملاحظات
+- لا تغيير في قاعدة البيانات (ما زالت الإصدار 3).
+- `VERSION_NAME = 1.4.0`.
+- الصور في README معاينات؛ إن أرسل المالك لقطات حقيقية تُستبدل بها `docs/readme/screen-inbox.png` و`screen-chat.png` و`screen-groups.png`.
 
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.

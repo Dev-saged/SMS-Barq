@@ -468,4 +468,52 @@
     <string name="auto_retry">إعادة المحاولة تلقائياً</string>
     <string name="auto_retry_sub">الرسالة التي تفشل بسبب انقطاع التغطية أو الحد يعاد إرسالها وحدها حتى 3 مرات.</string>
     <string name="limit_warning">ملاحظة: الإرسال السريع جداً لأعداد كبيرة قد يجعل شركة الاتصالات تبطئ الشريحة أو توقفها مؤقتاً. برق لا يرسل أي شيء إلا ما تطلبه أنت.</string>
+
+    <!-- 1.4.0: developer mode and local gateway -->
+    <string name="dev_title">وضع المطوّر</string>
+    <string name="dev_intro">أدوات متقدّمة لمن يعرف ما يفعل: البوابة المحلية، سرعة وحد الإرسال، الرد التلقائي وسجل الأعطال. الإعدادات العادية تبقى بسيطة.</string>
+    <string name="dev_open">وضع المطوّر</string>
+    <string name="dev_open_sub">البوابة المحلية، السرعة، الحد والسجل</string>
+    <string name="dev_unlocked">تم تفعيل وضع المطوّر</string>
+    <string name="dev_sending">الإرسال</string>
+    <string name="dev_diagnostics">التشخيص</string>
+    <string name="dev_hide">إخفاء وضع المطوّر</string>
+    <string name="dev_hide_sub">يختفي من الإعدادات، ويعود بالضغط على الإصدار 3 مرات</string>
+    <string name="gateway_title">بوابة برق المحلية</string>
+    <string name="gateway_enable">تشغيل البوابة</string>
+    <string name="gateway_enable_sub">البوت أو أي برنامج على نفس الشبكة يرسل من برق مباشرة، بلا حد للطلبات</string>
+    <string name="gateway_running">البوابة تعمل وتستقبل الطلبات</string>
+    <string name="gateway_starting">جارٍ التشغيل…</string>
+    <string name="gateway_no_network">لا توجد شبكة محلية (شغّل الواي فاي أو نقطة الاتصال)</string>
+    <string name="gateway_error">تعذّر التشغيل: %1$s</string>
+    <string name="gateway_start_failed">لم يسمح أندرويد بتشغيل البوابة الآن، افتح برق وحاول مجدداً</string>
+    <string name="gateway_counts">استقبلت %1$d رسالة · رُفض %2$d طلب</string>
+    <string name="gateway_key">مفتاح API</string>
+    <string name="gateway_key_none">يُنشأ عند تشغيل البوابة</string>
+    <string name="gateway_new_key">مفتاح جديد</string>
+    <string name="gateway_new_key_sub">المفتاح القديم يتوقف فوراً</string>
+    <string name="gateway_new_key_confirm">أي بوت يستخدم المفتاح الحالي سيتوقف حتى تضع فيه المفتاح الجديد. متابعة؟</string>
+    <string name="gateway_new_key_yes">إنشاء مفتاح</string>
+    <string name="gateway_port">المنفذ</string>
+    <string name="gateway_port_hint">من 1024 إلى 65535 (الافتراضي 8080)</string>
+    <string name="gateway_dedupe">منع التكرار</string>
+    <string name="gateway_dedupe_sub">نفس النص لنفس الرقم خلال 10 دقائق يُرفض كمكرر (409)</string>
+    <string name="gateway_how">طريقة الاستخدام</string>
+    <string name="gateway_how_text">متوافقة مع SMS Sendr: نفس العنوان ‎/send‎ ونفس الطلب والردود. ضع عنوان البوابة والمفتاح في البوت بدل Sendr. كل طلب يدخل طابور برق فوراً ويُرسل بأقصى سرعة يسمح بها أندرويد.</string>
+    <string name="gateway_numbers_note">الأرقام الفلسطينية بأي صيغة (‎+970‎ أو ‎+972‎ أو ‎00970‎ أو بدون صفر) تتحول تلقائياً إلى ‎05x‎.</string>
+    <string name="gateway_notif_title">بوابة برق تعمل</string>
+    <string name="gateway_notif_text">%1$s · استقبلت %2$d · أُرسلت %3$d · فشلت %4$d · بالانتظار %5$d</string>
+    <string name="gateway_stop">إيقاف</string>
+    <!-- 1.4.0: groups merge / tidy -->
+    <string name="groups_all">جميع المجموعات</string>
+    <string name="groups_added">أُضيف %1$d رقم</string>
+    <string name="groups_added_dups">أُضيف %1$d رقم · حُذف %2$d مكرر</string>
+    <string name="group_merge">دمج مجموعات</string>
+    <string name="group_merge_do">دمج</string>
+    <string name="group_merge_hint">تُجمع في مجموعة جديدة، كل رقم مرة واحدة، والأرقام الفلسطينية بصيغة ‎05x‎.</string>
+    <string name="group_merged">المجموعة الجديدة فيها %1$d رقم · حُذف %2$d مكرر</string>
+    <string name="group_clean">توحيد وحذف المكرر</string>
+    <string name="group_cleaned">تم التنظيف · حُذف %1$d مكرر</string>
+    <string name="group_filter">ابحث بالاسم أو الرقم</string>
+    <string name="group_chip_phone">%1$s · %2$d (الهاتف)</string>
 </resources>

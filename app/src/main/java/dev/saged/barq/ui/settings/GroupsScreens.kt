@@ -1,6 +1,15 @@
 package dev.saged.barq.ui.settings
 
+import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.outlined.CleaningServices
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,6 +63,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
 import dev.saged.barq.data.contacts.ContactEntry
 import dev.saged.barq.data.contacts.ContactsRepository
+import androidx.room.withTransaction
+import dev.saged.barq.data.contacts.PhoneGroup
+import dev.saged.barq.data.contacts.PhoneGroups
+import dev.saged.barq.data.db.BarqDatabase
 import dev.saged.barq.data.db.GroupDao
 import dev.saged.barq.data.db.SendGroupEntity
 import dev.saged.barq.data.db.SendGroupMemberEntity
@@ -80,6 +93,8 @@ class GroupsViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val dao: GroupDao,
     private val contacts: ContactsRepository,
+    private val phoneGroups: PhoneGroups,
+    private val db: BarqDatabase,
 ) : ViewModel() {
     val groupId: Long = savedState.get<Long>("groupId") ?: -1L
 
@@ -97,8 +112,94 @@ class GroupsViewModel @Inject constructor(
         .mapLatest { (all, q) -> if (q.isBlank()) all else contacts.search(q) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList<ContactEntry>())
 
+    /** Groups made in the phone's Contacts app (for merging). */
+    val deviceGroups = MutableStateFlow<List<PhoneGroup>>(emptyList())
+
+    /** Filter for a long member list (name or number). */
+    val memberQuery = MutableStateFlow("")
+    val visibleMembers = combine(members, memberQuery) { list, q ->
+        val t = q.trim()
+        if (t.isEmpty()) list
+        else {
+            val digits = PhoneUtils.normalizeDigits(t).filter { it.isDigit() }
+            list.filter { m ->
+                m.name?.contains(t, ignoreCase = true) == true ||
+                    m.address.contains(t) ||
+                    (digits.length >= 3 && m.address.filter { it.isDigit() }.contains(digits.trimStart('0')))
+            }
+        }
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList<SendGroupMemberEntity>())
+
+    /** Busy merging / cleaning (big groups take a moment). */
+    val working = MutableStateFlow(false)
+
     init {
-        viewModelScope.launch(Dispatchers.IO) { contacts.warmUp() }
+        viewModelScope.launch(Dispatchers.IO) {
+            contacts.warmUp()
+            deviceGroups.value = runCatching { phoneGroups.groups() }.getOrDefault(emptyList())
+        }
+    }
+
+    /**
+     * Makes a new Barq group from several groups (Barq's and the phone's): numbers in the local
+     * form, each real number once. Reports how many numbers it has and how many repeats were dropped.
+     */
+    fun merge(name: String, barqIds: Set<Long>, phone: List<PhoneGroup>, done: (Long, Int, Int) -> Unit) {
+        if (name.isBlank() || (barqIds.isEmpty() && phone.isEmpty()) || working.value) return
+        working.value = true
+        viewModelScope.launch {
+            try {
+                val all = ArrayList<Pair<String, String?>>()
+                barqIds.forEach { id -> dao.members(id).mapTo(all) { it.address to it.name } }
+                phone.forEach { g -> all += phoneGroups.numbers(g) }
+                val (unique, repeated) = clean(all)
+                val id = db.withTransaction {
+                    val id = dao.insert(SendGroupEntity(name = name.trim()))
+                    dao.addMembers(unique.map { (a, n) -> SendGroupMemberEntity(id, a, n) })
+                    id
+                }
+                done(id, unique.size, repeated)
+            } finally {
+                working.value = false
+            }
+        }
+    }
+
+    /** Writes every number of this group in the local form and removes repeated numbers. */
+    fun cleanUp(done: (Int) -> Unit) {
+        if (groupId <= 0 || working.value) return
+        working.value = true
+        viewModelScope.launch {
+            try {
+                val current = dao.members(groupId)
+                val (unique, repeated) = clean(current.map { it.address to it.name })
+                db.withTransaction {
+                    dao.clearMembers(groupId)
+                    dao.addMembers(unique.map { (a, n) -> SendGroupMemberEntity(groupId, a, n) })
+                }
+                done(repeated)
+            } finally {
+                working.value = false
+            }
+        }
+    }
+
+    /** Local form + one entry per real number (the first name found is kept). */
+    private fun clean(numbers: List<Pair<String, String?>>): Pair<List<Pair<String, String?>>, Int> {
+        val byKey = LinkedHashMap<String, Pair<String, String?>>()
+        var repeated = 0
+        numbers.forEach { (address, name) ->
+            if (!PhoneUtils.isPhoneNumber(address)) return@forEach
+            val local = PhoneUtils.localPs(address)
+            val key = PhoneUtils.matchKey(local)
+            val before = byKey[key]
+            if (before == null) byKey[key] = local to (name ?: contacts.lookupCached(local)?.name)
+            else {
+                repeated++
+                if (before.second == null && name != null) byKey[key] = before.first to name
+            }
+        }
+        return byKey.values.toList() to repeated
     }
 
     fun create(name: String, done: (Long) -> Unit) {
@@ -126,6 +227,7 @@ class GroupsViewModel @Inject constructor(
     /** Pasted numbers: one per line or separated by commas. */
     fun addPasted(text: String) {
         val numbers = text.split(',', ';', '\n', '،').map { it.trim() }.filter { PhoneUtils.isPhoneNumber(it) }
+            .map { PhoneUtils.localPs(it) }
         if (numbers.isEmpty() || groupId <= 0) return
         viewModelScope.launch {
             val existing = dao.members(groupId).map { PhoneUtils.matchKey(it.address) }.toSet()
@@ -165,7 +267,7 @@ class GroupsViewModel @Inject constructor(
             dao.addMembers(
                 chosen.filter { PhoneUtils.matchKey(it.number) !in currentKeys }
                     .distinctBy { PhoneUtils.matchKey(it.number) }
-                    .map { SendGroupMemberEntity(groupId, it.number, it.name) }
+                    .map { SendGroupMemberEntity(groupId, PhoneUtils.localPs(it.number), it.name) }
             )
             done()
         }
@@ -177,7 +279,12 @@ class GroupsViewModel @Inject constructor(
 @Composable
 fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewModel = hiltViewModel()) {
     val groups by vm.groups.collectAsStateWithLifecycle()
+    val deviceGroups by vm.deviceGroups.collectAsStateWithLifecycle()
+    val working by vm.working.collectAsStateWithLifecycle()
     var adding by remember { mutableStateOf(false) }
+    var merging by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val mergedMsg = stringResource(R.string.group_merged)
 
     SettingsScaffold(
         title = stringResource(R.string.groups_title),
@@ -191,6 +298,15 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 12.dp, horizontal = 4.dp),
             )
+            if (groups.size + deviceGroups.size >= 2) {
+                FilledTonalButton(onClick = { merging = true }, enabled = !working, modifier = Modifier.padding(bottom = 8.dp)) {
+                    Icon(Icons.Outlined.SelectAll, null)
+                    Text(
+                        stringResource(if (working) R.string.groups_adding else R.string.group_merge),
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                }
+            }
         }
         if (groups.isEmpty()) item { EmptyHint(stringResource(R.string.nothing_here)) }
         items(groups, key = { it.id }) { g ->
@@ -200,6 +316,19 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
         }
     }
 
+    if (merging) {
+        MergeDialog(
+            groups = groups,
+            deviceGroups = deviceGroups,
+            onDismiss = { merging = false },
+        ) { name, ids, phone ->
+            merging = false
+            vm.merge(name, ids, phone) { id, count, repeated ->
+                Toast.makeText(context, String.format(mergedMsg, count, repeated), Toast.LENGTH_LONG).show()
+                openGroup(id)
+            }
+        }
+    }
     if (adding) {
         TextInputDialog(
             title = stringResource(R.string.group_new),
@@ -219,6 +348,11 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
 fun GroupScreen(onBack: () -> Unit, pickContacts: (Long) -> Unit, vm: GroupsViewModel = hiltViewModel()) {
     val group by vm.group.collectAsStateWithLifecycle()
     val members by vm.members.collectAsStateWithLifecycle()
+    val visible by vm.visibleMembers.collectAsStateWithLifecycle()
+    val memberQuery by vm.memberQuery.collectAsStateWithLifecycle()
+    val working by vm.working.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val cleanedMsg = stringResource(R.string.group_cleaned)
     var renaming by remember { mutableStateOf(false) }
     var pasting by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -229,9 +363,10 @@ fun GroupScreen(onBack: () -> Unit, pickContacts: (Long) -> Unit, vm: GroupsView
         floating = { AddFab(stringResource(R.string.group_from_contacts)) { pickContacts(vm.groupId) } },
     ) {
         item {
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 FilledTonalButton(onClick = { pasting = true }) {
                     Icon(Icons.Outlined.ContentPaste, null)
@@ -241,6 +376,28 @@ fun GroupScreen(onBack: () -> Unit, pickContacts: (Long) -> Unit, vm: GroupsView
                     Icon(Icons.Outlined.Edit, null)
                     Text(stringResource(R.string.group_rename), modifier = Modifier.padding(start = 6.dp))
                 }
+                if (members.size > 1) {
+                    FilledTonalButton(
+                        enabled = !working,
+                        onClick = {
+                            vm.cleanUp { removed -> Toast.makeText(context, String.format(cleanedMsg, removed), Toast.LENGTH_SHORT).show() }
+                        },
+                    ) {
+                        Icon(Icons.Outlined.CleaningServices, null)
+                        Text(stringResource(R.string.group_clean), modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
+            }
+            if (members.size > 8) {
+                OutlinedTextField(
+                    value = memberQuery,
+                    onValueChange = { vm.memberQuery.value = it },
+                    singleLine = true,
+                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    placeholder = { Text(stringResource(R.string.group_filter)) },
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                )
             }
             Text(
                 stringResource(R.string.group_members_count, members.size),
@@ -250,7 +407,7 @@ fun GroupScreen(onBack: () -> Unit, pickContacts: (Long) -> Unit, vm: GroupsView
             )
         }
         if (members.isEmpty()) item { EmptyHint(stringResource(R.string.group_empty)) }
-        items(members, key = { it.address }) { m ->
+        items(visible, key = { it.address }) { m ->
             ListCard(m.name ?: m.address, if (m.name != null) m.address else null) { RemoveButton { vm.removeMember(m) } }
         }
         item {
@@ -368,5 +525,95 @@ fun GroupPickerScreen(onBack: () -> Unit, vm: GroupsViewModel = hiltViewModel())
                 selected = picked,
             )
         }
+    }
+}
+
+// ---------------------------------------------------------------------------------- merge
+
+/** Pick groups (Barq's and the phone's) to merge into one new group without repeated numbers. */
+@Composable
+private fun MergeDialog(
+    groups: List<SendGroupWithCount>,
+    deviceGroups: List<PhoneGroup>,
+    onDismiss: () -> Unit,
+    onMerge: (String, Set<Long>, List<PhoneGroup>) -> Unit,
+) {
+    var name by remember { mutableStateOf("") }
+    var filter by remember { mutableStateOf("") }
+    var barq by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var phone by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val f = filter.trim()
+    val shownBarq = groups.filter { f.isEmpty() || it.name.contains(f, ignoreCase = true) }
+    val shownPhone = deviceGroups.filter { f.isEmpty() || it.title.contains(f, ignoreCase = true) }
+    val allIds = groups.map { it.id }.toSet()
+    val allTitles = deviceGroups.map { it.title }.toSet()
+    val everything = barq.size == allIds.size && phone.size == allTitles.size
+    val count = barq.size + phone.size
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.group_merge)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.group_name)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (groups.size + deviceGroups.size > 6) {
+                    OutlinedTextField(
+                        value = filter,
+                        onValueChange = { filter = it },
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                        placeholder = { Text(stringResource(R.string.group_filter)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                CheckLine(stringResource(R.string.groups_all), everything) {
+                    if (everything) { barq = emptySet(); phone = emptySet() } else { barq = allIds; phone = allTitles }
+                }
+                LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                    items(shownBarq, key = { "b${it.id}" }) { g ->
+                        CheckLine(stringResource(R.string.group_chip, g.name, g.members), g.id in barq) {
+                            barq = if (g.id in barq) barq - g.id else barq + g.id
+                        }
+                    }
+                    items(shownPhone, key = { "p${it.title}" }) { g ->
+                        CheckLine(stringResource(R.string.group_chip_phone, g.title, g.members), g.title in phone) {
+                            phone = if (g.title in phone) phone - g.title else phone + g.title
+                        }
+                    }
+                }
+                Text(
+                    stringResource(R.string.group_merge_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = name.isNotBlank() && count > 0,
+                onClick = { onMerge(name, barq, deviceGroups.filter { it.title in phone }) },
+            ) { Text(stringResource(R.string.group_merge_do)) }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
+@Composable
+private fun CheckLine(label: String, checked: Boolean, onToggle: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onToggle)
+            .padding(vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = { onToggle() })
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
     }
 }

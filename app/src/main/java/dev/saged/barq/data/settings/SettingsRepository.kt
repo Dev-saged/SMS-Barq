@@ -24,7 +24,8 @@ enum class BackupFrequency { OFF, DAILY, WEEKLY }
 
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
+    /** Off by default since 1.4.0: Barq's own colours look the same on every phone (Material You is optional). */
+    val dynamicColor: Boolean = false,
     val fontScale: Float = 1f,
     val datePattern: String = "dd/MM/yyyy",
     val use24h: Boolean = true,
@@ -62,6 +63,15 @@ data class AppSettings(
     val reactionsAsSms: Boolean = false,
     /** Messages other apps sent before this time are no longer shown on the inbox card. */
     val externalSeenAt: Long = 0,
+    /** Hidden developer tools (unlocked by tapping the version 3 times). */
+    val devMode: Boolean = false,
+    /** Barq's local SMS gateway (LAN-only HTTP server, SMS Sendr compatible). */
+    val gatewayEnabled: Boolean = false,
+    val gatewayPort: Int = 8080,
+    /** 32 hex characters; empty until the gateway is first turned on. */
+    val gatewayKey: String = "",
+    /** The same text to the same number within a few minutes is answered as a duplicate (409). */
+    val gatewayDedupe: Boolean = true,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -102,6 +112,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val respectLimit = booleanPreferencesKey("respect_limit")
         val reactionsAsSms = booleanPreferencesKey("reactions_as_sms")
         val externalSeenAt = longPreferencesKey("external_seen_at")
+        val devMode = booleanPreferencesKey("dev_mode")
+        val gatewayEnabled = booleanPreferencesKey("gateway_enabled")
+        val gatewayPort = intPreferencesKey("gateway_port")
+        val gatewayKey = stringPreferencesKey("gateway_key")
+        val gatewayDedupe = booleanPreferencesKey("gateway_dedupe")
     }
 
     private inline fun <reified T : Enum<T>> Preferences.enumOf(key: Preferences.Key<String>, default: T): T =
@@ -142,6 +157,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             respectLimit = p[K.respectLimit] ?: d.respectLimit,
             reactionsAsSms = p[K.reactionsAsSms] ?: d.reactionsAsSms,
             externalSeenAt = p[K.externalSeenAt] ?: d.externalSeenAt,
+            devMode = p[K.devMode] ?: d.devMode,
+            gatewayEnabled = p[K.gatewayEnabled] ?: d.gatewayEnabled,
+            gatewayPort = p[K.gatewayPort] ?: d.gatewayPort,
+            gatewayKey = p[K.gatewayKey] ?: d.gatewayKey,
+            gatewayDedupe = p[K.gatewayDedupe] ?: d.gatewayDedupe,
         )
     }
 
@@ -185,6 +205,11 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setRespectLimit(v: Boolean) = set(K.respectLimit, v)
     suspend fun setReactionsAsSms(v: Boolean) = set(K.reactionsAsSms, v)
     suspend fun setExternalSeenAt(v: Long) = set(K.externalSeenAt, v)
+    suspend fun setDevMode(v: Boolean) = set(K.devMode, v)
+    suspend fun setGatewayEnabled(v: Boolean) = set(K.gatewayEnabled, v)
+    suspend fun setGatewayPort(v: Int) = set(K.gatewayPort, v)
+    suspend fun setGatewayKey(v: String) = set(K.gatewayKey, v)
+    suspend fun setGatewayDedupe(v: Boolean) = set(K.gatewayDedupe, v)
 
     /** Applies settings restored from a backup (everything the user chose, nothing technical). */
     suspend fun restore(s: AppSettings) {
