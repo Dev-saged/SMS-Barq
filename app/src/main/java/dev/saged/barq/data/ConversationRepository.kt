@@ -122,6 +122,27 @@ class ConversationRepository @Inject constructor(
         conversations.clearUnread(threadIds)
     }
 
+    /**
+     * "Mark as unread": the newest received message of each conversation becomes unread again
+     * (a conversation with nothing received stays as it is). No notification is shown for it.
+     */
+    suspend fun markUnread(threadIds: List<Long>) = withContext(Dispatchers.IO) {
+        threadIds.forEach { threadId ->
+            val latest = messages.latestIncoming(threadId) ?: return@forEach
+            latest.providerId?.let { provider.markUnread(it) }
+            messages.markUnread(latest.id)
+            conversations.setUnreadCount(threadId, messages.unreadCount(threadId))
+        }
+    }
+
+    /** Everything unread in the inbox (or in one category) becomes read. Returns how many conversations. */
+    suspend fun markAllRead(category: Category?): Int = withContext(Dispatchers.IO) {
+        val ids = conversations.unreadIds(category?.name)
+        ids.chunked(500).forEach { markRead(it) }
+        ids.forEach { notifier.cancel(it) }
+        ids.size
+    }
+
     suspend fun setPinned(ids: List<Long>, pinned: Boolean) = conversations.setPinned(ids, pinned)
     suspend fun setArchived(ids: List<Long>, archived: Boolean) = conversations.setArchived(ids, archived)
     suspend fun setMuted(ids: List<Long>, muted: Boolean) = conversations.setMuted(ids, muted)

@@ -20,14 +20,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Badge
-import androidx.compose.material.icons.outlined.Category
+import androidx.compose.material.icons.outlined.AppShortcut
+import androidx.compose.material.icons.outlined.Compress
 import androidx.compose.material.icons.outlined.EmojiEmotions
-import androidx.compose.material.icons.outlined.Fingerprint
-import androidx.compose.material.icons.outlined.SimCard
-import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.UploadFile
-import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material.icons.outlined.MarkChatUnread
+import androidx.compose.material.icons.outlined.MarkEmailUnread
+import androidx.compose.material.icons.outlined.SettingsBackupRestore
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -61,14 +60,13 @@ private data class Item(val icon: ImageVector, @StringRes val title: Int, @Strin
 
 /** What this version brings (shown once after updating, and from Settings → What's new). */
 private val ITEMS = listOf(
-    Item(Icons.Outlined.Fingerprint, R.string.wn_lock_t, R.string.wn_lock_d),
-    Item(Icons.Outlined.UploadFile, R.string.wn_excel_t, R.string.wn_excel_d),
-    Item(Icons.Outlined.Badge, R.string.wn_name_t, R.string.wn_name_d),
-    Item(Icons.Outlined.SimCard, R.string.wn_sim_t, R.string.wn_sim_d),
-    Item(Icons.Outlined.Star, R.string.wn_star_t, R.string.wn_star_d),
-    Item(Icons.Outlined.Category, R.string.wn_class_t, R.string.wn_class_d),
+    Item(Icons.Outlined.MarkChatUnread, R.string.wn_unread_t, R.string.wn_unread_d),
+    Item(Icons.Outlined.AppShortcut, R.string.wn_shortcut_t, R.string.wn_shortcut_d),
+    Item(Icons.Outlined.MarkEmailUnread, R.string.wn_markunread_t, R.string.wn_markunread_d),
+    Item(Icons.Outlined.SettingsBackupRestore, R.string.wn_move_t, R.string.wn_move_d),
+    Item(Icons.Outlined.Compress, R.string.wn_light_t, R.string.wn_light_d),
+    Item(Icons.Outlined.SystemUpdate, R.string.wn_update_t, R.string.wn_update_d),
     Item(Icons.Outlined.EmojiEmotions, R.string.wn_emoji_t, R.string.wn_emoji_d),
-    Item(Icons.Outlined.Wifi, R.string.wn_gateway_t, R.string.wn_gateway_d),
 )
 
 /**

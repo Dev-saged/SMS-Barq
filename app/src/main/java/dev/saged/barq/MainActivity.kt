@@ -117,6 +117,10 @@ class MainActivity : FragmentActivity() {
         val threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1)
         when {
             threadId >= 0 -> pendingRoute.value = Routes.thread(threadId)
+            intent.action == ACTION_UNREAD -> {
+                viewModel.requestOpenUnread()
+                pendingRoute.value = Routes.INBOX
+            }
             intent.action == Intent.ACTION_SENDTO ||
                 (intent.action == Intent.ACTION_VIEW && intent.data?.scheme in SMS_SCHEMES) ||
                 (intent.action == Intent.ACTION_SEND && intent.data != null) -> {
@@ -144,6 +148,9 @@ class MainActivity : FragmentActivity() {
 
     companion object {
         const val EXTRA_THREAD_ID = "thread_id"
+
+        /** Home-screen shortcut: open the inbox on its "Unread" view. */
+        const val ACTION_UNREAD = "dev.saged.barq.action.UNREAD"
         private val SMS_SCHEMES = setOf("sms", "smsto", "mms", "mmsto")
     }
 }

@@ -85,6 +85,11 @@ data class AppSettings(
     val seenVersion: String = "",
     /** Version of the classification rules last applied to old conversations. */
     val classVersion: Int = 0,
+    /**
+     * True once this install looked for a settings snapshot from Android's backup (1.5.3+).
+     * Never backed up itself, so a new phone or a reinstall starts with false.
+     */
+    val snapshotChecked: Boolean = false,
 )
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -136,6 +141,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val lockAfter = intPreferencesKey("lock_after")
         val seenVersion = stringPreferencesKey("seen_version")
         val classVersion = intPreferencesKey("class_version")
+        val snapshotChecked = booleanPreferencesKey("snapshot_checked")
     }
 
     private inline fun <reified T : Enum<T>> Preferences.enumOf(key: Preferences.Key<String>, default: T): T =
@@ -187,6 +193,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             lockAfterSec = p[K.lockAfter] ?: d.lockAfterSec,
             seenVersion = p[K.seenVersion] ?: d.seenVersion,
             classVersion = p[K.classVersion] ?: d.classVersion,
+            snapshotChecked = p[K.snapshotChecked] ?: d.snapshotChecked,
         )
     }
 
@@ -241,6 +248,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setLockAfter(v: Int) = set(K.lockAfter, v)
     suspend fun setSeenVersion(v: String) = set(K.seenVersion, v)
     suspend fun setClassVersion(v: Int) = set(K.classVersion, v)
+    suspend fun setSnapshotChecked(v: Boolean) = set(K.snapshotChecked, v)
 
     /** Applies settings restored from a backup (everything the user chose, nothing technical). */
     suspend fun restore(s: AppSettings) {

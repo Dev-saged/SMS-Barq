@@ -41,7 +41,9 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.MarkChatUnread
 import androidx.compose.material.icons.outlined.MarkEmailRead
+import androidx.compose.material.icons.outlined.MarkEmailUnread
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.NotificationsOff
@@ -73,12 +75,14 @@ import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -148,6 +152,10 @@ fun InboxScreen(
     val pagingItems = vm.conversationsPaged.collectAsLazyPagingItems()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val filter by vm.filter.collectAsStateWithLifecycle()
+    val unreadOnly by vm.unreadOnly.collectAsStateWithLifecycle()
+    val unread by vm.unread.collectAsStateWithLifecycle()
+    val openUnread by mainViewModel.openUnread.collectAsStateWithLifecycle()
+    var confirmReadAll by remember { mutableStateOf(false) }
     val query by vm.query.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
     val otp by vm.freshOtp.collectAsStateWithLifecycle()
@@ -169,6 +177,17 @@ fun InboxScreen(
     val deletedMsg = stringResource(R.string.deleted_done)
     val undo = stringResource(R.string.undo)
     val searching = query.isNotBlank()
+    val readAllDone = stringResource(R.string.unread_all_done)
+
+    // The "Unread" shortcut on the home screen opens the inbox straight on this view.
+    LaunchedEffect(openUnread) {
+        if (openUnread) {
+            vm.setUnreadOnly(true)
+            mainViewModel.consumeOpenUnread()
+        }
+    }
+    // Back leaves the unread view first, then the app.
+    androidx.activity.compose.BackHandler(enabled = unreadOnly && selection.isEmpty()) { vm.setUnreadOnly(false) }
 
     fun onSwipe(action: SwipeAction, c: ConversationEntity) {
         vm.swipe(action, c)
@@ -197,15 +216,17 @@ fun InboxScreen(
                 val chosen = pagingItems.itemSnapshotList.items.filter { it.threadId in selection }
                 val allPinned = chosen.isNotEmpty() && chosen.all { it.pinned }
                 val allMuted = chosen.isNotEmpty() && chosen.all { it.muted }
+                val allRead = chosen.isNotEmpty() && chosen.all { it.unreadCount == 0 }
                 SelectionTopBar(
                     count = selection.size,
                     allPinned = allPinned,
                     allMuted = allMuted,
+                    allRead = allRead,
                     onClose = vm::clearSelection,
                     onPin = { vm.pinSelected(!allPinned) },
                     onMute = { vm.muteSelected(!allMuted) },
                     onArchive = vm::archiveSelected,
-                    onRead = vm::readSelected,
+                    onRead = { if (allRead) vm.unreadSelected() else vm.readSelected() },
                     onDelete = vm::deleteSelected,
                     onBlock = vm::blockSelected,
                 )
@@ -256,7 +277,20 @@ fun InboxScreen(
             }
             item(key = "search", contentType = "search") { SearchField(query) { vm.query.value = it } }
             if (!searching) {
-                item(key = "chips", contentType = "chips") { FilterChips(filter) { vm.filter.value = it } }
+                item(key = "chips", contentType = "chips") {
+                    FilterChips(
+                        selected = filter,
+                        onSelect = { vm.filter.value = it },
+                        unreadOnly = unreadOnly,
+                        unreadCount = unread.conversations,
+                        onUnread = { vm.setUnreadOnly(!unreadOnly) },
+                    )
+                }
+                if (unreadOnly) {
+                    item(key = "unread_head", contentType = "card") {
+                        UnreadHeader(unread, onMarkAll = { confirmReadAll = true })
+                    }
+                }
             }
             bulk?.let { b ->
                 item(key = "bulk", contentType = "card") {
@@ -341,7 +375,12 @@ fun InboxScreen(
                         settings = settings,
                         selected = c.threadId in selection,
                         onClick = {
-                            if (selection.isNotEmpty()) vm.toggleSelection(c.threadId) else openThread(c.threadId)
+                            if (selection.isNotEmpty()) {
+                                vm.toggleSelection(c.threadId)
+                            } else {
+                                vm.onOpened(c.threadId)
+                                openThread(c.threadId)
+                            }
                         },
                         onLongClick = { vm.toggleSelection(c.threadId) },
                         onAvatarClick = if (selection.isEmpty()) ({ openContact(c.threadId) }) else null,
@@ -357,9 +396,11 @@ fun InboxScreen(
                 }
             }
             if (pagingItems.itemCount == 0 && !sync.running && (!searching || hits.isEmpty())) {
-                item(key = "empty", contentType = "empty") { EmptyState(searching || filter != null) }
+                item(key = "empty", contentType = "empty") {
+                    if (unreadOnly && !searching) UnreadEmptyState() else EmptyState(searching || filter != null)
+                }
             }
-            if (filter == null && spamCount > 0 && !searching) {
+            if (filter == null && spamCount > 0 && !searching && !unreadOnly) {
                 item(key = "spam", contentType = "card") {
                     InfoCard(
                         icon = Icons.Outlined.Shield,
@@ -370,6 +411,106 @@ fun InboxScreen(
                 }
             }
         }
+    }
+
+    if (confirmReadAll) {
+        AlertDialog(
+            onDismissRequest = { confirmReadAll = false },
+            icon = { Icon(Icons.Outlined.DoneAll, null) },
+            title = { Text(stringResource(R.string.unread_all_title)) },
+            text = { Text(stringResource(R.string.unread_all_text, unread.messages, unread.conversations)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmReadAll = false
+                    vm.markAllRead { n ->
+                        if (n > 0) scope.launch {
+                            snackbar.currentSnackbarData?.dismiss()
+                            snackbar.showSnackbar(String.format(readAllDone, n), duration = SnackbarDuration.Short)
+                        }
+                    }
+                }) { Text(stringResource(R.string.unread_all_yes)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmReadAll = false }) { Text(stringResource(R.string.cancel)) } },
+        )
+    }
+}
+
+/** Top of the unread view: how much is waiting, and "mark all as read". */
+@Composable
+private fun UnreadHeader(summary: dev.saged.barq.data.db.UnreadSummary, onMarkAll: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(scheme.primaryContainer)
+            .padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(38.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(scheme.primary),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.MarkChatUnread, null, tint = scheme.onPrimary, modifier = Modifier.size(20.dp))
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                if (summary.conversations == 0) stringResource(R.string.unread_none_short)
+                else stringResource(R.string.unread_head, summary.messages, summary.conversations),
+                style = MaterialTheme.typography.titleSmall,
+                color = scheme.onPrimaryContainer,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                stringResource(R.string.unread_head_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onPrimaryContainer.copy(alpha = 0.75f),
+            )
+        }
+        if (summary.conversations > 0) {
+            TextButton(onClick = onMarkAll) {
+                Icon(Icons.Outlined.DoneAll, null, modifier = Modifier.size(18.dp))
+                Text(stringResource(R.string.unread_all_action), modifier = Modifier.padding(start = 6.dp))
+            }
+        }
+    }
+}
+
+/** Nothing unread: a calm "all caught up" instead of the usual empty inbox. */
+@Composable
+private fun UnreadEmptyState() {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(top = 64.dp, start = 32.dp, end = 32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(84.dp)
+                .clip(RoundedCornerShape(28.dp))
+                .background(scheme.primaryContainer),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Outlined.DoneAll, null, tint = scheme.primary, modifier = Modifier.size(42.dp))
+        }
+        Text(
+            stringResource(R.string.unread_empty_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = scheme.onSurface,
+        )
+        Text(
+            stringResource(R.string.unread_empty_text),
+            style = MaterialTheme.typography.bodyMedium,
+            color = scheme.onSurfaceVariant,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
     }
 }
 
@@ -425,6 +566,7 @@ private fun SelectionTopBar(
     onPin: () -> Unit,
     onMute: () -> Unit,
     onArchive: () -> Unit,
+    allRead: Boolean,
     onRead: () -> Unit,
     onDelete: () -> Unit,
     onBlock: () -> Unit,
@@ -450,8 +592,10 @@ private fun SelectionTopBar(
                         onClick = { menu = false; onPin() },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.mark_read)) },
-                        leadingIcon = { Icon(Icons.Outlined.DoneAll, null) },
+                        text = { Text(stringResource(if (allRead) R.string.mark_unread else R.string.mark_read)) },
+                        leadingIcon = {
+                            Icon(if (allRead) Icons.Outlined.MarkEmailUnread else Icons.Outlined.DoneAll, null)
+                        },
                         onClick = { menu = false; onRead() },
                     )
                     DropdownMenuItem(
@@ -522,15 +666,63 @@ private fun ListHeader(text: String) {
 }
 
 @Composable
-private fun FilterChips(selected: Category?, onSelect: (Category?) -> Unit) {
+private fun FilterChips(
+    selected: Category?,
+    onSelect: (Category?) -> Unit,
+    unreadOnly: Boolean,
+    unreadCount: Int,
+    onUnread: () -> Unit,
+) {
     val options = listOf<Category?>(null, Category.OTP, Category.BANK, Category.OFFERS, Category.PERSONAL, Category.SPAM)
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        // "Unread" is a switch on top of the categories: unread bank messages, unread offers…
+        FilterChip(
+            selected = unreadOnly,
+            onClick = onUnread,
+            label = { Text(stringResource(R.string.unread_filter)) },
+            leadingIcon = {
+                Icon(Icons.Outlined.MarkChatUnread, contentDescription = null, modifier = Modifier.size(16.dp))
+            },
+            trailingIcon = if (unreadCount > 0) {
+                {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(if (unreadOnly) scheme.onPrimary else scheme.primary)
+                            .padding(horizontal = 7.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            if (unreadCount > 999) "999+" else unreadCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (unreadOnly) scheme.primary else scheme.onPrimary,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            } else null,
+            shape = RoundedCornerShape(12.dp),
+            colors = FilterChipDefaults.filterChipColors(
+                selectedContainerColor = scheme.primary,
+                selectedLabelColor = scheme.onPrimary,
+                selectedLeadingIconColor = scheme.onPrimary,
+                selectedTrailingIconColor = scheme.onPrimary,
+            ),
+        )
+        Box(
+            Modifier
+                .padding(horizontal = 2.dp)
+                .size(width = 1.dp, height = 22.dp)
+                .background(scheme.outlineVariant),
+        )
         options.forEach { cat ->
             val isSelected = cat == selected
             FilterChip(
@@ -956,13 +1148,17 @@ fun SwipeableRow(
                 SwipeToDismissBoxValue.EndToStart -> endAction
                 SwipeToDismissBoxValue.Settled -> SwipeAction.NONE
             }
-            SwipeBackground(action, alignStart = state.dismissDirection == SwipeToDismissBoxValue.StartToEnd)
+            SwipeBackground(
+                action,
+                alignStart = state.dismissDirection == SwipeToDismissBoxValue.StartToEnd,
+                unread = conversation.unreadCount > 0,
+            )
         },
     ) { content() }
 }
 
 @Composable
-private fun SwipeBackground(action: SwipeAction, alignStart: Boolean) {
+private fun SwipeBackground(action: SwipeAction, alignStart: Boolean, unread: Boolean) {
     val scheme = MaterialTheme.colorScheme
     if (action == SwipeAction.NONE) return
     val (bg, fg) = when (action) {
@@ -973,7 +1169,7 @@ private fun SwipeBackground(action: SwipeAction, alignStart: Boolean) {
     val icon = when (action) {
         SwipeAction.DELETE -> Icons.Outlined.Delete
         SwipeAction.ARCHIVE -> Icons.Outlined.Archive
-        SwipeAction.READ -> Icons.Outlined.MarkEmailRead
+        SwipeAction.READ -> if (unread) Icons.Outlined.MarkEmailRead else Icons.Outlined.MarkEmailUnread
         SwipeAction.PIN -> Icons.Outlined.PushPin
         SwipeAction.MUTE -> Icons.Outlined.NotificationsOff
         SwipeAction.NONE -> Icons.Outlined.Close
@@ -981,7 +1177,7 @@ private fun SwipeBackground(action: SwipeAction, alignStart: Boolean) {
     val label = when (action) {
         SwipeAction.DELETE -> stringResource(R.string.delete)
         SwipeAction.ARCHIVE -> stringResource(R.string.archive_action)
-        SwipeAction.READ -> stringResource(R.string.mark_read)
+        SwipeAction.READ -> stringResource(if (unread) R.string.mark_read else R.string.mark_unread)
         SwipeAction.PIN -> stringResource(R.string.pin)
         SwipeAction.MUTE -> stringResource(R.string.mute)
         SwipeAction.NONE -> ""

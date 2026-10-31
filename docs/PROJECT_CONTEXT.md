@@ -1,7 +1,7 @@
 # برق (Barq) — ملف تعريف المشروع الكامل
 
 > هذا الملف مرجع شامل للمشروع. إذا فتحت محادثة جديدة، أرفق هذا الملف أو الصقه وقل: «هذا مشروعي برق، كمّل عليه».
-> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.5.2 (حد الـ 6 ساعات للإرسال الجماعي والتنظيف، القسم 16) بانتظار البناء.** قبله 1.5.1 (إيموجي Noto، القسم 15). 1.5.0 (المرحلة السادسة) نجح (البناء #9 بعد تصليح دالة مكررة في #8) وجرّبه المالك (القسم 6 والقسم 14). الإصدار 1.4.0 نجح (البناء #7) وجرّبه المالك.
+> آخر تحديث: 30 أكتوبر 2026 · **الإصدار 1.6.0 (غير المقروءة، نسخ أندرويد للإعدادات، نسخ مضغوطة، فحص تحديثات جديد، القسم 17) بانتظار البناء.** 1.5.2 (حد الـ 6 ساعات والتنظيف، القسم 16) نجح، و1.5.1 (إيموجي Noto، القسم 15). 1.5.0 (المرحلة السادسة) نجح (البناء #9 بعد تصليح دالة مكررة في #8) وجرّبه المالك (القسم 6 والقسم 14). الإصدار 1.4.0 نجح (البناء #7) وجرّبه المالك.
 > المستودع: **github.com/Dev-saged/SMS-Barq** (الفرع `main`)
 
 ---
@@ -200,7 +200,7 @@ Barq/
         │   ├── ProviderWatcher.kt         # مراقبة content://sms لحظياً (رسائل التطبيقات الأخرى)
         │   ├── ReactionRepository.kt      # التفاعلات: حفظها، إرسالها، التعرّف على الواردة
         │   ├── SyncManager.kt         # استيراد سجل الهاتف (دفعات 500) + مزامنة تزايدية
-        │   ├── update/UpdateChecker.kt   # فحص التحديثات عند الضغط فقط
+        │   ├── update/UpdateChecker.kt   # فحص التحديثات عند الضغط فقط (آخر إصدار رسمي منذ 1.6.0)
         │   ├── BlockList.kt
         │   ├── telephony/TelephonyProvider.kt   # قراءة وكتابة content://sms
         │   ├── contacts/ContactsRepository.kt    # أسماء مع ذاكرة مؤقتة + بحث
@@ -338,7 +338,8 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | 8 | المرحلة السادسة (1.5.0) | 7 أخطاء ترجمة | قفل، Excel، أسماء، شريحة، مفضّلة (قاعدة البيانات 4)، تصنيف، إيموجي، أوامر البوابة، targetSdk 36، إصدارات GitHub (القسم 14) | ❌ فشل في `compileReleaseKotlin`: الدالة `latestIncoming` معرّفة مرتين في `MessageDao` (نفس الاستعلام)، فظهرت «Conflicting overloads» و«Overload resolution ambiguity» في `ConversationRepository`. **ملف `build.yml` الجديد ألصقه المالك يدوياً** |
 | 9 | تصليح البناء #8 | — | حذف التعريف المكرر لـ `latestIncoming` من `Daos.kt` وإبقاء الأول | ✅ **نجح** وجرّبه المالك («اشتغل كل شيء تمام»). فُحص الكود كله آلياً بحثاً عن دوال وأصناف مكررة أخرى ولم يوجد غيرها |
 | 10 | 1.5.1: إيموجي Noto | — | استبدال صور التفاعلات بـ Google Noto، و«شو الجديد» لا يظهر للتحديثات الصغيرة (القسم 15) | ⏳ بانتظار البناء |
-| 11 | 1.5.2: حد الـ 6 ساعات + تنظيف | — | `onTimeout` لخدمة الإرسال الجماعي، تجديد WakeLock، حذف كود ومكتبة ونصوص غير مستعملة، تصغير الخطوط، 3 نسخ احتياطية (القسم 16) | ⏳ بانتظار البناء |
+| 11 | 1.5.2: حد الـ 6 ساعات + تنظيف | — | `onTimeout` لخدمة الإرسال الجماعي، تجديد WakeLock، حذف كود ومكتبة ونصوص غير مستعملة، تصغير الخطوط، 3 نسخ احتياطية (القسم 16) | ✅ **نجح** (أكّد المالك «تم») |
+| 12 | 1.6.0: غير المقروءة + نسخ + تحديثات + فحوص | — | القسم 17. **`build.yml` جديد يلصقه المالك يدوياً** (حفظ وصف قاعدة البيانات + تقرير Lint) | ⏳ بانتظار البناء |
 
 > **الخطوة التالية:** ارفع `Barq-project.zip` (1.4.0) وشغّل البناء. إن فشل بسبب Gradle/AGP/Kotlin (أخطاء قبل مرحلة compile) فالسبب تحديث المكتبات (القسم 4)، وإلا فالكود الجديد (القسم 13). إن فشل، نزّل السجل (Actions ← العملية ← ⋯ ← Download log archive)، وأرسله للذكاء الاصطناعي مع هذا الملف، وصلّح **كل** الأخطاء دفعة واحدة. بعد التثبيت: افتح التطبيق مرة ليجري ترحيل قاعدة البيانات، وإن حصل أي عطل انسخ «سجل الأعطال» من الإعدادات.
 >
@@ -615,6 +616,34 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 **ملفات يحذفها المالك يدوياً من GitHub** (الـ zip لا يحذف): `app/src/main/res/drawable/ic_star.xml`، والملفان الفارغان `ui/components/FluentEmoji.kt` و`data/MessageRepository.kt`. بقاؤها لا يضر.
 
 **قاعدة للمستقبل:** أي خدمة بالمقدّمة من نوع `dataSync` يجب أن تعالج `onTimeout(startId, fgsType)`.
+
+
+## 17. الإصدار 1.6.0: غير المقروءة، ونسخ الإعدادات، وتحسينات تقنية
+
+> طلب المالك بعد 1.5.2 «غير المقروءة» بكل جوانبها، واختار من الملاحظات التقنية الأرقام 1 و3 و4 و5 و6 و7 و8 (رفض 2: الاختبارات قبل النشر). أرقام تخزين برق على جواله: التطبيق 9.5MB، البيانات 52MB، المؤقت 569KB، مع أكثر من 100 ألف رسالة محفوظة منذ 2016؛ وهذا طبيعي (نحو نصف كيلوبايت للرسالة مع فهرس البحث). القفز من 1.5.2 إلى 1.6.0 لأن فيها ميزة جديدة، فتظهر «شو الجديد» بمحتوى جديد.
+
+### غير المقروءة
+| التغيير | الملفات |
+|---|---|
+| زر «غير المقروءة» (FilterChip بلون البراند وعدّاد حي) قبل التصنيفات، مستقل عنها فيُجمع معها (بنوك غير مقروءة…). الاستعلام `inbox(category, query, unreadOnly, keep)` | `data/db/Daos.kt`، `ui/inbox/InboxViewModel.kt` (`unreadOnly`، `keepVisible`، `ListQuery`)، `ui/inbox/InboxScreen.kt` (`FilterChips`) |
+| بطاقة أعلى العرض: «X رسالة غير مقروءة في Y محادثة» + «قراءة الكل» بتأكيد وSnackbar. `unreadSummary(category)` و`unreadIds(category)`؛ `ConversationRepository.markAllRead` يعلّم المزوّد وقاعدة البيانات ويلغي الإشعارات | `UnreadHeader`، `UnreadSummary` (Entities)، `ConversationRepository.markAllRead` |
+| المحادثة المفتوحة من العرض تبقى ظاهرة (`keepVisible`) حتى الخروج من العرض أو «قراءة الكل»؛ زر الرجوع يخرج من العرض أولاً؛ حالة فارغة خاصة «كل رسائلك مقروءة»؛ إخفاء بطاقة السبام في العرض | `InboxScreen.kt` (`UnreadEmptyState`، `BackHandler`) |
+| **تحديد كغير مقروء**: آخر رسالة واردة تصبح غير مقروءة في Barq وفي مخزن النظام (`TelephonyProvider.markUnread`) ويُعاد حساب العداد؛ قائمة التحديد تبدّل بين «مقروء/غير مقروء»، وسحب `READ` صار تبديلاً (إعداده «مقروء / غير مقروء») | `ConversationRepository.markUnread`، `MessageDao.markUnread`، `ConversationDao.setUnreadCount`، `SettingsScreen.kt` |
+| **اختصار ديناميكي** «غير المقروءة» على أيقونة التطبيق (`ShortcutManagerCompat`، يُحدَّث عند كل تشغيل ليتبع لغة الجوال) ← `MainActivity.ACTION_UNREAD` ← `MainViewModel.openUnread` ← الوارد يفتح على العرض. `BarqNavHost` يرجع إلى `INBOX` بدل فتح نسخة ثانية | `BarqApp.publishShortcuts`، `res/drawable/ic_shortcut_unread.xml`، `MainActivity.kt`، `ui/MainViewModel.kt`، `ui/BarqNavHost.kt` |
+| «شو الجديد» بسبع بطاقات جديدة (حُذفت نصوص بطاقات 1.5.0) | `ui/whatsnew/WhatsNew.kt`، `wn_*` |
+
+### الملاحظات التقنية المنفّذة
+| رقم | التغيير | الملفات |
+|---|---|---|
+| 1 | **وصف قاعدة البيانات محفوظ** في `app/schemas` (البناء يحفظه ويرفعه للمستودع بخطوة «Save database schema»)، و**اختبار نقل** بـ Robolectric يبني كل نسخة محفوظة من ملفها، يضع صفاً في كل جدول، ثم يفتحها برق بكل الـ migrations ويتأكد أن Room قبلها ولم تضع صفوف. النسخ 1–3 لم تُحفظ سابقاً (نُقلت بنجاح على جوال المالك)، فالحماية للتغييرات القادمة | `app/src/test/.../data/db/MigrationTest.kt`، `testOptions.unitTests.isIncludeAndroidResources`، `robolectric 4.14.1`، `build.yml` |
+| 3 | **فحص التحديثات** يقرأ `releases/latest` (آخر إصدار رسمي، لا `latest-build`)، يقارن رقم الإصدار رقمياً، يعرض الرقم وملاحظات الإصدار منظّفة من Markdown، وينزّل `Barq-v<الإصدار>.apk` | `data/update/UpdateChecker.kt` (`isNewer`، `cleanNotes`)، `SettingsScreen.kt`، `UpdateCheckerTest.kt` |
+| 4 | **نسخ احتياطية مضغوطة gzip** (`.json.gz`، `application/gzip`)؛ الاستيراد يكتشف gzip أو JSON القديم من أول بايتين | `data/backup/BackupManager.kt` (`export(compressed, withMessages)`، `read`) |
+| 5 | **تنظيف شهري** (`DbCompactWorker`، كل 30 يوماً، أثناء الشحن وعدم الاستعمال ومع مساحة كافية): `optimize` لفهرس البحث ثم `VACUUM` | `work/Maintenance.kt` |
+| 6 | **ملف فتح أسرع كان موجوداً أصلاً** (`baseline-prof.txt` يغطي كل كود برق منذ مرحلة سابقة، وprofileinstaller يأتي مع Compose)، فلم يتغيّر شيء | `app/src/main/baseline-prof.txt` |
+| 7 | **Lint في البناء كتقرير فقط**: خطوة `lintRelease` لا توقف البناء، ملخص في صفحة البناء، وتقرير `Barq-lint-report-<رقم>` كـ artifact | `build.yml` |
+| 8 | **نسخ أندرويد للإعدادات فقط**: `allowBackup=true` مع قواعد تضم مجلد `files/autobackup/` وحده (لا رسائل ولا قاعدة بيانات ولا سجلات)، والسحابي فقط إذا كان مشفّراً (`disableIfNoEncryptionCapabilities`) ويشمل النقل بين الأجهزة. `SettingsSnapshot` يكتب الملف كل صيانة (6 ساعات)، وفي أول تشغيل لتثبيت جديد (`snapshotChecked=false`) يطبّقه إن وُجد قبل زرع القوالب الافتراضية؛ رقم الشريحة الافتراضية لا يُستعاد | `data/backup/SettingsSnapshot.kt`، `BackupManager.restoreSnapshot`، `res/xml/backup_rules.xml`، `res/xml/data_extraction_rules.xml`، `BarqApp.kt`، `SettingsRepository` (`snapshotChecked`) |
+
+**تنبيه عن 8:** الاستعادة يقوم بها أندرويد. تعمل عند النقل بين جوالين (كابل أو Wi-Fi) وعند إعادة التثبيت إذا كان النسخ مفعّلاً، لكن أندرويد قد لا يستعيد تلقائياً بيانات تطبيق مثبّت من خارج متجر Play عند إعداد جوال جديد من السحابة. النسخة الاحتياطية اليدوية تبقى الطريق المضمون.
 
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.

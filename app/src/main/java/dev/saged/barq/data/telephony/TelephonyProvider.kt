@@ -154,6 +154,14 @@ class TelephonyProvider @Inject constructor(@ApplicationContext private val cont
         }
     }
 
+    /** Marks one stored SMS unread again, so other apps and a later sync agree with Barq. */
+    fun markUnread(providerId: Long) {
+        runCatching {
+            val values = ContentValues().apply { put(Telephony.Sms.READ, 0) }
+            resolver.update(Telephony.Sms.CONTENT_URI, values, "${Telephony.Sms._ID} = ?", arrayOf(providerId.toString()))
+        }
+    }
+
     fun markRead(providerIds: List<Long>) {
         if (providerIds.isEmpty()) return
         runCatching {

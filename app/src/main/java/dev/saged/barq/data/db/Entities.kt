@@ -172,6 +172,9 @@ data class AutoReplyRuleEntity(
 )
 
 /** Remembers when we last auto-replied to a sender, to avoid reply loops and costs. */
+/** Unread totals for the inbox's "Unread" view. */
+data class UnreadSummary(val conversations: Int = 0, val messages: Int = 0)
+
 @Entity(tableName = "auto_reply_log")
 data class AutoReplyLogEntity(@PrimaryKey val address: String, val lastAt: Long)
 

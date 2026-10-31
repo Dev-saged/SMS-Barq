@@ -39,6 +39,7 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var sendQueue: SendQueue
     @Inject lateinit var settings: dev.saged.barq.data.settings.SettingsRepository
     @Inject lateinit var conversations: dev.saged.barq.data.ConversationRepository
+    @Inject lateinit var snapshot: dev.saged.barq.data.backup.SettingsSnapshot
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -51,7 +52,11 @@ class BarqApp : Application(), Configuration.Provider {
         maintenance.ensureScheduled()
         contactsWatcher.start()
         providerWatcher.start()
+        publishShortcuts()
         scope.launch {
+            // A new phone or a reinstall: Android may have brought back Barq's lists and settings.
+            // Applied first, so the default templates are not added next to the user's own.
+            runCatching { snapshot.restoreIfNew() }.onFailure { CrashLog.warn("snapshot", it) }
             seedDefaults()
             resumeQueue()
             // 1.5.0: contacts are always personal — fix conversations sorted by the old rules, once.
@@ -75,6 +80,22 @@ class BarqApp : Application(), Configuration.Provider {
             messages.nextRetryAt(now)?.let { sendQueue.kickAt(it) }
         }.onFailure { CrashLog.warn("resume-queue", it) }
     }
+
+    /** Long-press on Barq's icon: "Unread" opens the inbox on unread conversations only. */
+    private fun publishShortcuts() = runCatching {
+        val unread = androidx.core.content.pm.ShortcutInfoCompat.Builder(this, "unread")
+            .setShortLabel(getString(R.string.shortcut_unread))
+            .setLongLabel(getString(R.string.shortcut_unread_long))
+            .setIcon(androidx.core.graphics.drawable.IconCompat.createWithResource(this, R.drawable.ic_shortcut_unread))
+            .setIntent(
+                android.content.Intent(this, MainActivity::class.java)
+                    .setAction(MainActivity.ACTION_UNREAD)
+                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP),
+            )
+            .build()
+        // Labels follow the phone's language, so the shortcut is refreshed at every start.
+        androidx.core.content.pm.ShortcutManagerCompat.setDynamicShortcuts(this, listOf(unread))
+    }.onFailure { CrashLog.warn("shortcuts", it) }
 
     private suspend fun seedDefaults() {
         if (templates.count() == 0) {

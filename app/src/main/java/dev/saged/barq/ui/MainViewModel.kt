@@ -45,6 +45,17 @@ class MainViewModel @Inject constructor(
     /** True once after a crash: the inbox offers to open the crash log. */
     val crashPending = MutableStateFlow(CrashLog.hasUnseenCrash())
 
+    /** Set by the home-screen "Unread" shortcut; the inbox switches to its unread view. */
+    val openUnread = MutableStateFlow(false)
+
+    fun requestOpenUnread() {
+        openUnread.value = true
+    }
+
+    fun consumeOpenUnread() {
+        openUnread.value = false
+    }
+
     fun isDefaultSmsApp(): Boolean =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             context.getSystemService(RoleManager::class.java)?.isRoleHeld(RoleManager.ROLE_SMS) == true

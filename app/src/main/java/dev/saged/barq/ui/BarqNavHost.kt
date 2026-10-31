@@ -84,7 +84,9 @@ fun BarqNavHost(
     LaunchedEffect(pendingRoute) {
         pendingRoute.collect { route ->
             if (route != null) {
-                nav.navigate(route) { launchSingleTop = true }
+                // The inbox is the first screen: go back to it instead of opening a second one.
+                if (route == Routes.INBOX) nav.popBackStack(Routes.INBOX, inclusive = false)
+                else nav.navigate(route) { launchSingleTop = true }
                 pendingRoute.value = null
             }
         }

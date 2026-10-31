@@ -36,11 +36,15 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
+import java.io.BufferedInputStream
 import java.io.File
+import java.io.InputStream
 import java.io.OutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -173,10 +177,19 @@ class BackupManager @Inject constructor(
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
-    /** Streams the backup so even very large histories don't need much memory. */
-    suspend fun export(out: OutputStream): Int = withContext(Dispatchers.IO) {
+    /**
+     * Streams the backup so even very large histories don't need much memory. Since 1.5.3 it is
+     * gzip-compressed (about a fifth of the size); [import] reads both compressed and plain files.
+     * [withMessages] false writes only Barq's own lists and settings (the Android-backup snapshot).
+     */
+    suspend fun export(
+        out: OutputStream,
+        compressed: Boolean = true,
+        withMessages: Boolean = true,
+    ): Int = withContext(Dispatchers.IO) {
         var count = 0
-        out.bufferedWriter(Charsets.UTF_8).use { w ->
+        val target = if (compressed) GZIPOutputStream(out, 64 * 1024) else out
+        target.bufferedWriter(Charsets.UTF_8).use { w ->
             val blocks = db.blocks()
             w.write("{\"format\":\"barq-backup\",\"version\":2,\"createdAt\":${System.currentTimeMillis()}")
             w.write(",\"settings\":" + json.encodeToString(settings.current().toBackup()))
@@ -189,6 +202,10 @@ class BackupManager @Inject constructor(
             w.write(",\"rules\":" + json.encodeToString(db.rules().all().map { BackupRule(it.sender, it.category.name) }))
             w.write(",\"templates\":" + json.encodeToString(db.templates().all().map { it.text }))
             w.write(",\"autoReplyRules\":" + json.encodeToString(db.autoReply().allRules().map { BackupAutoReply(it.keywords, it.reply, it.enabled) }))
+            if (!withMessages) {
+                w.write("}")
+                return@use
+            }
             w.write(",\"conversations\":" + json.encodeToString(db.conversations().all().map {
                 BackupConversation(it.addresses, it.pinned, it.archived, it.muted, it.category.name, it.categoryLocked)
             }))
@@ -213,7 +230,7 @@ class BackupManager @Inject constructor(
 
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun import(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
-        val backup = context.contentResolver.openInputStream(uri)?.use { json.decodeFromStream<BackupFile>(it) }
+        val backup = context.contentResolver.openInputStream(uri)?.use { read(it) }
             ?: return@withContext ImportResult(0, 0)
         restoreLists(backup)
         restoreGroups(backup)
@@ -262,6 +279,30 @@ class BackupManager @Inject constructor(
         conversations.mergeDuplicateConversations()
         restoreConversationFlags(backup)
         ImportResult(imported, skipped, backup.settings?.toSettings(settings.current()))
+    }
+
+    /** Reads a backup, gzip-compressed (1.5.3+) or plain JSON (older backups). */
+    @OptIn(ExperimentalSerializationApi::class)
+    fun read(input: InputStream): BackupFile {
+        val buffered = BufferedInputStream(input, 64 * 1024)
+        buffered.mark(2)
+        val gzip = buffered.read() == 0x1f && buffered.read() == 0x8b
+        buffered.reset()
+        val source = if (gzip) GZIPInputStream(buffered, 64 * 1024) else buffered
+        return json.decodeFromStream<BackupFile>(source)
+    }
+
+    /**
+     * Lists, groups and settings from the Android-backup snapshot of another phone (or an earlier
+     * install). The phone's own SIM choice is kept, since SIM numbers differ between phones.
+     */
+    suspend fun restoreSnapshot(b: BackupFile) {
+        restoreLists(b)
+        restoreGroups(b)
+        b.settings?.let { saved ->
+            val now = settings.current()
+            settings.restore(saved.toSettings(now).copy(defaultSubId = now.defaultSubId))
+        }
     }
 
     private suspend fun restoreLists(b: BackupFile) {
@@ -320,7 +361,7 @@ class BackupManager @Inject constructor(
     // ------------------------------------------------------------------ scheduled backups
 
     fun backupFileName(): String =
-        "barq-backup-" + SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date()) + ".json"
+        "barq-backup-" + SimpleDateFormat("yyyy-MM-dd_HH-mm", Locale.US).format(Date()) + ".json.gz"
 
     /** Writes a backup into the user's chosen folder, or the app's own folder as a fallback. */
     suspend fun runAutomaticBackup(): Boolean = withContext(Dispatchers.IO) {
@@ -330,7 +371,7 @@ class BackupManager @Inject constructor(
             val tree = s.backupTreeUri?.let(Uri::parse)
             if (tree != null) {
                 val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-                val doc = DocumentsContract.createDocument(context.contentResolver, parent, "application/json", name)
+                val doc = DocumentsContract.createDocument(context.contentResolver, parent, MIME, name)
                     ?: error("cannot create file")
                 context.contentResolver.openOutputStream(doc)?.use { export(it) } ?: error("cannot open file")
             } else {
@@ -344,8 +385,10 @@ class BackupManager @Inject constructor(
         ok
     }
 
-    private companion object {
-        const val PAGE = 500
-        const val KEEP_BACKUPS = 3
+    companion object {
+        /** Backups are gzip-compressed JSON since 1.5.3. */
+        const val MIME = "application/gzip"
+        private const val PAGE = 500
+        private const val KEEP_BACKUPS = 3
     }
 }

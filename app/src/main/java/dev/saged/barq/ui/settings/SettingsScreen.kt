@@ -11,7 +11,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AccessTime
 import androidx.compose.material.icons.outlined.AlarmOn
@@ -198,7 +200,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     var lastTap by remember { mutableLongStateOf(0L) }
     fun toast(msg: String) = Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
 
-    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+    val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(dev.saged.barq.data.backup.BackupManager.MIME)) { uri ->
         if (uri != null) vm.export(uri) { n -> toast(if (n != null) String.format(exportedMsg, n) else failedMsg) }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -226,7 +228,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         SwipeAction.NONE to stringResource(R.string.swipe_none),
         SwipeAction.ARCHIVE to stringResource(R.string.archive),
         SwipeAction.DELETE to stringResource(R.string.delete),
-        SwipeAction.READ to stringResource(R.string.mark_read),
+        SwipeAction.READ to stringResource(R.string.swipe_read_toggle),
         SwipeAction.PIN to stringResource(R.string.pin),
         SwipeAction.MUTE to stringResource(R.string.mute),
     )
@@ -362,7 +364,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                 }
                 RowDivider()
                 ClickRow(Icons.Outlined.Download, stringResource(R.string.import_messages), stringResource(R.string.import_sub)) {
-                    importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
+                    importLauncher.launch(arrayOf("application/gzip", "application/x-gzip", "application/json", "text/plain", "*/*"))
                 }
                 RowDivider()
                 ClickRow(Icons.Outlined.Backup, stringResource(R.string.auto_backup), label(backupLabels, s.backupFrequency)) {
@@ -434,7 +436,23 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         is UpdateChecker.Result.Available -> AlertDialog(
             onDismissRequest = vm::clearUpdate,
             title = { Text(stringResource(R.string.update_available_title)) },
-            text = { Text(stringResource(R.string.update_available_text, u.build)) },
+            text = {
+                androidx.compose.foundation.layout.Column(
+                    Modifier
+                        .heightIn(max = 380.dp)
+                        .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                ) {
+                    Text(stringResource(R.string.update_available_text, u.version))
+                    if (u.notes.isNotBlank()) {
+                        Text(
+                            stringResource(R.string.update_whats_new),
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
+                        )
+                        Text(u.notes, style = MaterialTheme.typography.bodyMedium)
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     vm.clearUpdate()

@@ -15,6 +15,7 @@ import dev.saged.barq.data.db.ConversationEntity
 import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.data.db.MessageEntity
 import dev.saged.barq.data.db.SearchHit
+import dev.saged.barq.data.db.UnreadSummary
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.settings.SwipeAction
@@ -70,6 +71,12 @@ class InboxViewModel @Inject constructor(
 ) : ViewModel() {
 
     val filter = MutableStateFlow<Category?>(null)
+
+    /** "Unread" view: only conversations with unread messages (works with any category). */
+    val unreadOnly = MutableStateFlow(false)
+
+    /** Opened from the unread view: stay listed until the view is left, instead of vanishing. */
+    private val keepVisible = MutableStateFlow<Set<Long>>(emptySet())
     val query = MutableStateFlow("")
     val selection = MutableStateFlow<Set<Long>>(emptySet())
     private val dismissedOtp = MutableStateFlow(-1L)
@@ -78,10 +85,37 @@ class InboxViewModel @Inject constructor(
 
     private val debouncedQuery = query.debounce(180).map { it.trim() }.distinctUntilChanged()
 
+    private data class ListQuery(val category: Category?, val query: String, val unread: Boolean, val keep: Set<Long>)
+
     val conversationsPaged: Flow<PagingData<ConversationEntity>> =
-        combine(filter, debouncedQuery) { f, q -> f to q }
-            .flatMapLatest { (f, q) -> Pager(pagingConfig) { conversationDao.inbox(f?.name, q) }.flow }
+        combine(filter, debouncedQuery, unreadOnly, keepVisible) { f, q, u, k -> ListQuery(f, q, u, k) }
+            .distinctUntilChanged()
+            .flatMapLatest { l ->
+                Pager(pagingConfig) { conversationDao.inbox(l.category?.name, l.query, l.unread, l.keep.toList()) }.flow
+            }
             .cachedIn(viewModelScope)
+
+    /** Unread totals, live, for the chosen category ("All" = everything except spam). */
+    val unread: StateFlow<UnreadSummary> = filter
+        .flatMapLatest { conversationDao.unreadSummary(it?.name) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UnreadSummary())
+
+    fun setUnreadOnly(on: Boolean) {
+        keepVisible.value = emptySet()
+        unreadOnly.value = on
+    }
+
+    /** Called when a conversation is opened from the list. */
+    fun onOpened(threadId: Long) {
+        if (unreadOnly.value) keepVisible.value = keepVisible.value + threadId
+    }
+
+    /** Marks everything shown in the unread view as read; returns how many conversations. */
+    fun markAllRead(onDone: (Int) -> Unit) = viewModelScope.launch {
+        val n = conversations.markAllRead(filter.value)
+        keepVisible.value = emptySet()
+        onDone(n)
+    }
 
     /** Messages matching the search, from the full-text index (instant even with 100k messages). */
     val messageHits: StateFlow<List<SearchHit>> = debouncedQuery
@@ -180,6 +214,7 @@ class InboxViewModel @Inject constructor(
     fun muteSelected(mute: Boolean) = onSelected { conversations.setMuted(it, mute) }
     fun archiveSelected() = onSelected { conversations.setArchived(it, true) }
     fun readSelected() = onSelected { conversations.markRead(it) }
+    fun unreadSelected() = onSelected { conversations.markUnread(it) }
     fun deleteSelected() = onSelected { conversations.delete(it) }
     fun blockSelected() = onSelected { conversations.block(it) }
 
@@ -189,7 +224,9 @@ class InboxViewModel @Inject constructor(
             when (action) {
                 SwipeAction.ARCHIVE -> conversations.setArchived(ids, true)
                 SwipeAction.DELETE -> conversations.delete(ids)
-                SwipeAction.READ -> conversations.markRead(ids)
+                // Read ⇄ unread: a read conversation swiped this way becomes unread again.
+                SwipeAction.READ ->
+                    if (conversation.unreadCount > 0) conversations.markRead(ids) else conversations.markUnread(ids)
                 SwipeAction.PIN -> conversations.setPinned(ids, !conversation.pinned)
                 SwipeAction.MUTE -> conversations.setMuted(ids, !conversation.muted)
                 SwipeAction.NONE -> Unit

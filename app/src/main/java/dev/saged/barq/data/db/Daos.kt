@@ -16,6 +16,8 @@ interface ConversationDao {
     /**
      * Main inbox. [category] null = "all" (spam excluded). [query] empty = no filter; otherwise
      * conversations whose name or number match (message texts are searched by the FTS index).
+     * [unreadOnly] keeps only conversations with unread messages, plus the ones in [keep] (opened
+     * from that view a moment ago, so they don't vanish under the user's finger).
      * A conversation with a newer draft is ordered by the draft time.
      */
     @Query(
@@ -24,13 +26,41 @@ interface ConversationDao {
         WHERE deleted = 0 AND archived = 0
           AND (date > 0 OR draft IS NOT NULL)
           AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
+          AND (:unreadOnly = 0 OR unreadCount > 0 OR threadId IN (:keep))
           AND (:query = '' OR displayName LIKE '%' || :query || '%'
                OR addresses LIKE '%' || :query || '%')
         ORDER BY pinned DESC,
                  (CASE WHEN draft IS NOT NULL AND draftAt > date THEN draftAt ELSE date END) DESC
         """
     )
-    fun inbox(category: String?, query: String): PagingSource<Int, ConversationEntity>
+    fun inbox(
+        category: String?,
+        query: String,
+        unreadOnly: Boolean,
+        keep: List<Long>,
+    ): PagingSource<Int, ConversationEntity>
+
+    /** How many conversations and messages are unread (same scope as the inbox: no spam, no archive). */
+    @Query(
+        """
+        SELECT COUNT(*) AS conversations, COALESCE(SUM(unreadCount), 0) AS messages FROM conversations
+        WHERE deleted = 0 AND archived = 0 AND unreadCount > 0
+          AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
+        """
+    )
+    fun unreadSummary(category: String?): Flow<UnreadSummary>
+
+    @Query(
+        """
+        SELECT threadId FROM conversations
+        WHERE deleted = 0 AND archived = 0 AND unreadCount > 0
+          AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
+        """
+    )
+    suspend fun unreadIds(category: String?): List<Long>
+
+    @Query("UPDATE conversations SET unreadCount = :count WHERE threadId = :threadId")
+    suspend fun setUnreadCount(threadId: Long, count: Int)
 
     @Query(
         """SELECT * FROM conversations WHERE deleted = 0 AND archived = 1
@@ -204,6 +234,9 @@ interface MessageDao {
 
     @Query("UPDATE messages SET read = 1 WHERE threadId IN (:ids) AND read = 0")
     suspend fun markRead(ids: List<Long>)
+
+    @Query("UPDATE messages SET read = 0 WHERE id = :id")
+    suspend fun markUnread(id: Long)
 
     @Query("UPDATE messages SET box = :box, errorCode = :errorCode WHERE id = :id")
     suspend fun setBox(id: Long, box: Int, errorCode: Int = 0)
