@@ -22,23 +22,22 @@ Output: no greetings or filler. Max 3 bullets of explanation. One-line summary b
 - Version: bump APP_VERSION and version.json (vMAJOR.MINOR.PATCH) on substantive changes.
 
 ## Stack
-- Single-file HTML/CSS/JS + CDN fonts. Python stdlib only; pip deps go to .pypackages (WebToApp Python 3.14).
-- Android packaging: github.com/shiaho777/web-to-app. targetSdk 28 max for server runtimes. CORS bypass is on by default for static HTML. Fetch its README before deciding anything that depends on it.
-- No external API. Offline first: every network call in try/catch with a graceful fallback.
-- Mobile-first, Arabic RTL: direction:rtl, logical CSS properties, mirror directional icons.
-- PWA (manifest + service worker) in every project unless excluded.
-- Next.js/TypeScript only if I ask explicitly.
+- Native Android: Kotlin + Jetpack Compose, minSdk 26, compileSdk 36, targetSdk 36. No WebView, no WebToApp.
+- APK built by GitHub Actions (.github/workflows/build.yml); signing via KEYSTORE_BASE64 + SIGNING_* secrets (أو keystore.properties في المستودع الخاص).
+- DI: Hilt + KSP. Serialization: kotlinx.serialization. Offline first: كل network call في try/catch.
+- رفع المشروع zip من الهاتف مدعوم: الـworkflow يفكّه تلقائياً ويكوّم.
 
 ## Architecture
-- One CONFIG block at the top: brand (name, logo, OKLCH palette, fonts), modules, Firebase, license expiry, update repo. No client-specific strings or colors anywhere else. New client = edit CONFIG only.
-- Each module is a schema object (fields, types, filters, KPIs). One generic engine renders forms, lists, KPIs. New module = schema only.
-- IndexedDB with versioned migrations (append to MIGRATIONS, never edit old ones). JSON export/import. Signals for state. Web Worker for search/sort. Hidden #test route covering core functions.
-- Cloud only when multi-device sync is needed: Firebase Auth + Firestore (one project per client) and Cloudflare Pages/Workers. Firestore Security Rules and role checks are mandatory (see skill firebase-rules). The license check in the client is cosmetic; real enforcement belongs in rules.
+- VERSION_NAME + VERSION_CODE في gradle.properties. versionCode = BASE_VERSION_CODE + GITHUB_RUN_NUMBER عند البناء.
+- In-app update: تحقق من "latest-build" GitHub Release; قارن versionCode.
+- كل شاشة Composable مستقلة تحت ui/ (inbox, thread, compose, contacts, starred, batch, lock, onboarding, settings).
+- SMS engine: حزمة sms/ (SendEngine, SendQueue, SendDrainer, SendTracker, SendLimit, ScheduleManager, gateway/). MMS: حزمة mms/.
 
 ## Design and security
 - Design work: load skill design-system first.
-- Sanitize all input, render with textContent, never innerHTML with data. Web Crypto for sensitive local data. Keep the CSP meta tight and add only the origins actually used.
-- Pre-delivery: contrast >= 4.5:1, touch targets >= 44px, visible focus, no emoji, inline SVG icons only.
+- أيقونات: vectors يدوية مرسومة داخل الـComposables مباشرة. لا emoji ولا icon packs.
+- Contrast >= 4.5:1, touch targets >= 44dp, visible focus, respect prefers-reduced-motion.
+- Sanitize all input. لا تُعرّض أسرار التوقيع في الـlogs أو commit messages.
 
 ## Code hygiene
 - No comments that reveal AI authorship. No purposeless lines. Comments only when necessary, short Arabic.
