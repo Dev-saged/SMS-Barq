@@ -15,7 +15,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - domain/: Classifier، OtpDetector، AutoReplyEngine، PhoneUtils، TextNorm، SheetImport
 - ui/: inbox، thread، compose، contact، starred، batch، lock، onboarding، settings، whatsnew، BarqNavHost، MainViewModel
 - بناء: .github/workflows/build.yml (+ unpack-zip.yml)، gradle/libs.versions.toml، app/schemas، app/src/main/baseline-prof.txt
-- 1.8.0: ui/theme/Theme.kt (islandColor/islandShape)، ui/components/PillNav + SharedAvatar، ui/icons/BIcons، util/LocaleHelper + ui/settings/LanguageDialog، res/values-xx (es fr pt ru zh hi bn pt ur: 558 مفتاحاً، 290 مترجمة والباقي إنجليزي)، drawable/ic_flag_*، اختبار LocalizationTest. barq_rtl للاتجاه (ar وur)، barq_arabic لنص التفاعلات.
+- 1.8.0: ui/theme/Theme.kt (islandColor/islandShape)، ui/components/PillNav + SharedAvatar، ui/icons/BIcons، util/LocaleHelper + ui/settings/LanguageDialog، res/values-xx (es fr pt ru zh hi bn ur: 558 مفتاحاً، 290 مترجمة والباقي إنجليزي)، drawable/ic_flag_*، اختبار LocalizationTest. barq_rtl للاتجاه (ar وur)، barq_arabic لنص التفاعلات.
 - docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md
 
 ## Versions
