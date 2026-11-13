@@ -406,6 +406,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE isMms = 0 ORDER BY id ASC LIMIT :limit OFFSET :offset")
     suspend fun page(limit: Int, offset: Int): List<MessageEntity>
 
+    @Query("SELECT COUNT(*) FROM messages WHERE isMms = 0 AND box != 6")
+    suspend fun countExportable(): Int
+
     @Query("SELECT COUNT(*) FROM messages WHERE address = :address AND date = :date AND body = :body")
     suspend fun countSame(address: String, date: Long, body: String): Int
 

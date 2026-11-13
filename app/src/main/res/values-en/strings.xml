@@ -166,10 +166,12 @@
     <string name="swipe_end">Swipe right</string>
     <string name="swipe_none">None</string>
     <string name="recycle_bin_sub">Deleted conversations stay 30 days before they are gone for good</string>
+    <string name="export_xml">Export as SMS Backup &amp; Restore</string>
+    <string name="export_xml_sub">An XML file other messaging apps can open (text only, no MMS)</string>
     <string name="export_messages">Export messages</string>
     <string name="export_sub">A compressed file with messages, lists and templates</string>
     <string name="import_messages">Import messages</string>
-    <string name="import_sub">From a Barq backup (no duplicates)</string>
+    <string name="import_sub">From a Barq backup or an SMS Backup &amp; Restore XML file (no duplicates)</string>
     <string name="auto_backup">Automatic backup</string>
     <string name="backup_off">Off</string>
     <string name="backup_daily">Daily</string>

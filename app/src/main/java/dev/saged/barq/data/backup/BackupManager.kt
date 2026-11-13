@@ -230,7 +230,7 @@ class BackupManager @Inject constructor(
 
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun import(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
-        val backup = context.contentResolver.openInputStream(uri)?.use { read(it) }
+        val backup = context.contentResolver.openInputStream(uri)?.use { readAny(it) }
             ?: return@withContext ImportResult(0, 0)
         restoreLists(backup)
         restoreGroups(backup)
@@ -280,6 +280,34 @@ class BackupManager @Inject constructor(
         restoreConversationFlags(backup)
         ImportResult(imported, skipped, backup.settings?.toSettings(settings.current()))
     }
+
+    /** Barq's own backup or an "SMS Backup & Restore" XML file; the kind is recognised by its first byte. */
+    private fun readAny(input: InputStream): BackupFile {
+        val buffered = BufferedInputStream(input, 64 * 1024)
+        return if (SmsXml.looksLikeXml(buffered)) BackupFile(messages = SmsXml.parse(buffered)) else read(buffered)
+    }
+
+    /** Writes every text message in the XML format other messaging apps can import. */
+    suspend fun exportXml(out: OutputStream): Int = withContext(Dispatchers.IO) {
+        var count = 0
+        out.bufferedWriter(Charsets.UTF_8).use { w ->
+            w.write(SmsXml.header(db.messages().countExportable(), System.currentTimeMillis(), java.util.UUID.randomUUID().toString()))
+            var offset = 0
+            while (true) {
+                val page = db.messages().page(PAGE, offset)
+                if (page.isEmpty()) break
+                page.filter { it.box != Box.QUEUED }.forEach { m ->
+                    w.write(SmsXml.sms(m.address, m.body, m.date, m.dateSent, m.box, m.read, m.subId))
+                    count++
+                }
+                offset += page.size
+            }
+            w.write(SmsXml.FOOTER)
+        }
+        count
+    }
+
+    fun xmlFileName(): String = "sms-" + SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date()) + ".xml"
 
     /** Reads a backup, gzip-compressed (1.5.3+) or plain JSON (older backups). */
     @OptIn(ExperimentalSerializationApi::class)

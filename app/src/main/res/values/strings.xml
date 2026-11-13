@@ -183,10 +183,12 @@
     <string name="swipe_end">السحب لليمين</string>
     <string name="swipe_none">بدون</string>
     <string name="recycle_bin_sub">المحذوفات تبقى 30 يوماً قبل الحذف النهائي</string>
+    <string name="export_xml">تصدير بصيغة SMS Backup &amp; Restore</string>
+    <string name="export_xml_sub">ملف XML تفتحه تطبيقات الرسائل الأخرى (النصوص فقط، بدون MMS)</string>
     <string name="export_messages">تصدير الرسائل</string>
     <string name="export_sub">ملف مضغوط يشمل الرسائل والقوائم والقوالب</string>
     <string name="import_messages">استيراد الرسائل</string>
-    <string name="import_sub">من نسخة برق احتياطية (بدون تكرار)</string>
+    <string name="import_sub">من نسخة برق أو ملف XML من SMS Backup &amp; Restore (بدون تكرار)</string>
     <string name="auto_backup">النسخ الاحتياطي التلقائي</string>
     <string name="backup_off">متوقف</string>
     <string name="backup_daily">يومياً</string>

@@ -140,6 +140,13 @@ class SettingsViewModel @Inject constructor(
         done(n)
     }
 
+    fun exportXml(uri: Uri, done: (Int?) -> Unit) = viewModelScope.launch {
+        val n = runCatching { context.contentResolver.openOutputStream(uri)?.use { backup.exportXml(it) } }.getOrNull()
+        done(n)
+    }
+
+    fun xmlFileName() = backup.xmlFileName()
+
     fun import(uri: Uri, done: (Int?) -> Unit) = viewModelScope.launch {
         val result = runCatching { backup.import(uri) }.getOrNull()
         done(result?.imported)
@@ -204,6 +211,9 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(dev.saged.barq.data.backup.BackupManager.MIME)) { uri ->
         if (uri != null) vm.export(uri) { n -> toast(if (n != null) String.format(exportedMsg, n) else failedMsg) }
+    }
+    val xmlExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(dev.saged.barq.data.backup.SmsXml.MIME)) { uri ->
+        if (uri != null) vm.exportXml(uri) { n -> toast(if (n != null) String.format(exportedMsg, n) else failedMsg) }
     }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.import(uri) { n -> toast(if (n != null) String.format(importedMsg, n) else failedMsg) }
@@ -364,6 +374,10 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
             SettingsGroup(stringResource(R.string.group_backup)) {
                 ClickRow(Icons.Outlined.Upload, stringResource(R.string.export_messages), stringResource(R.string.export_sub)) {
                     exportLauncher.launch(vm.backupFileName())
+                }
+                RowDivider()
+                ClickRow(Icons.Outlined.Upload, stringResource(R.string.export_xml), stringResource(R.string.export_xml_sub)) {
+                    xmlExportLauncher.launch(vm.xmlFileName())
                 }
                 RowDivider()
                 ClickRow(Icons.Outlined.Download, stringResource(R.string.import_messages), stringResource(R.string.import_sub)) {
