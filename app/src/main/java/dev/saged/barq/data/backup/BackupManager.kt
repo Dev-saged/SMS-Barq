@@ -8,7 +8,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.ProviderLock
 import dev.saged.barq.data.contacts.ContactsRepository
-import dev.saged.barq.data.db.AutoReplyRuleEntity
 import dev.saged.barq.data.db.BarqDatabase
 import dev.saged.barq.data.db.BlockedKeywordEntity
 import dev.saged.barq.data.db.BlockedNumberEntity
@@ -20,6 +19,7 @@ import dev.saged.barq.data.db.SendGroupEntity
 import dev.saged.barq.data.db.SendGroupMemberEntity
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.AutoReplyMode
+import dev.saged.barq.data.settings.autoReplyModeOf
 import dev.saged.barq.data.settings.BackupFrequency
 import dev.saged.barq.data.settings.SwipeAction
 import dev.saged.barq.data.settings.ThemeMode
@@ -72,9 +72,6 @@ data class BackupConversation(
 @Serializable
 data class BackupRule(val sender: String, val category: String)
 
-@Serializable
-data class BackupAutoReply(val keywords: String, val reply: String, val enabled: Boolean = true)
-
 /** Settings the user chose (technical state like the backup folder is not included). */
 @Serializable
 data class BackupSettings(
@@ -102,6 +99,7 @@ data class BackupSettings(
     val autoReplyToMin: Int = 7 * 60,
     val backupFrequency: String = BackupFrequency.OFF.name,
     val pillNav: Boolean = true,
+    val learnReplies: Boolean = true,
 )
 
 @Serializable
@@ -119,7 +117,6 @@ data class BackupFile(
     val blockedKeywords: List<String> = emptyList(),
     val rules: List<BackupRule> = emptyList(),
     val templates: List<String> = emptyList(),
-    val autoReplyRules: List<BackupAutoReply> = emptyList(),
     val conversations: List<BackupConversation> = emptyList(),
     val messages: List<BackupMessage> = emptyList(),
     val groups: List<BackupGroup> = emptyList(),
@@ -136,13 +133,14 @@ fun AppSettings.toBackup() = BackupSettings(
     themeMode.name, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled,
     spamFilter, recycleBin, swipeStart.name, swipeEnd.name, defaultSubId, sendDelayMs, autoReplyEnabled,
     autoReplyMode.name, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow,
-    autoReplyFromMin, autoReplyToMin, backupFrequency.name, pillNav,
+    autoReplyFromMin, autoReplyToMin, backupFrequency.name, pillNav, learnReplies,
 )
 
 fun BackupSettings.toSettings(base: AppSettings) = base.copy(
     themeMode = enumOr(themeMode, base.themeMode),
     dynamicColor = dynamicColor,
     pillNav = pillNav,
+    learnReplies = learnReplies,
     fontScale = fontScale,
     datePattern = datePattern,
     use24h = use24h,
@@ -156,7 +154,7 @@ fun BackupSettings.toSettings(base: AppSettings) = base.copy(
     defaultSubId = defaultSubId,
     sendDelayMs = sendDelayMs,
     autoReplyEnabled = autoReplyEnabled,
-    autoReplyMode = enumOr(autoReplyMode, base.autoReplyMode),
+    autoReplyMode = autoReplyModeOf(autoReplyMode, base.autoReplyMode),
     autoReplyText = autoReplyText.ifBlank { base.autoReplyText },
     autoReplyContactsOnly = autoReplyContactsOnly,
     autoReplyCooldownMin = autoReplyCooldownMin,
@@ -203,7 +201,6 @@ class BackupManager @Inject constructor(
             w.write(",\"blockedKeywords\":" + json.encodeToString(blocks.keywordsOnce().map { it.keyword }))
             w.write(",\"rules\":" + json.encodeToString(db.rules().all().map { BackupRule(it.sender, it.category.name) }))
             w.write(",\"templates\":" + json.encodeToString(db.templates().all().map { it.text }))
-            w.write(",\"autoReplyRules\":" + json.encodeToString(db.autoReply().allRules().map { BackupAutoReply(it.keywords, it.reply, it.enabled) }))
             if (!withMessages) {
                 w.write("}")
                 return@use
@@ -349,11 +346,6 @@ class BackupManager @Inject constructor(
         val existingTemplates = templates.all().map { it.text }.toSet()
         b.templates.filter { it !in existingTemplates }.forEachIndexed { i, t ->
             templates.upsert(TemplateEntity(text = t, position = existingTemplates.size + i))
-        }
-        val ar = db.autoReply()
-        val existingAr = ar.allRules().map { it.keywords to it.reply }.toSet()
-        b.autoReplyRules.filter { (it.keywords to it.reply) !in existingAr }.forEach {
-            ar.upsertRule(AutoReplyRuleEntity(keywords = it.keywords, reply = it.reply, enabled = it.enabled))
         }
     }
 

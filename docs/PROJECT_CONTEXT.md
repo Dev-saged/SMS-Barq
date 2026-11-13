@@ -61,7 +61,7 @@
 - **قوالب وردود سريعة** تظهر كأزرار فوق مربع الكتابة. القوالب الافتراضية: تمام، أنا بالطريق، بتواصل معك لاحقاً، شكراً لك، مشغول حالياً.
 - **الرد التلقائي**:
   - `FIXED`: نص واحد للجميع
-  - `SMART`: قواعد (كلمات مفصولة بـ `|`) ← رد مناسب، وإن لم تنطبق قاعدة يُستخدم النص الثابت
+  - `LEARNED` (منذ 1.9.0، وكان `SMART`): أقرب رد سابق كتبه المستخدم لمثل الرسالة (`ReplyEngine.best`)، وإن لم يجد بثقة كافية يُستخدم النص الثابت؛ لا يرد على غير الجهات الشخصية
   - الشروط: جهات الاتصال فقط، نافذة زمنية (افتراضياً 22:00–07:00)، ومهلة بين الردود لكل مرسل (15 دقيقة إلى 24 ساعة، الافتراضي 60 دقيقة)
   - الحماية: لا يرد على المرسلين الأبجديين ولا على الأرقام القصيرة (أقل من 7 أرقام)، ولا على المحظورين أو السبام
 - **كتم المحادثة** (بدون إشعار)
@@ -248,7 +248,7 @@ Barq/
 | `blocked_numbers` / `blocked_keywords` | number / keyword |
 | `category_rules` | sender (unique) ← category |
 | `templates` | text، position |
-| `auto_reply_rules` | keywords، reply، enabled |
+| `reply_memory` (منذ 1.9.0، حلّ محل `auto_reply_rules`) | incoming (كلمات الرسالة)، reply، uses، lastUsed |
 | `auto_reply_log` | address ← lastAt (مهلة الرد) |
 
 - **قيم `box`** (مطابقة لـ Telephony): `INBOX=1`, `SENT=2`, `OUTBOX=4`, `FAILED=5`, `QUEUED=6`
@@ -687,6 +687,16 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | الاتجاه | `barq_rtl` يحدّد اتجاه الواجهة (true للعربية والأردية فقط)، و`barq_arabic` يحدّد لغة نص رسالة التفاعل المرسلة (عربي فقط للعربية) | `res/values*/bools.xml`، `Theme.kt`، `ReactionRepository.kt` |
 | التبديل | أندرويد 13+: `LocaleManager` (يظهر أيضاً في إعدادات النظام عبر `locales_config.xml`)؛ أقدم: تفضيل `barq_locale` + `attachBaseContext` في التطبيق والنشاط + `recreate()`. صف «اللغة» أول مجموعة المظهر بأعلام SVG مرسومة يدوياً | `util/LocaleHelper.kt`، `ui/settings/LanguageDialog.kt`، `drawable/ic_flag_*.xml` |
 | الاختبار | `LocalizationTest`: تطابق المفاتيح والـplaceholders، هروب `'` و`&`، أعلام الاتجاه، وجود العلم وإعلان اللغة | `app/src/test/.../LocalizationTest.kt` |
+
+## 21. الإصدار 1.9.0: ردود تتعلّم أسلوب المستخدم محلياً
+
+| الجزء | التفصيل | الملفات |
+|---|---|---|
+| المحرك | بلا نموذج ولا شبكة: استرجاع من ردود المستخدم السابقة. التشابه = cosine موزون بـIDF على الكلمات المطبّعة (70%) + تداخل trigram الحروف (30%)؛ درجة الرد × (0.8+0.2·تكرار) × (0.85+0.15·حداثة). `AUTO_MIN=0.55` للإرسال التلقائي، `SUGGEST_MIN=0.30` للشرائح؛ الشرائح تُكمَّل بأكثر ردود قصيرة استخداماً (≥3 مرات) | `domain/ReplyBrain.kt` |
+| التعلّم | `ReplyPairing.Walker` يربط كل رد يدوي (ليس autoReply) بآخر رسالة واردة مؤهلة قبله خلال 12 ساعة، أول رد فقط. يُتعلَّم عند كل إرسال (`SendEngine.sendToThread` ← `ReplyEngine.onUserSent`) ومن كل التاريخ عند الطلب/أول تشغيل (`rebuild`، صفحات 2000 بمؤشر threadId/date/id). حد 4000 سجل (الأقل استخداماً يُحذف) | `domain/ReplyEngine.kt`، `Daos.kt` (`learnRows`, `lastTurns`) |
+| الأمان | ردّ آمن: 2–160 حرفاً، بلا أرقام ولا روابط ولا `@` ولا كلمة من اسم جهة المحادثة؛ محادثات الفرد الواحد وجهات PERSONAL قابلة للرد فقط | `ReplyText.isSafeReply`، `ReplyEngine` |
+| الواجهة | شاشة الرد التلقائي: مفتاح التعلّم (`learnReplies`)، جرّب المحرك، إعادة التعلّم، مسح. المحادثة: `ThreadViewModel.suggestions` ← شرائح فوق خانة الكتابة عندما تكون آخر رسالة واردة وخانة الكتابة فارغة | `ToolsScreens.kt`، `ThreadScreen.kt` |
+| قاعدة البيانات | v5: `reply_memory` + حذف `auto_reply_rules` (`Migration4To5`)؛ النسخ الاحتياطي لم يعد يكتب القواعد ويتجاهل مفتاحها في الملفات القديمة؛ `SMART` المخزّن يُقرأ `LEARNED` (`autoReplyModeOf`) | `BarqDatabase.kt`، `SettingsRepository.kt`، `BackupManager.kt` |
 
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.

@@ -12,9 +12,12 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - data/: ConversationRepository، SyncManager، ProviderWatcher، db/ (Room v4: Daos، Entities)، backup/ (BackupManager، SettingsSnapshot)، update/UpdateChecker، telephony/، contacts/، settings/، sim/
 - sms/: SendEngine، SendQueue، SendDrainer، SendTracker، SendLimit، ScheduleManager، BulkSendService، gateway/ (بوابة HTTP للمطوّرين)
 - mms/: MmsPdu، MmsReceivers. notifications/: Notifier، ActiveThread. widget/OtpWidget. work/Maintenance (DbCompactWorker)
-- domain/: Classifier، OtpDetector، AutoReplyEngine، PhoneUtils، TextNorm، SheetImport
+- domain/: Classifier، OtpDetector، AutoReplyEngine، ReplyBrain (ReplyText/ReplyPairing/ReplyIndex)، ReplyEngine، PhoneUtils، TextNorm، SheetImport
 - ui/: inbox، thread، compose، contact، starred، batch، lock، onboarding، settings، whatsnew، BarqNavHost، MainViewModel
 - بناء: .github/workflows/build.yml (+ unpack-zip.yml)، gradle/libs.versions.toml، app/schemas، app/src/main/baseline-prof.txt
+- 1.9.0 رد يتعلّم محلياً: ReplyEngine (تعلّم من تاريخ الرسائل + كل رد يرسله المستخدم عبر SendEngine.sendToThread، اقتراح/best) فوق ReplyIndex (IDF-cosine 70% + trigram 30%، وزن التكرار والحداثة؛ AUTO_MIN=0.55 للإرسال التلقائي، SUGGEST_MIN=0.30 للشرائح). حُذف وضع SMART وجدول auto_reply_rules (SMART المخزّن ← LEARNED عبر autoReplyModeOf). شرائح الاقتراح: ThreadViewModel.suggestions ← Composer.suggestions. مفتاح AppSettings.learnReplies.
+- 1.9.0 الأمان: لا يُحفظ رد فيه رقم/رابط/@/اسم الجهة؛ يُتعلَّم فقط من محادثة مع شخص واحد وجهة PERSONAL قابلة للرد؛ ردود autoReply لا تُستخدم للتعلّم؛ الوضع LEARNED لا يرد إطلاقاً على غير PERSONAL.
+- 1.9.0 اختبار: MigrationTest.smartRulesBecomeTheReplyMemory (4→5 بلا ملفات schemas)؛ ReplyBrainTest. app/schemas غير مُلتزَم في git فاختبار «كل نسخة محفوظة» لا يرى نسخاً قديمة.
 - 1.8.1 One UI لبقية الشاشات: SettingsScaffold/StarredScreen/FolderScreen = LargeTopAppBar + islandColor؛ لم يُحوَّل بعد: ContactScreen، ComposeScreen، Health/Crash/Developer (شاشاتها المستقلة)، ThreadScreen الكامل.
 - 1.8.0 شريط الكبسولة: يُرسم في BarqNavHost (ثابت على INBOX/STARRED/ARCHIVE/SETTINGS فقط)، مفتاح AppSettings.pillNav (إعدادات ← المظهر، ومحفوظ في النسخ)، المحتوى يحجز LocalBottomBarInset، انتقال بين التبويبات تلاشٍ (tabSwap).
 - 1.8.0: ui/theme/Theme.kt (islandColor/islandShape)، ui/components/PillNav + SharedAvatar، ui/icons/BIcons، util/LocaleHelper + ui/settings/LanguageDialog، res/values-xx (es fr pt ru zh hi bn ur: 558 مفتاحاً، 290 مترجمة والباقي إنجليزي)، drawable/ic_flag_*، اختبار LocalizationTest. barq_rtl للاتجاه (ar وur)، barq_arabic لنص التفاعلات.
@@ -34,7 +37,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - الرفع من الجوال فقط، الأسرار الأربعة موجودة، المفتاح خارج المستودع.
 
 ## Details (PROJECT_CONTEXT 4/11/13)
-- Room: v4 (Migration1To2، 2To3، 3To4؛ ممنوع fallbackToDestructiveMigration). جداول: conversations، messages (+FTS4 messages_fts على searchText مطبّع عربياً)، send_groups(+members)، blocked_*، category_rules، templates، auto_reply_*.
+- Room: v5 (Migration1To2، 2To3، 3To4، 4To5؛ ممنوع fallbackToDestructiveMigration). جداول: conversations، messages (+FTS4 messages_fts على searchText مطبّع عربياً)، send_groups(+members)، blocked_*، category_rules، templates، auto_reply_log، reply_memory (incoming/reply/uses/lastUsed).
 - box: INBOX=1 SENT=2 OUTBOX=4 FAILED=5 QUEUED=6.
 - مسار الإرسال: SendEngine ← OutgoingRepository.enqueue ← SendQueue/BulkSendService ← SendDrainer ← SmsSender ← SmsStatusReceiver.
 - البوابة (1.4.0): POST /send، مفتاح X-Api-Key، منفذ 8080، شبكة محلية فقط، لوحة ويب assets/gateway.html، متوافقة مع SMS Sendr (بوت المالك).

@@ -19,7 +19,14 @@ import javax.inject.Singleton
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 enum class SwipeAction { NONE, ARCHIVE, DELETE, READ, PIN, MUTE, CALL }
-enum class AutoReplyMode { FIXED, SMART }
+enum class AutoReplyMode { FIXED, LEARNED }
+
+/** Settings and backups made before 1.9.0 stored SMART: it becomes the learning mode. */
+fun autoReplyModeOf(name: String?, default: AutoReplyMode): AutoReplyMode = when (name) {
+    null -> default
+    "SMART" -> AutoReplyMode.LEARNED
+    else -> runCatching { enumValueOf<AutoReplyMode>(name) }.getOrDefault(default)
+}
 enum class BackupFrequency { OFF, DAILY, WEEKLY }
 /** How Barq is unlocked: fingerprint/face or the phone's PIN, only fingerprint/face, or only the PIN. */
 enum class LockMethod { ANY, BIOMETRIC, DEVICE }
@@ -30,6 +37,8 @@ data class AppSettings(
     val dynamicColor: Boolean = false,
     /** The floating bottom navigation bar between Messages, Starred, Archive and Settings. */
     val pillNav: Boolean = true,
+    /** Learn from the replies the user writes (on this phone only) to suggest and auto-reply. */
+    val learnReplies: Boolean = true,
     val fontScale: Float = 1f,
     val datePattern: String = "dd/MM/yyyy",
     val use24h: Boolean = true,
@@ -104,6 +113,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val themeMode = stringPreferencesKey("theme_mode")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         val pillNav = booleanPreferencesKey("pill_nav")
+        val learnReplies = booleanPreferencesKey("learn_replies")
         val fontScale = floatPreferencesKey("font_scale")
         val datePattern = stringPreferencesKey("date_pattern")
         val use24h = booleanPreferencesKey("use_24h")
@@ -157,6 +167,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             themeMode = p.enumOf(K.themeMode, d.themeMode),
             dynamicColor = p[K.dynamicColor] ?: d.dynamicColor,
             pillNav = p[K.pillNav] ?: d.pillNav,
+            learnReplies = p[K.learnReplies] ?: d.learnReplies,
             fontScale = p[K.fontScale] ?: d.fontScale,
             datePattern = p[K.datePattern] ?: d.datePattern,
             use24h = p[K.use24h] ?: d.use24h,
@@ -170,7 +181,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             defaultSubId = p[K.defaultSubId] ?: d.defaultSubId,
             sendDelayMs = p[K.sendDelayMs] ?: d.sendDelayMs,
             autoReplyEnabled = p[K.arEnabled] ?: d.autoReplyEnabled,
-            autoReplyMode = p.enumOf(K.arMode, d.autoReplyMode),
+            autoReplyMode = autoReplyModeOf(p[K.arMode], d.autoReplyMode),
             autoReplyText = p[K.arText] ?: context.getString(dev.saged.barq.R.string.auto_reply_default_text),
             autoReplyContactsOnly = p[K.arContactsOnly] ?: d.autoReplyContactsOnly,
             autoReplyCooldownMin = p[K.arCooldown] ?: d.autoReplyCooldownMin,
@@ -211,6 +222,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setThemeMode(v: ThemeMode) = set(K.themeMode, v.name)
     suspend fun setDynamicColor(v: Boolean) = set(K.dynamicColor, v)
     suspend fun setPillNav(v: Boolean) = set(K.pillNav, v)
+    suspend fun setLearnReplies(v: Boolean) = set(K.learnReplies, v)
     suspend fun setFontScale(v: Float) = set(K.fontScale, v)
     suspend fun setDatePattern(v: String) = set(K.datePattern, v)
     suspend fun setUse24h(v: Boolean) = set(K.use24h, v)
@@ -262,6 +274,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             it[K.themeMode] = s.themeMode.name
             it[K.dynamicColor] = s.dynamicColor
             it[K.pillNav] = s.pillNav
+            it[K.learnReplies] = s.learnReplies
             it[K.fontScale] = s.fontScale
             it[K.datePattern] = s.datePattern
             it[K.use24h] = s.use24h

@@ -68,4 +68,16 @@ object BIcons {
         )
     }
     val Check by lazy { icon("Check", "M5,12.5L10,17.5L19,7") }
+    val Sparkle by lazy {
+        icon(
+            "Sparkle",
+            "M11,6C11.6,10.2 13.8,12.4 18,13C13.8,13.6 11.6,15.8 11,20C10.4,15.8 8.2,13.6 4,13C8.2,12.4 10.4,10.2 11,6Z",
+            "M18.5,3V7", "M16.5,5H20.5",
+        )
+    }
+    val Rewind by lazy { icon("Rewind", "M20,12A8,8 0 1 1 17.7,6.3", "M20,4V8.5H15.5") }
+    val Trash by lazy {
+        icon("Trash", "M4.5,7H19.5", "M9,7V5H15V7", "M6.5,7L7.5,19.5H16.5L17.5,7", "M10,11V16", "M14,11V16")
+    }
+    val Flask by lazy { icon("Flask", "M9.5,4H14.5", "M10.5,4V10L5.5,19H18.5L13.5,10V4", "M8,15H16") }
 }

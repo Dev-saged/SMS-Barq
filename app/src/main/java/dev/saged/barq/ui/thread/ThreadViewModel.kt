@@ -12,7 +12,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.ReactionRepository
 import dev.saged.barq.data.db.ThreadHit
+import dev.saged.barq.domain.PhoneUtils
+import dev.saged.barq.domain.ReplyEngine
 import dev.saged.barq.domain.TextNorm
+import dev.saged.barq.data.db.Box
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.ConversationEntity
@@ -33,6 +36,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emitAll
@@ -44,7 +51,7 @@ import javax.inject.Inject
 /** SMS length info for the counter: parts used and characters left in the current part. */
 data class SmsCount(val parts: Int, val remaining: Int)
 
-@OptIn(FlowPreview::class)
+@OptIn(FlowPreview::class, kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class ThreadViewModel @Inject constructor(
     savedState: SavedStateHandle,
@@ -57,6 +64,7 @@ class ThreadViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val simRepository: SimRepository,
     private val reactions: ReactionRepository,
+    private val replyEngine: ReplyEngine,
     @AppScope private val appScope: CoroutineScope,
 ) : ViewModel() {
 
@@ -98,6 +106,21 @@ class ThreadViewModel @Inject constructor(
 
     val settings: StateFlow<AppSettings> =
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
+
+    /** Up to three replies in the user's own words, offered while the last message is from the other person. */
+    val suggestions: StateFlow<List<String>> = combine(
+        messageDao.observeLatestVisible(threadId),
+        settingsRepository.settings.map { it.learnReplies }.distinctUntilChanged(),
+        replyEngine.count,
+    ) { last, on, _ -> last.takeIf { on } }
+        .mapLatest { last ->
+            if (last == null || last.box != Box.INBOX || last.category != Category.PERSONAL || !PhoneUtils.isReplyable(last.address)) {
+                emptyList()
+            } else {
+                replyEngine.suggest(last.body, 3).map { it.reply }
+            }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val sims = MutableStateFlow<List<SimInfo>>(emptyList())
     val subId = MutableStateFlow(-1)

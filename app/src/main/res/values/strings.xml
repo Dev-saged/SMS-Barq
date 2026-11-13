@@ -231,9 +231,23 @@
     <string name="auto_reply_switch_sub">فعّله وقت انشغالك وسيرد هاتفك عنك</string>
     <string name="auto_reply_mode">نوع الرد</string>
     <string name="mode_fixed">رد ثابت</string>
-    <string name="mode_smart">رد ذكي</string>
+    <string name="mode_learned">يتعلّم من ردودي</string>
     <string name="mode_fixed_sub">نفس الرد لكل من يراسلك.</string>
-    <string name="mode_smart_sub">يقرأ الرسالة ويختار الرد المناسب حسب الكلمات (تحية، سؤال، أمر عاجل…)، وإن لم يجد يستخدم الرد الثابت.</string>
+    <string name="mode_learned_sub">يردّ بأسلوبك: يختار من ردودك السابقة الأقرب لرسالة الوارد. إن لم يجد ردّاً مناسباً يستخدم الرد الثابت.</string>
+    <string name="reply_memory">ذاكرة الردود</string>
+    <string name="learn_replies">التعلّم من ردودي</string>
+    <string name="learn_replies_sub">يقترح ردوداً فوق خانة الكتابة في المحادثة ويستخدمها في الرد التلقائي. يعمل على هاتفك فقط.</string>
+    <string name="reply_memory_count">%1$d رداً متعلَّماً</string>
+    <string name="reply_rebuild">إعادة التعلّم من رسائلي</string>
+    <string name="reply_rebuilding">جارٍ التعلّم…</string>
+    <string name="reply_clear">مسح ما تعلّمه</string>
+    <string name="reply_clear_q">ستُحذف كل الردود المتعلَّمة من هذا الهاتف. رسائلك لا تتأثر، ويمكنك إعادة التعلّم في أي وقت.</string>
+    <string name="reply_try">جرّب المحرك</string>
+    <string name="reply_try_hint">اكتب رسالة واردة</string>
+    <string name="reply_try_auto">يُرسل تلقائياً: %1$s</string>
+    <string name="reply_try_suggest">اقتراح فقط: %1$s</string>
+    <string name="reply_try_none">لا يوجد رد مناسب بعد. سيُستخدم الرد الثابت.</string>
+    <string name="reply_privacy">يتعلّم محلياً على هاتفك فقط ولا يرسل شيئاً إلى أي خادم. لا يحفظ الردود التي فيها أرقام أو روابط أو اسم الشخص، ولا يرد تلقائياً على البنوك والرموز والخدمات.</string>
     <string name="fixed_reply_text">نص الرد الثابت</string>
     <string name="reply_text">نص الرد</string>
     <string name="auto_reply_conditions">الشروط</string>
@@ -246,10 +260,6 @@
     <string name="from_time">من %1$s</string>
     <string name="to_time">إلى %1$s</string>
     <string name="auto_reply_safety">للأمان: لا يرد أبداً على أرقام الخدمات والبنوك والأرقام القصيرة، ولا يرد على نفس الشخص أكثر من مرة خلال المدة المحددة.</string>
-    <string name="smart_rules">الردود الذكية</string>
-    <string name="add_smart_reply">رد ذكي جديد</string>
-    <string name="keywords_label">الكلمات (افصل بينها بـ |)</string>
-    <string name="when_contains">عندما تحتوي: %1$s</string>
 
     <!-- Contact page -->
     <string name="number_copied">تم نسخ الرقم</string>

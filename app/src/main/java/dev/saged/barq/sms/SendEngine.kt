@@ -11,6 +11,8 @@ import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.sim.SimRepository
 import dev.saged.barq.di.AppScope
 import dev.saged.barq.domain.PhoneUtils
+import dev.saged.barq.domain.ReplyEngine
+import dev.saged.barq.util.CrashLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -33,6 +35,7 @@ class SendEngine @Inject constructor(
     private val scheduler: ScheduleManager,
     private val queue: SendQueue,
     private val state: BulkState,
+    private val replies: ReplyEngine,
     @AppScope private val scope: CoroutineScope,
 ) {
     sealed interface Outcome {
@@ -70,6 +73,9 @@ class SendEngine @Inject constructor(
         val sub = resolveSubId(threadId, subId)
         val queued = outgoing.enqueue(recipients, body, sub, scheduledAt, autoReply = false, batchId = 0, clearDraft = true)
         afterQueue(queued)
+        if (queued.count > 0 && scheduledAt == 0L) {
+            runCatching { replies.onUserSent(threadId, body) }.onFailure { CrashLog.warn("reply-learn", it) }
+        }
         return queued.count > 0
     }
 

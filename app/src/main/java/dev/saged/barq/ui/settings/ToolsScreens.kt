@@ -55,8 +55,6 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
 import dev.saged.barq.data.BlockList
-import dev.saged.barq.data.db.AutoReplyDao
-import dev.saged.barq.data.db.AutoReplyRuleEntity
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.CategoryRuleEntity
 import dev.saged.barq.data.db.RuleDao
@@ -65,6 +63,9 @@ import dev.saged.barq.data.db.TemplateEntity
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.AutoReplyMode
 import dev.saged.barq.data.settings.SettingsRepository
+import dev.saged.barq.domain.ReplyEngine
+import dev.saged.barq.domain.ReplyIndex
+import dev.saged.barq.ui.icons.BIcons
 import dev.saged.barq.ui.components.icon
 import dev.saged.barq.ui.components.label
 import kotlinx.coroutines.flow.SharingStarted
@@ -77,7 +78,7 @@ class ToolsViewModel @Inject constructor(
     private val blockList: BlockList,
     private val rules: RuleDao,
     private val templates: TemplateDao,
-    private val autoReply: AutoReplyDao,
+    private val replyEngine: ReplyEngine,
     val settingsRepo: SettingsRepository,
 ) : ViewModel() {
     private fun <T> kotlinx.coroutines.flow.Flow<List<T>>.state() = stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
@@ -86,7 +87,8 @@ class ToolsViewModel @Inject constructor(
     val keywords = blockList.keywords.state()
     val ruleList = rules.observe().state()
     val templateList = templates.observe().state()
-    val autoReplyRules = autoReply.observeRules().state()
+    val replyCount = replyEngine.count.stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+    val replyBusy = replyEngine.busy
     val settings = settingsRepo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 
     private fun io(block: suspend () -> Unit) = viewModelScope.launch { block() }
@@ -107,15 +109,23 @@ class ToolsViewModel @Inject constructor(
     }
     fun deleteTemplate(id: Long) = io { templates.delete(id) }
 
-    fun saveAutoRule(rule: AutoReplyRuleEntity?, keywords: String, reply: String) = io {
-        if (keywords.isBlank() || reply.isBlank()) return@io
-        autoReply.upsertRule(
-            rule?.copy(keywords = keywords.trim(), reply = reply.trim())
-                ?: AutoReplyRuleEntity(keywords = keywords.trim(), reply = reply.trim())
-        )
+    fun setAutoReplyMode(mode: AutoReplyMode) = io {
+        settingsRepo.setAutoReplyMode(mode)
+        if (mode == AutoReplyMode.LEARNED) replyEngine.rebuildIfEmpty()
     }
-    fun toggleAutoRule(rule: AutoReplyRuleEntity) = io { autoReply.upsertRule(rule.copy(enabled = !rule.enabled)) }
-    fun deleteAutoRule(id: Long) = io { autoReply.deleteRule(id) }
+
+    fun setLearning(on: Boolean) = io {
+        settingsRepo.setLearnReplies(on)
+        if (on) replyEngine.rebuildIfEmpty()
+    }
+
+    fun rebuildReplies() = replyEngine.rebuild()
+    fun clearReplies() = io { replyEngine.clear() }
+
+    /** What the engine would answer to [incoming]: the reply and whether it would be sent by itself. */
+    fun tryReply(incoming: String, onResult: (List<Pair<String, Boolean>>) -> Unit) = io {
+        onResult(replyEngine.preview(incoming).map { it.reply to (it.score >= ReplyIndex.AUTO_MIN) })
+    }
 
     fun update(block: suspend SettingsRepository.() -> Unit) = io { settingsRepo.block() }
 }
@@ -359,9 +369,11 @@ fun TemplatesScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
 @Composable
 fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsStateWithLifecycle()
-    val rules by vm.autoReplyRules.collectAsStateWithLifecycle()
-    var editing by remember { mutableStateOf<AutoReplyRuleEntity?>(null) }
-    var adding by remember { mutableStateOf(false) }
+    val learned by vm.replyCount.collectAsStateWithLifecycle()
+    val busy by vm.replyBusy.collectAsStateWithLifecycle()
+    var trying by remember { mutableStateOf(false) }
+    var tryResult by remember { mutableStateOf<List<Pair<String, Boolean>>?>(null) }
+    var confirmClear by remember { mutableStateOf(false) }
     var editingText by remember { mutableStateOf(false) }
     var pickTime by remember { mutableStateOf<Boolean?>(null) } // true = from, false = to
     var cooldownDialog by remember { mutableStateOf(false) }
@@ -369,9 +381,6 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
     SettingsScaffold(
         title = stringResource(R.string.auto_reply_title),
         onBack = onBack,
-        floating = {
-            if (s.autoReplyMode == AutoReplyMode.SMART) AddFab(stringResource(R.string.add_smart_reply)) { adding = true }
-        },
     ) {
         item {
             Row(
@@ -398,17 +407,17 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
                 SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(16.dp)) {
                     SegmentedButton(
                         selected = s.autoReplyMode == AutoReplyMode.FIXED,
-                        onClick = { vm.update { setAutoReplyMode(AutoReplyMode.FIXED) } },
+                        onClick = { vm.setAutoReplyMode(AutoReplyMode.FIXED) },
                         shape = SegmentedButtonDefaults.itemShape(0, 2),
                     ) { Text(stringResource(R.string.mode_fixed)) }
                     SegmentedButton(
-                        selected = s.autoReplyMode == AutoReplyMode.SMART,
-                        onClick = { vm.update { setAutoReplyMode(AutoReplyMode.SMART) } },
+                        selected = s.autoReplyMode == AutoReplyMode.LEARNED,
+                        onClick = { vm.setAutoReplyMode(AutoReplyMode.LEARNED) },
                         shape = SegmentedButtonDefaults.itemShape(1, 2),
-                    ) { Text(stringResource(R.string.mode_smart)) }
+                    ) { Text(stringResource(R.string.mode_learned)) }
                 }
                 Text(
-                    stringResource(if (s.autoReplyMode == AutoReplyMode.FIXED) R.string.mode_fixed_sub else R.string.mode_smart_sub),
+                    stringResource(if (s.autoReplyMode == AutoReplyMode.FIXED) R.string.mode_fixed_sub else R.string.mode_learned_sub),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
@@ -416,6 +425,29 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
                 RowDivider()
                 ClickRow(Icons.Outlined.Edit, stringResource(R.string.fixed_reply_text), s.autoReplyText) { editingText = true }
             }
+        }
+        item {
+            SettingsGroup(stringResource(R.string.reply_memory)) {
+                SwitchRow(
+                    BIcons.Sparkle, stringResource(R.string.learn_replies), stringResource(R.string.learn_replies_sub),
+                    s.learnReplies,
+                ) { v -> vm.setLearning(v) }
+                RowDivider()
+                ClickRow(BIcons.Flask, stringResource(R.string.reply_try)) { trying = true }
+                RowDivider()
+                ClickRow(
+                    BIcons.Rewind, stringResource(R.string.reply_rebuild),
+                    if (busy) stringResource(R.string.reply_rebuilding) else stringResource(R.string.reply_memory_count, learned),
+                ) { if (!busy) vm.rebuildReplies() }
+                RowDivider()
+                ClickRow(BIcons.Trash, stringResource(R.string.reply_clear)) { confirmClear = true }
+            }
+            Text(
+                stringResource(R.string.reply_privacy),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
+            )
         }
         item {
             SettingsGroup(stringResource(R.string.auto_reply_conditions)) {
@@ -450,26 +482,6 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp),
             )
         }
-        if (s.autoReplyMode == AutoReplyMode.SMART) {
-            item {
-                Text(
-                    stringResource(R.string.smart_rules),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(start = 8.dp, top = 8.dp, bottom = 4.dp),
-                )
-            }
-            items(rules, key = { it.id }) { r ->
-                ListCard(
-                    title = r.reply,
-                    subtitle = stringResource(R.string.when_contains, r.keywords.replace("|", " · ")),
-                    onClick = { editing = r },
-                ) {
-                    Switch(checked = r.enabled, onCheckedChange = { vm.toggleAutoRule(r) })
-                    RemoveButton { vm.deleteAutoRule(r.id) }
-                }
-            }
-        }
     }
 
     if (editingText) {
@@ -484,20 +496,41 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
             },
         )
     }
-    val currentRule = editing
-    if (adding || currentRule != null) {
+    if (trying) {
         TextInputDialog(
-            title = stringResource(R.string.add_smart_reply),
-            label = stringResource(R.string.keywords_label),
-            initial = currentRule?.keywords.orEmpty(),
-            secondLabel = stringResource(R.string.reply_text),
-            secondInitial = currentRule?.reply.orEmpty(),
-            onDismiss = { adding = false; editing = null },
-            onSave = { k, r ->
-                vm.saveAutoRule(currentRule, k, r)
-                adding = false
-                editing = null
+            title = stringResource(R.string.reply_try),
+            label = stringResource(R.string.reply_try_hint),
+            onDismiss = { trying = false },
+            onSave = { v, _ ->
+                trying = false
+                if (v.isNotBlank()) vm.tryReply(v) { tryResult = it }
             },
+        )
+    }
+    tryResult?.let { found ->
+        AlertDialog(
+            onDismissRequest = { tryResult = null },
+            title = { Text(stringResource(R.string.reply_try)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (found.isEmpty()) Text(stringResource(R.string.reply_try_none))
+                    found.forEach { (reply, auto) ->
+                        Text(stringResource(if (auto) R.string.reply_try_auto else R.string.reply_try_suggest, reply))
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { tryResult = null }) { Text(stringResource(android.R.string.ok)) } },
+        )
+    }
+    if (confirmClear) {
+        AlertDialog(
+            onDismissRequest = { confirmClear = false },
+            title = { Text(stringResource(R.string.reply_clear)) },
+            text = { Text(stringResource(R.string.reply_clear_q)) },
+            confirmButton = {
+                TextButton(onClick = { confirmClear = false; vm.clearReplies() }) { Text(stringResource(R.string.reply_clear)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmClear = false }) { Text(stringResource(R.string.cancel)) } },
         )
     }
     if (cooldownDialog) {

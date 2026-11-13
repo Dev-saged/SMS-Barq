@@ -161,15 +161,33 @@ data class TemplateEntity(
     val position: Int = 0,
 )
 
-/** Smart auto-reply: when an incoming text contains any keyword, answer with [reply]. */
-@Entity(tableName = "auto_reply_rules")
-data class AutoReplyRuleEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    /** Keywords separated by | or comma. */
-    val keywords: String,
-    val reply: String,
-    val enabled: Boolean = true,
+/** A reply the user wrote to an incoming text: the engine's memory (words only, never the full text). */
+@Entity(
+    tableName = "reply_memory",
+    indices = [Index(value = ["incoming", "reply"], unique = true), Index(value = ["lastUsed"])],
 )
+data class ReplyMemoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** The incoming text reduced to its words (see ReplyText.key). */
+    val incoming: String,
+    val reply: String,
+    val uses: Int,
+    val lastUsed: Long,
+)
+
+/** What the learner reads from the history. */
+data class LearnRow(
+    val id: Long,
+    val threadId: Long,
+    val box: Int,
+    val body: String,
+    val date: Long,
+    val autoReply: Boolean,
+    val category: Category,
+    val address: String,
+)
+
+data class ThreadNames(val threadId: Long, val displayName: String, val addresses: String)
 
 /** Remembers when we last auto-replied to a sender, to avoid reply loops and costs. */
 /** Unread totals for the inbox's "Unread" view. */

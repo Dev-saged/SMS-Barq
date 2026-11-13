@@ -61,6 +61,13 @@ object TextNorm {
         return null
     }
 
+    /** Normalised, stemmed words of a text: the unit the reply engine compares. */
+    fun words(text: String): List<String> =
+        forIndex(text).split(' ')
+            .map { w -> w.filter { it.isLetterOrDigit() } }
+            .filter { it.isNotEmpty() }
+            .map { stem(it) ?: it }
+
     /** Text stored in the message search index: normalised words plus their stems. */
     fun indexText(body: String): String {
         val norm = forIndex(body)

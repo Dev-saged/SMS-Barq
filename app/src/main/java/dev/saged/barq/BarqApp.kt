@@ -8,11 +8,10 @@ import dev.saged.barq.data.ProviderWatcher
 import dev.saged.barq.data.contacts.ContactsWatcher
 import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.sms.SendQueue
-import dev.saged.barq.data.db.AutoReplyDao
 import dev.saged.barq.data.db.TemplateDao
 import dev.saged.barq.data.db.TemplateEntity
 import dev.saged.barq.di.AppScope
-import dev.saged.barq.domain.AutoReplyEngine
+import dev.saged.barq.domain.ReplyEngine
 import dev.saged.barq.notifications.Notifier
 import dev.saged.barq.util.CrashLog
 import dev.saged.barq.work.MaintenanceScheduler
@@ -31,7 +30,7 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var notifier: Notifier
     @Inject lateinit var maintenance: MaintenanceScheduler
     @Inject lateinit var templates: TemplateDao
-    @Inject lateinit var autoReply: AutoReplyDao
+    @Inject lateinit var replyEngine: ReplyEngine
     @Inject @field:AppScope lateinit var scope: CoroutineScope
     @Inject lateinit var contactsWatcher: ContactsWatcher
     @Inject lateinit var providerWatcher: ProviderWatcher
@@ -109,9 +108,7 @@ class BarqApp : Application(), Configuration.Provider {
             resources.getStringArray(R.array.default_templates).toList()
                 .forEachIndexed { i, t -> templates.upsert(TemplateEntity(text = t, position = i)) }
         }
-        if (autoReply.ruleCount() == 0) {
-            AutoReplyEngine.defaultRules.forEach { autoReply.upsertRule(it) }
-        }
+        replyEngine.rebuildIfEmpty()
     }
 
     private companion object {
