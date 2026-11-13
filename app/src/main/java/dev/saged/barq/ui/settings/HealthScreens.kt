@@ -1,7 +1,9 @@
 package dev.saged.barq.ui.settings
 
 import android.Manifest
+import android.app.ActivityManager
 import android.app.AlarmManager
+import android.app.usage.UsageStatsManager
 import android.app.role.RoleManager
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -92,6 +94,15 @@ private fun isDefaultSms(context: Context): Boolean =
         Telephony.Sms.getDefaultSmsPackage(context) == context.packageName
     }
 
+/** البطارية سليمة إن كان التطبيق مستثنى، أو غير مقيّد بالخلفية (سامسونج «بدون قيود») وفي فئة نشطة. */
+private fun batteryOk(context: Context, pm: PowerManager?): Boolean {
+    if (pm?.isIgnoringBatteryOptimizations(context.packageName) == true) return true
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) return false
+    val restricted = context.getSystemService(ActivityManager::class.java)?.isBackgroundRestricted != false
+    val bucket = context.getSystemService(UsageStatsManager::class.java)?.appStandbyBucket ?: Int.MAX_VALUE
+    return !restricted && bucket <= UsageStatsManager.STANDBY_BUCKET_FREQUENT
+}
+
 private fun openAppSettings(context: Context) {
     runCatching {
         context.startActivity(
@@ -139,7 +150,7 @@ fun HealthScreen(onBack: () -> Unit, open: (String) -> Unit, vm: HealthViewModel
                     context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }
             },
-            Check(R.string.health_battery, pm?.isIgnoringBatteryOptimizations(context.packageName) == true, R.string.health_battery_fix) {
+            Check(R.string.health_battery, batteryOk(context, pm), R.string.health_battery_fix) {
                 runCatching {
                     context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
                 }

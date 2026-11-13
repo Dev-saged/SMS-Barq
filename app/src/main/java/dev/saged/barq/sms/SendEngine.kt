@@ -191,6 +191,14 @@ class SendEngine @Inject constructor(
         queue.kick()
     }
 
+    suspend fun resendMany(ids: List<Long>) {
+        if (ids.isEmpty()) return
+        outgoing.resetForResend(ids)
+        queue.kick()
+    }
+
+    fun observeFailedRows(): Flow<List<BatchRow>> = messages.observeFailedRows()
+
     /** "Resend failed" after a bulk send (from the progress card or the notification). */
     suspend fun resendFailed(batchId: Long) {
         val failed = messages.failedInBatch(batchId).map { it.id }

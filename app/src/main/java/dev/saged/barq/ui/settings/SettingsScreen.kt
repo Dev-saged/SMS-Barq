@@ -231,6 +231,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         SwipeAction.READ to stringResource(R.string.swipe_read_toggle),
         SwipeAction.PIN to stringResource(R.string.pin),
         SwipeAction.MUTE to stringResource(R.string.mute),
+        SwipeAction.CALL to stringResource(R.string.swipe_call),
     )
     val backupLabels = listOf(
         BackupFrequency.OFF to stringResource(R.string.backup_off),

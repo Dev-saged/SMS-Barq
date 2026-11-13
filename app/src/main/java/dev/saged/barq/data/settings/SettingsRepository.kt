@@ -18,7 +18,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
-enum class SwipeAction { NONE, ARCHIVE, DELETE, READ, PIN, MUTE }
+enum class SwipeAction { NONE, ARCHIVE, DELETE, READ, PIN, MUTE, CALL }
 enum class AutoReplyMode { FIXED, SMART }
 enum class BackupFrequency { OFF, DAILY, WEEKLY }
 /** How Barq is unlocked: fingerprint/face or the phone's PIN, only fingerprint/face, or only the PIN. */

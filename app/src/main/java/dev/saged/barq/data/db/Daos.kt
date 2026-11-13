@@ -16,8 +16,7 @@ interface ConversationDao {
     /**
      * Main inbox. [category] null = "all" (spam excluded). [query] empty = no filter; otherwise
      * conversations whose name or number match (message texts are searched by the FTS index).
-     * [unreadOnly] keeps only conversations with unread messages, plus the ones in [keep] (opened
-     * from that view a moment ago, so they don't vanish under the user's finger).
+     * [unreadOnly] keeps only conversations with unread messages.
      * A conversation with a newer draft is ordered by the draft time.
      */
     @Query(
@@ -26,7 +25,7 @@ interface ConversationDao {
         WHERE deleted = 0 AND archived = 0
           AND (date > 0 OR draft IS NOT NULL)
           AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
-          AND (:unreadOnly = 0 OR unreadCount > 0 OR threadId IN (:keep))
+          AND (:unreadOnly = 0 OR unreadCount > 0)
           AND (:query = '' OR displayName LIKE '%' || :query || '%'
                OR addresses LIKE '%' || :query || '%')
         ORDER BY pinned DESC,
@@ -37,7 +36,6 @@ interface ConversationDao {
         category: String?,
         query: String,
         unreadOnly: Boolean,
-        keep: List<Long>,
     ): PagingSource<Int, ConversationEntity>
 
     /** How many conversations and messages are unread (same scope as the inbox: no spam, no archive). */
@@ -323,6 +321,19 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE fromOtherApp = 1 AND date >= :since AND box = 5")
     suspend fun failedExternal(since: Long): List<MessageEntity>
+
+    /** كل الرسائل الفاشلة، الأحدث أولاً، لشاشة «الرسائل الفاشلة». */
+    @Query(
+        """SELECT m.id AS id, m.threadId AS threadId, m.address AS address, m.box AS box,
+                  m.errorCode AS errorCode, m.deliveryStatus AS deliveryStatus, m.retryCount AS retryCount,
+                  m.retryAt AS retryAt, m.date AS date, c.displayName AS displayName
+           FROM messages m LEFT JOIN conversations c ON c.threadId = m.threadId
+           WHERE m.box = 5 AND m.reactionTo = 0 ORDER BY m.date DESC, m.id DESC"""
+    )
+    fun observeFailedRows(): Flow<List<BatchRow>>
+
+    @Query("SELECT COUNT(*) FROM messages WHERE box = 5 AND reactionTo = 0")
+    fun failedCount(): Flow<Int>
 
     /** Other apps' messages still on their way: followed until the system reports the result. */
     @Query("SELECT providerId FROM messages WHERE fromOtherApp = 1 AND box IN (4, 6) AND providerId IS NOT NULL")

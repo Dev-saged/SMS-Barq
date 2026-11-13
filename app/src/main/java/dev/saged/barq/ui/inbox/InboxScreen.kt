@@ -29,6 +29,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.BugReport
@@ -83,10 +84,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.outlined.Call
+import androidx.core.content.ContextCompat
+import dev.saged.barq.domain.PhoneUtils
+import kotlin.math.abs
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,6 +144,7 @@ import dev.saged.barq.ui.components.TimeFormat
 import dev.saged.barq.ui.components.label
 import dev.saged.barq.ui.components.rememberContactName
 import dev.saged.barq.ui.components.rememberDefaultSmsRequest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -141,6 +156,7 @@ fun InboxScreen(
     openArchive: () -> Unit,
     openBin: () -> Unit,
     openStarred: () -> Unit,
+    openFailed: () -> Unit,
     openSettings: () -> Unit,
     openContact: (Long) -> Unit,
     openCrashLog: () -> Unit,
@@ -153,6 +169,7 @@ fun InboxScreen(
     val settings by vm.settings.collectAsStateWithLifecycle()
     val filter by vm.filter.collectAsStateWithLifecycle()
     val unreadOnly by vm.unreadOnly.collectAsStateWithLifecycle()
+    val failedCount by vm.failedCount.collectAsStateWithLifecycle()
     val unread by vm.unread.collectAsStateWithLifecycle()
     val openUnread by mainViewModel.openUnread.collectAsStateWithLifecycle()
     var confirmReadAll by remember { mutableStateOf(false) }
@@ -169,6 +186,21 @@ fun InboxScreen(
     val crashPending by mainViewModel.crashPending.collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { (i, o) ->
+            if (pagingItems.itemCount > 0) {
+                vm.scrollIndex = i
+                vm.scrollOffset = o
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        if (vm.scrollIndex > 0) {
+            val index = vm.scrollIndex
+            snapshotFlow { pagingItems.itemCount }.first { it > 0 }
+            listState.scrollToItem(index, vm.scrollOffset)
+        }
+    }
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex < 2 } }
     val snackbar = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -189,7 +221,32 @@ fun InboxScreen(
     // Back leaves the unread view first, then the app.
     androidx.activity.compose.BackHandler(enabled = unreadOnly && selection.isEmpty()) { vm.setUnreadOnly(false) }
 
+    val context = LocalContext.current
+    var pendingCall by remember { mutableStateOf<String?>(null) }
+    val callPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        pendingCall?.let { placeCall(context, it, ok) }
+        pendingCall = null
+    }
+    val noCallMsg = stringResource(R.string.swipe_call_none)
+
+    fun call(c: ConversationEntity) {
+        val number = PhoneUtils.splitAddresses(c.addresses).firstOrNull()?.trim()
+            ?.takeIf { PhoneUtils.isPhoneNumber(it) }?.let(PhoneUtils::normalizeDigits)
+        if (number == null) {
+            scope.launch { snackbar.currentSnackbarData?.dismiss(); snackbar.showSnackbar(noCallMsg) }
+            return
+        }
+        if (ContextCompat.checkSelfPermission(context, android.Manifest.permission.CALL_PHONE) ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) placeCall(context, number, true)
+        else {
+            pendingCall = number
+            callPermission.launch(android.Manifest.permission.CALL_PHONE)
+        }
+    }
+
     fun onSwipe(action: SwipeAction, c: ConversationEntity) {
+        if (action == SwipeAction.CALL) { call(c); return }
         vm.swipe(action, c)
         val msg = when (action) {
             SwipeAction.ARCHIVE -> archivedMsg
@@ -284,6 +341,8 @@ fun InboxScreen(
                         unreadOnly = unreadOnly,
                         unreadCount = unread.conversations,
                         onUnread = { vm.setUnreadOnly(!unreadOnly) },
+                        failedCount = failedCount,
+                        onFailed = openFailed,
                     )
                 }
                 if (unreadOnly) {
@@ -378,7 +437,6 @@ fun InboxScreen(
                             if (selection.isNotEmpty()) {
                                 vm.toggleSelection(c.threadId)
                             } else {
-                                vm.onOpened(c.threadId)
                                 openThread(c.threadId)
                             }
                         },
@@ -672,6 +730,8 @@ private fun FilterChips(
     unreadOnly: Boolean,
     unreadCount: Int,
     onUnread: () -> Unit,
+    failedCount: Int,
+    onFailed: () -> Unit,
 ) {
     val options = listOf<Category?>(null, Category.OTP, Category.BANK, Category.OFFERS, Category.PERSONAL, Category.SPAM)
     val scheme = MaterialTheme.colorScheme
@@ -717,6 +777,21 @@ private fun FilterChips(
                 selectedTrailingIconColor = scheme.onPrimary,
             ),
         )
+        if (failedCount > 0) {
+            FilterChip(
+                selected = false,
+                onClick = onFailed,
+                label = { Text(stringResource(R.string.failed_filter) + " · " + failedCount) },
+                leadingIcon = {
+                    Icon(Icons.Filled.Error, contentDescription = null, modifier = Modifier.size(16.dp), tint = scheme.error)
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = scheme.errorContainer.copy(alpha = 0.5f),
+                    labelColor = scheme.onErrorContainer,
+                ),
+            )
+        }
         Box(
             Modifier
                 .padding(horizontal = 2.dp)
@@ -1102,6 +1177,20 @@ private fun EmptyState(filtered: Boolean) {
     }
 }
 
+/** اتصال مباشر إن مُنح الإذن، وإلا يفتح الطالب والرقم جاهز. */
+private fun placeCall(context: android.content.Context, number: String, granted: Boolean) {
+    val uri = android.net.Uri.fromParts("tel", number, null)
+    val direct = granted && runCatching {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_CALL, uri).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }.isSuccess
+    if (!direct) runCatching {
+        context.startActivity(android.content.Intent(android.content.Intent.ACTION_DIAL, uri).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+}
+
+/** نسبة السحب من عرض الصف اللازمة لتنفيذ الإجراء: لمسة خفيفة أو سحبة سريعة قصيرة لا تنفّذ. */
+private const val SWIPE_COMMIT = 0.45f
+
 /**
  * Swipe actions configured in settings. In RTL "start" is the right edge.
  *
@@ -1121,12 +1210,17 @@ fun SwipeableRow(
     val density = LocalDensity.current
     val currentOnSwipe by rememberUpdatedState(onSwipe)
     val currentConversation by rememberUpdatedState(conversation)
+    var widthPx by remember { mutableFloatStateOf(0f) }
+    val holder = remember(conversation.threadId) { arrayOfNulls<SwipeToDismissBoxState>(1) }
     val state = remember(conversation.threadId, startAction, endAction, density) {
         SwipeToDismissBoxState(
             initialValue = SwipeToDismissBoxValue.Settled,
             density = density,
             confirmValueChange = { value ->
-                val action = when (value) {
+                val passed = value == SwipeToDismissBoxValue.Settled || runCatching {
+                    abs(holder[0]!!.requireOffset()) >= widthPx * SWIPE_COMMIT
+                }.getOrDefault(false)
+                val action = if (!passed) SwipeAction.NONE else when (value) {
                     SwipeToDismissBoxValue.StartToEnd -> startAction
                     SwipeToDismissBoxValue.EndToStart -> endAction
                     SwipeToDismissBoxValue.Settled -> SwipeAction.NONE
@@ -1135,11 +1229,19 @@ fun SwipeableRow(
                 // Only actions that remove the row from the list stay dismissed.
                 action == SwipeAction.ARCHIVE || action == SwipeAction.DELETE
             },
-            positionalThreshold = { it * 0.32f },
-        )
+            positionalThreshold = { it * SWIPE_COMMIT },
+        ).also { holder[0] = it }
+    }
+    val haptic = LocalHapticFeedback.current
+    LaunchedEffect(state, widthPx) {
+        snapshotFlow { widthPx > 0f && runCatching { abs(state.requireOffset()) >= widthPx * SWIPE_COMMIT }.getOrDefault(false) }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
     }
     SwipeToDismissBox(
         state = state,
+        modifier = Modifier.onSizeChanged { widthPx = it.width.toFloat() },
         enableDismissFromStartToEnd = enabled && startAction != SwipeAction.NONE,
         enableDismissFromEndToStart = enabled && endAction != SwipeAction.NONE,
         backgroundContent = {
@@ -1172,6 +1274,7 @@ private fun SwipeBackground(action: SwipeAction, alignStart: Boolean, unread: Bo
         SwipeAction.READ -> if (unread) Icons.Outlined.MarkEmailRead else Icons.Outlined.MarkEmailUnread
         SwipeAction.PIN -> Icons.Outlined.PushPin
         SwipeAction.MUTE -> Icons.Outlined.NotificationsOff
+        SwipeAction.CALL -> Icons.Outlined.Call
         SwipeAction.NONE -> Icons.Outlined.Close
     }
     val label = when (action) {
@@ -1180,6 +1283,7 @@ private fun SwipeBackground(action: SwipeAction, alignStart: Boolean, unread: Bo
         SwipeAction.READ -> stringResource(if (unread) R.string.mark_read else R.string.mark_unread)
         SwipeAction.PIN -> stringResource(R.string.pin)
         SwipeAction.MUTE -> stringResource(R.string.mute)
+        SwipeAction.CALL -> stringResource(R.string.swipe_call)
         SwipeAction.NONE -> ""
     }
     Box(

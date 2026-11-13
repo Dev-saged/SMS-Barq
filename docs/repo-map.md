@@ -18,11 +18,11 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md
 
 ## Versions
-- 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة + نسخ إعدادات (Actions أخضر، وسم v1.6.0)
+- 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة (أخضر) · 1.6.1 فاشلة/سحب/اتصال (قيد البناء)
 
 ## Decisions
 - Room مصدر حقيقة الواجهة + مزامنة مع content://sms تحت providerLock (منع التكرار).
-- Receivers عبر EntryPoint (di/BarqEntryPoint) لا حقن حقول. goAsync بمهلة 9 ثوانٍ.
+- Receivers عبر EntryPoint لا حقن حقول.
 - AGP 8.13.2 وHilt 2.58 عمداً (AGP 9 يغيّر نموذج البناء).
 - خدمة dataSync يجب أن تعالج onTimeout (أندرويد 15+).
 - رفع zip يضيف ويستبدل ولا يحذف: الملف المحذوف يُستبدل بملف فارغ (سطر package فقط).
@@ -31,18 +31,20 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 
 ## Details (PROJECT_CONTEXT 4/11/13)
 - Room: v4 (Migration1To2، 2To3، 3To4؛ ممنوع fallbackToDestructiveMigration). جداول: conversations، messages (+FTS4 messages_fts على searchText مطبّع عربياً)، send_groups(+members)، blocked_*، category_rules، templates، auto_reply_*.
-- box: INBOX=1 SENT=2 OUTBOX=4 FAILED=5 QUEUED=6. SendError خاص: CANCELLED=-100، REJECTED=-101.
+- box: INBOX=1 SENT=2 OUTBOX=4 FAILED=5 QUEUED=6.
 - مسار الإرسال: SendEngine ← OutgoingRepository.enqueue ← SendQueue/BulkSendService ← SendDrainer ← SmsSender ← SmsStatusReceiver.
 - البوابة (1.4.0): POST /send، مفتاح X-Api-Key، منفذ 8080، شبكة محلية فقط، لوحة ويب assets/gateway.html، متوافقة مع SMS Sendr (بوت المالك).
-- وضع المطوّر: 3 ضغطات على سطر الإصدار. ألوان البراند افتراضياً (dynamicColor=false). خط Readex Pro.
+- وضع المطوّر: 3 ضغطات على سطر الإصدار. خط Readex Pro.
 - المالك: يعمل من الهاتف فقط، يجمع المشاكل ثم يقول «ابدأ»، لهجة شامية.
 - الأرقام الفلسطينية ← 05x (PhoneUtils.localPs)؛ matchKey آخر 9 خانات.
 
 ## Solved bugs (never reintroduce)
-- بناء #1: import java.util.Properties مفقود في gradle.kts.
+- سجل المكالمات يفتح المحادثة المفتوحة: launchSingleTop على thread/{id}؛ احذف المفتوحة قبل navigate (BarqNavHost).
+- السحب ينفَّذ باللمسة: سرعة السحبة؛ فحص الإزاحة 45% داخل confirmValueChange (SwipeableRow).
+- القائمة تقفز لأعلى بعد الرجوع: Paging فارغ لحظة الاستعادة؛ scrollIndex في InboxViewModel.
 - بناء #4: ملف محذوف بقي في المستودع (MessageRepository.kt) وكسر البناء؛ الحل ملف فارغ.
 - بناء #8: latestIncoming معرّفة مرتين في MessageDao (Conflicting overloads)؛ احذف المكرر.
-- متغير Paging باسم items يتعارض مع items() في LazyColumn: استعمل pagingItems.
+- متغير Paging باسم items يتعارض مع items(): استعمل pagingItems.
 - زر «رسالة» من الجهات كان يفتح compose بدل المحادثة (حُلّ في 1.2.0 عبر threadResolver).
 
 ## Open issues

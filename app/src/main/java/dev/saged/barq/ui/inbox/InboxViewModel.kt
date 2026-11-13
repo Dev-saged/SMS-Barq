@@ -76,22 +76,27 @@ class InboxViewModel @Inject constructor(
     val unreadOnly = MutableStateFlow(false)
 
     /** Opened from the unread view: stay listed until the view is left, instead of vanishing. */
-    private val keepVisible = MutableStateFlow<Set<Long>>(emptySet())
     val query = MutableStateFlow("")
     val selection = MutableStateFlow<Set<Long>>(emptySet())
     private val dismissedOtp = MutableStateFlow(-1L)
 
     private val pagingConfig = PagingConfig(pageSize = 40, prefetchDistance = 20, enablePlaceholders = false)
 
+    /** موضع القائمة عند الخروج منها، يُستعاد بعد وصول العناصر (تفرغ القائمة لحظة العودة). */
+    var scrollIndex = 0
+    var scrollOffset = 0
+
     private val debouncedQuery = query.debounce(180).map { it.trim() }.distinctUntilChanged()
 
-    private data class ListQuery(val category: Category?, val query: String, val unread: Boolean, val keep: Set<Long>)
+    private data class ListQuery(val category: Category?, val query: String, val unread: Boolean)
 
     val conversationsPaged: Flow<PagingData<ConversationEntity>> =
-        combine(filter, debouncedQuery, unreadOnly, keepVisible) { f, q, u, k -> ListQuery(f, q, u, k) }
+        combine(filter, debouncedQuery, unreadOnly) { f, q, u -> ListQuery(f, q, u) }
             .distinctUntilChanged()
             .flatMapLatest { l ->
-                Pager(pagingConfig) { conversationDao.inbox(l.category?.name, l.query, l.unread, l.keep.toList()) }.flow
+                scrollIndex = 0
+                scrollOffset = 0
+                Pager(pagingConfig) { conversationDao.inbox(l.category?.name, l.query, l.unread) }.flow
             }
             .cachedIn(viewModelScope)
 
@@ -100,20 +105,16 @@ class InboxViewModel @Inject constructor(
         .flatMapLatest { conversationDao.unreadSummary(it?.name) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), UnreadSummary())
 
-    fun setUnreadOnly(on: Boolean) {
-        keepVisible.value = emptySet()
-        unreadOnly.value = on
-    }
+    val failedCount: StateFlow<Int> = messages.failedCount()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
-    /** Called when a conversation is opened from the list. */
-    fun onOpened(threadId: Long) {
-        if (unreadOnly.value) keepVisible.value = keepVisible.value + threadId
+    fun setUnreadOnly(on: Boolean) {
+        unreadOnly.value = on
     }
 
     /** Marks everything shown in the unread view as read; returns how many conversations. */
     fun markAllRead(onDone: (Int) -> Unit) = viewModelScope.launch {
         val n = conversations.markAllRead(filter.value)
-        keepVisible.value = emptySet()
         onDone(n)
     }
 
@@ -229,7 +230,8 @@ class InboxViewModel @Inject constructor(
                     if (conversation.unreadCount > 0) conversations.markRead(ids) else conversations.markUnread(ids)
                 SwipeAction.PIN -> conversations.setPinned(ids, !conversation.pinned)
                 SwipeAction.MUTE -> conversations.setMuted(ids, !conversation.muted)
-                SwipeAction.NONE -> Unit
+                // الاتصال يُنفَّذ من الشاشة (يحتاج إذناً ونشاطاً)
+                SwipeAction.CALL, SwipeAction.NONE -> Unit
             }
         }
     }
