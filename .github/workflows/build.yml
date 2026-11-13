@@ -145,6 +145,11 @@ jobs:
           else
             gh release create "$TAG" "dist/Barq-$TAG.apk" --title "برق $VERSION" --notes-file "$NOTES" --target "$(git rev-parse HEAD)" --latest
           fi
+          # version.json: lets the app learn the newest version and build code without GitHub's API.
+          BASE=$(grep '^VERSION_CODE=' gradle.properties | cut -d= -f2)
+          jq -n --arg v "$VERSION" --argjson c "$((BASE + GITHUB_RUN_NUMBER))" --arg apk "Barq-$TAG.apk" --rawfile n "$NOTES" \
+            '{version:$v,code:$c,apk:$apk,notes:$n}' > dist/version.json
+          gh release upload "$TAG" dist/version.json --clobber
 
       - name: Unit tests
         if: steps.check.outputs.ready == 'true'

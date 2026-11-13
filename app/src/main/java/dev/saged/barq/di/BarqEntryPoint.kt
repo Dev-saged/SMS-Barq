@@ -37,6 +37,7 @@ interface BarqEntryPoint {
     fun messageDao(): MessageDao
     fun settings(): SettingsRepository
     fun maintenance(): MaintenanceScheduler
+    fun updates(): dev.saged.barq.data.update.UpdateManager
 }
 
 val Context.barq: BarqEntryPoint

@@ -76,6 +76,7 @@ import dev.saged.barq.R
 import dev.saged.barq.data.backup.BackupManager
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.update.UpdateChecker
+import dev.saged.barq.data.update.UpdateManager
 import dev.saged.barq.data.settings.BackupFrequency
 import dev.saged.barq.data.settings.LockMethod
 import dev.saged.barq.ui.lock.AppLock
@@ -97,7 +98,7 @@ class SettingsViewModel @Inject constructor(
     val repo: SettingsRepository,
     private val backup: BackupManager,
     private val scheduler: ScheduleManager,
-    private val updates: UpdateChecker,
+    private val updates: UpdateManager,
     simRepository: SimRepository,
 ) : ViewModel() {
     val settings = repo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
@@ -114,7 +115,8 @@ class SettingsViewModel @Inject constructor(
         if (checking.value) return
         checking.value = true
         viewModelScope.launch {
-            update.value = updates.check()
+            // A newer version opens the update sheet (UpdateLayer); only the other outcomes show here.
+            update.value = updates.check().takeUnless { it is UpdateChecker.Result.Available }
             checking.value = false
         }
     }
@@ -434,36 +436,7 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
         )
     }
     when (val u = update) {
-        is UpdateChecker.Result.Available -> AlertDialog(
-            onDismissRequest = vm::clearUpdate,
-            title = { Text(stringResource(R.string.update_available_title)) },
-            text = {
-                androidx.compose.foundation.layout.Column(
-                    Modifier
-                        .heightIn(max = 380.dp)
-                        .verticalScroll(androidx.compose.foundation.rememberScrollState()),
-                ) {
-                    Text(stringResource(R.string.update_available_text, u.version))
-                    if (u.notes.isNotBlank()) {
-                        Text(
-                            stringResource(R.string.update_whats_new),
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                            modifier = Modifier.padding(top = 14.dp, bottom = 4.dp),
-                        )
-                        Text(u.notes, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.clearUpdate()
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.apkUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-                    }
-                }) { Text(stringResource(R.string.update_download)) }
-            },
-            dismissButton = { TextButton(onClick = vm::clearUpdate) { Text(stringResource(R.string.later)) } },
-        )
+        is UpdateChecker.Result.Available -> Unit
         is UpdateChecker.Result.UpToDate -> {
             val msg = stringResource(R.string.update_none)
             androidx.compose.runtime.LaunchedEffect(u) {
@@ -471,13 +444,12 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                 vm.clearUpdate()
             }
         }
-        UpdateChecker.Result.Failed -> {
-            val msg = stringResource(R.string.update_failed)
-            androidx.compose.runtime.LaunchedEffect(u) {
-                toast(msg)
-                vm.clearUpdate()
-            }
-        }
+        is UpdateChecker.Result.Failed -> AlertDialog(
+            onDismissRequest = vm::clearUpdate,
+            title = { Text(stringResource(R.string.update_failed)) },
+            text = { Text(stringResource(R.string.update_failed_reason, u.reason), style = MaterialTheme.typography.bodySmall) },
+            confirmButton = { TextButton(onClick = vm::clearUpdate) { Text(stringResource(android.R.string.ok)) } },
+        )
         null -> Unit
     }
 

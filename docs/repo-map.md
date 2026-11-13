@@ -21,6 +21,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة (أخضر) · 1.6.1 فاشلة/سحب/اتصال (قيد البناء)
 
 ## Decisions
+- التحديث الداخلي (1.7.0): data/update/{UpdateChecker,UpdateManager,UpdateDownloadService,UpdateInstallReceiver,UpdateNotifications}، ui/update/UpdateUi.kt (UpdateLayer)؛ APK في files/updates ويُحذف في UpdateManager.restore() عند بدء البرنامج؛ CI ينشر version.json مع الإصدار.
 - Room مصدر حقيقة الواجهة + مزامنة مع content://sms تحت providerLock (منع التكرار).
 - Receivers عبر EntryPoint لا حقن حقول.
 - AGP 8.13.2 وHilt 2.58 عمداً (AGP 9 يغيّر نموذج البناء).
@@ -39,6 +40,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - الأرقام الفلسطينية ← 05x (PhoneUtils.localPs)؛ matchKey آخر 9 خانات.
 
 ## Solved bugs (never reintroduce)
+- «لا يظهر تحديث»: المستودع private فيرجع 404 لأي طلب بلا دخول (api وgithub.com)؛ يلزم مستودع عام. الفحص الآن 3 طبقات (version.json ← تحويل /releases/latest ← API) ويعرض السبب؛ المقارنة versionName ثم versionCode.
 - سجل المكالمات يفتح المحادثة المفتوحة: launchSingleTop على thread/{id}؛ احذف المفتوحة قبل navigate (BarqNavHost).
 - السحب ينفَّذ باللمسة: سرعة السحبة؛ فحص الإزاحة 45% داخل confirmValueChange (SwipeableRow).
 - القائمة تقفز لأعلى بعد الرجوع: Paging فارغ لحظة الاستعادة؛ scrollIndex في InboxViewModel.

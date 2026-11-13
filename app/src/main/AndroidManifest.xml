@@ -21,6 +21,7 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Bulk sending keeps going in the foreground with a progress notification -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- Barq's local gateway (developer mode): an HTTP server on the local network that bots use to send -->
@@ -139,6 +140,13 @@
             android:name=".sms.BulkSendService"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <!-- In-app update: background download, then the system installer reports back -->
+        <service
+            android:name=".data.update.UpdateDownloadService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+        <receiver android:name=".data.update.UpdateInstallReceiver" android:exported="false" />
 
         <!-- Local SMS gateway: LAN-only HTTP server that queues messages into Barq (off by default) -->
         <service
