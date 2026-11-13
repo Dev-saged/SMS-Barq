@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flag of India, drawn as a vector. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="20dp"
+    android:viewportWidth="30"
+    android:viewportHeight="20">
+    <path android:fillColor="#FF9933" android:pathData="M0,0h30v6.67h-30z" />
+    <path android:fillColor="#FFFFFF" android:pathData="M0,6.67h30v6.66h-30z" />
+    <path android:fillColor="#138808" android:pathData="M0,13.33h30v6.67h-30z" />
+    <path android:strokeColor="#FF000080" android:strokeWidth="0.35" android:pathData="M12.95,10a2.05,2.05 0 1,0 4.1,0a2.05,2.05 0 1,0 -4.1,0z" />
+    <path android:strokeColor="#FF000080" android:strokeWidth="0.3" android:pathData="M15,10L17,10M15,10L16.73,11M15,10L16,11.73M15,10L15,12M15,10L14,11.73M15,10L13.27,11M15,10L13,10M15,10L13.27,9M15,10L14,8.27M15,10L15,8M15,10L16,8.27M15,10L16.73,9" />
+</vector>

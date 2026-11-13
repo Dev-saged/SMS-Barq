@@ -45,6 +45,10 @@ class BarqApp : Application(), Configuration.Provider {
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
+    override fun attachBaseContext(base: android.content.Context) {
+        super.attachBaseContext(dev.saged.barq.util.LocaleHelper.wrap(base))
+    }
+
     override fun onCreate() {
         // First, so even a crash while starting up is recorded.
         CrashLog.install(this)

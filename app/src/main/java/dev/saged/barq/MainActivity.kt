@@ -51,6 +51,10 @@ class MainActivity : FragmentActivity() {
     /** Route requested by an external intent (notification tap, sms: link, share). */
     private val pendingRoute = MutableStateFlow<String?>(null)
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(dev.saged.barq.util.LocaleHelper.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)

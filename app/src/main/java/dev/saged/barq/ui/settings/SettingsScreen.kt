@@ -168,7 +168,7 @@ class SettingsViewModel @Inject constructor(
     fun backupFileName() = backup.backupFileName()
 }
 
-private enum class Dialog { THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP, LOCK_METHOD, LOCK_AFTER }
+private enum class Dialog { LANGUAGE, THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP, LOCK_METHOD, LOCK_AFTER }
 
 private tailrec fun android.content.Context.findActivity(): androidx.fragment.app.FragmentActivity? = when (this) {
     is androidx.fragment.app.FragmentActivity -> this
@@ -255,6 +255,13 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     SettingsScaffold(title = stringResource(R.string.settings), onBack = onBack, bottomPadding = 16.dp) {
         item {
             SettingsGroup(stringResource(R.string.group_appearance)) {
+                val chosenLang = dev.saged.barq.util.LocaleHelper.chosen(context)
+                ClickRow(
+                    dev.saged.barq.ui.icons.BIcons.Language, stringResource(R.string.language),
+                    dev.saged.barq.util.LocaleHelper.languages.firstOrNull { it.tag == chosenLang }?.nativeName
+                        ?: stringResource(R.string.language_system),
+                ) { dialog = Dialog.LANGUAGE }
+                RowDivider()
                 ClickRow(Icons.Outlined.DarkMode, stringResource(R.string.theme), label(themeLabels, s.themeMode)) { dialog = Dialog.THEME }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     RowDivider()
@@ -468,6 +475,13 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     }
 
     when (dialog) {
+        Dialog.LANGUAGE -> LanguageDialog(
+            chosen = dev.saged.barq.util.LocaleHelper.chosen(context),
+            onDismiss = { dialog = null },
+        ) { tag ->
+            dialog = null
+            activity?.let { dev.saged.barq.util.LocaleHelper.apply(it, tag) }
+        }
         Dialog.THEME -> ChoiceDialog(stringResource(R.string.theme), themeLabels, s.themeMode, { dialog = null }) { v ->
             dialog = null; vm.update { setThemeMode(v) }
         }

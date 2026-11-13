@@ -51,4 +51,13 @@ object BIcons {
     val Edit by lazy {
         icon("Edit", "M4,20H8L19,9A2.1,2.1 0 0 0 16,6L5,17Z", "M14.5,7.5L17.5,10.5")
     }
+    val Language by lazy {
+        icon(
+            "Language",
+            "M12,4A8,8 0 1 0 12,20A8,8 0 1 0 12,4Z",
+            "M12,4C9.5,6.5 9.5,17.5 12,20", "M12,4C14.5,6.5 14.5,17.5 12,20",
+            "M4.5,12H19.5", "M5.6,8H18.4", "M5.6,16H18.4",
+        )
+    }
+    val Check by lazy { icon("Check", "M5,12.5L10,17.5L19,7") }
 }

@@ -127,6 +127,8 @@
     <string name="theme_system">System default</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
+    <string name="language">Language</string>
+    <string name="language_system">System language</string>
     <string name="material_you">Material You colors</string>
     <string name="material_you_sub">App colors from your wallpaper</string>
     <string name="font_size">Font size</string>
