@@ -1,5 +1,9 @@
 package dev.saged.barq.ui.settings
 
+import dev.saged.barq.ui.theme.islandColor
+import dev.saged.barq.ui.theme.BarqShape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -50,16 +53,22 @@ fun SettingsScaffold(
     bottomPadding: Dp = 96.dp,
     content: LazyListScope.() -> Unit,
 ) {
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = floating,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) }
                 },
                 title = { Text(title) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
+                scrollBehavior = scroll,
             )
         },
     ) { padding ->
@@ -83,8 +92,8 @@ fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow),
+                .clip(RoundedCornerShape(BarqShape.Island))
+                .background(islandColor()),
             content = content,
         )
     }

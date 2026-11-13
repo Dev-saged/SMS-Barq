@@ -1,5 +1,12 @@
 package dev.saged.barq.ui.inbox
 
+import dev.saged.barq.ui.theme.islandShape
+import dev.saged.barq.ui.theme.islandColor
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -97,10 +103,12 @@ fun FolderScreen(
     var confirmEmpty by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = {
                         if (selection.isEmpty()) onBack() else { vm.selection.value = emptySet() }
@@ -130,7 +138,11 @@ fun FolderScreen(
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
+                scrollBehavior = scroll,
             )
         },
     ) { padding ->
@@ -150,13 +162,17 @@ fun FolderScreen(
             }
             items(count = pagingItems.itemCount, key = pagingItems.itemKey { it.threadId }) { i ->
                 val c = pagingItems[i] ?: return@items
-                ConversationRow(
-                    conversation = c,
-                    settings = settings,
-                    selected = c.threadId in selection,
-                    onClick = { if (selection.isNotEmpty() || bin) vm.toggle(c.threadId) else openThread(c.threadId) },
-                    onLongClick = { vm.toggle(c.threadId) },
-                )
+                Box(Modifier.padding(horizontal = 12.dp).clip(islandShape(i, pagingItems.itemCount))) {
+                    ConversationRow(
+                        conversation = c,
+                        settings = settings,
+                        selected = c.threadId in selection,
+                        onClick = { if (selection.isNotEmpty() || bin) vm.toggle(c.threadId) else openThread(c.threadId) },
+                        onLongClick = { vm.toggle(c.threadId) },
+                        container = islandColor(),
+                        divider = i < pagingItems.itemCount - 1,
+                    )
+                }
             }
             if (pagingItems.itemCount == 0) {
                 item(key = "empty") {

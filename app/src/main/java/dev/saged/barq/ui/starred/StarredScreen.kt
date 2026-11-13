@@ -1,5 +1,8 @@
 package dev.saged.barq.ui.starred
 
+import dev.saged.barq.ui.theme.islandColor
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +26,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,13 +70,16 @@ fun StarredScreen(onBack: () -> Unit, openAt: (Long, Long) -> Unit, vm: StarredV
     val list by vm.starred.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val scheme = MaterialTheme.colorScheme
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = scheme.background,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) } },
                 title = { Text(stringResource(R.string.starred_title)) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = scheme.background),
+                colors = TopAppBarDefaults.largeTopAppBarColors(containerColor = scheme.background, scrolledContainerColor = scheme.background),
+                scrollBehavior = scroll,
             )
         },
     ) { padding ->
@@ -115,8 +120,8 @@ private fun StarredRow(s: StarredMessage, settings: AppSettings, onOpen: () -> U
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(scheme.surfaceContainerLow)
+            .clip(RoundedCornerShape(24.dp))
+            .background(islandColor())
             .clickable(onClick = onOpen)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
