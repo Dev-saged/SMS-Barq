@@ -65,6 +65,28 @@ class ReplyIntentsTest {
         assertNull(ReplyIntents.reply("你好吗"))
         assertNull(ReplyIntents.reply("الاجتماع بعد الظهر"))
     }
+
+    @Test fun aPrayerAndAWishAreAnsweredPartByPart() {
+        val text = "اللهم آمين يسعد مساك يا ساجد"
+        assertEquals("آمين وإياك يا رب، يسعدك ويسعد مساك", ReplyIntents.reply(text))
+        assertEquals("آمين وإياك يا رب، يسعدك ويسعد مساك يا غالي", ReplyIntents.reply(text, address = "غالي"))
+    }
+
+    @Test fun greetingsAreAnsweredInKind() {
+        assertEquals("صباح النور", ReplyIntents.reply("صباح الخير"))
+        assertEquals("يسعدك ويسعد صباحك", ReplyIntents.reply("يسعد صباحك"))
+        assertEquals("الله يبارك فيك", ReplyIntents.reply("مبروك"))
+        assertEquals("أهلاً يا غالي", ReplyIntents.reply("هلا والله", address = "غالي"))
+        assertEquals("Good morning.", ReplyIntents.reply("good morning"))
+    }
+
+    @Test fun busyLineOnlyForUrgentTextsAndQuestions() {
+        assertEquals("أهلاً. مشغول الآن، إذا الأمر عاجل اتصل بي من فضلك.", ReplyIntents.reply("مرحبا ضروري"))
+        assertEquals("أهلاً", ReplyIntents.reply("مرحبا ضروري", withBusy = false))
+        assertEquals("مشغول حالياً، سأرد على سؤالك بأقرب وقت.", ReplyIntents.reply("بدك تيجي؟"))
+        assertNull(ReplyIntents.reply("بدك تيجي؟", withBusy = false))
+        assertEquals("العفو، في أي وقت", ReplyIntents.reply("شكرا", withBusy = true))
+    }
 }
 
 class ReplyPairingTest {
@@ -167,6 +189,31 @@ class ReplyIndexTest {
         val i = ReplyIndex(listOf(memory("كيف حالك", "تمام الحمد لله")))
         assertNull(i.best("شلونك", now))
         assertEquals("تمام الحمد لله", i.suggest("شلونك", 1, now).first().reply)
+    }
+
+    @Test fun anOffTopicHabitIsNeverSentToAnotherText() {
+        val i = ReplyIndex(listOf(memory("ساجد شو اخبار الشغل", "صحيح شو موضوع البطالة الي عندك بكرا")))
+        val blessing = "اللهم آمين يسعد مساك يا ساجد"
+        assertNull(i.best(blessing, now))
+        assertTrue(i.suggest(blessing, 3, now, withPopular = false).isEmpty())
+    }
+
+    @Test fun autoReplyNeedsRealOverlapNotOneSharedWord() {
+        val i = ReplyIndex(listOf(memory("الاجتماع بكرا الساعة", "تمام")))
+        assertNull(i.best("الاجتماع تاجل", now))
+    }
+
+    @Test fun theUsersAddressHabitIsLearned() {
+        val i = ReplyIndex(
+            listOf(
+                memory("كيف حالك", "تمام يا غالي"),
+                memory("وين انت", "في الطريق يا غالي"),
+                memory("شو الاخبار", "كله تمام يا غالي"),
+                memory("مرحبا", "اهلا"),
+            ),
+        )
+        assertEquals("غالي", i.addressTerm)
+        assertNull(index.addressTerm)
     }
 
     @Test fun emptyMemorySuggestsNothing() {

@@ -49,7 +49,13 @@ class ReplyEngine @Inject constructor(
     /** Chips for [incoming]; empty when learning is switched off. */
     suspend fun suggest(incoming: String, limit: Int = 3): List<Suggestion> {
         if (!settings.current().learnReplies) return emptyList()
-        return index().suggest(incoming, limit, System.currentTimeMillis())
+        val index = index()
+        val own = index.suggest(incoming, limit, System.currentTimeMillis())
+        val composed = ReplyIntents.reply(incoming, index.addressTerm, withBusy = false)
+            ?.let { Suggestion(it, 0.0, builtin = true) } ?: return own
+        val sure = own.any { it.score >= ReplyIndex.AUTO_MIN }
+        val merged = if (sure) own + composed else listOf(composed) + own
+        return merged.distinctBy { ReplyText.replyKey(it.reply) }.take(limit)
     }
 
     /** The reply sent automatically, only when confident enough. */
@@ -58,8 +64,11 @@ class ReplyEngine @Inject constructor(
         return index().best(incoming, System.currentTimeMillis())?.reply
     }
 
-    /** What an incoming text is about, answered in the "I am busy" way; used where nothing is learned yet. */
-    fun fallback(incoming: String): String? = ReplyIntents.reply(incoming)
+    /** A reply written for what the text says (and in the way the user addresses people); used when no learned reply is sure enough. */
+    suspend fun fallback(incoming: String): String? {
+        val address = if (settings.current().learnReplies) index().addressTerm else null
+        return ReplyIntents.reply(incoming, address)
+    }
 
     /**
      * For the "try it" dialog, learning switch aside: the user's own replies first; when none is
@@ -68,7 +77,7 @@ class ReplyEngine @Inject constructor(
     suspend fun preview(incoming: String): List<Suggestion> {
         val own = index().suggest(incoming, 3, System.currentTimeMillis(), withPopular = false)
         if (own.any { it.score >= ReplyIndex.AUTO_MIN }) return own
-        val builtin = fallback(incoming)?.let { Suggestion(it, 0.0, builtin = true) }
+        val builtin = ReplyIntents.reply(incoming, index().addressTerm)?.let { Suggestion(it, 0.0, builtin = true) }
         return if (builtin == null) own else listOf(builtin) + own
     }
 
