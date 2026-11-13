@@ -232,13 +232,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">Contacts only</string>
     <string name="contacts_only_sub">Never replies to unsaved numbers</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">Wait between replies</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">Instant: every message</string>
     <string name="time_window">Only during a time window</string>
     <string name="time_window_value">From %1$s to %2$s</string>
     <string name="from_time">From %1$s</string>
     <string name="to_time">To %1$s</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time. Even in instant mode it sends at most 4 replies to one person in 10 minutes, so two phones can\'t get stuck replying to each other.</string>
     <string name="number_copied">Number copied</string>
     <string name="tap_number_to_copy">Tap the number to copy it</string>
     <string name="messages_button">Messages</string>

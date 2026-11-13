@@ -58,9 +58,19 @@ class ReplyEngine @Inject constructor(
         return index().best(incoming, System.currentTimeMillis())?.reply
     }
 
-    /** For the "try it" dialog: what the engine would do with [incoming], learning switch aside. */
-    suspend fun preview(incoming: String): List<Suggestion> =
-        index().suggest(incoming, 3, System.currentTimeMillis(), withPopular = false)
+    /** What an incoming text is about, answered in the "I am busy" way; used where nothing is learned yet. */
+    fun fallback(incoming: String): String? = ReplyIntents.reply(incoming)
+
+    /**
+     * For the "try it" dialog, learning switch aside: the user's own replies first; when none is
+     * confident enough, the ready-made answer for the recognised intent (marked [Suggestion.builtin]).
+     */
+    suspend fun preview(incoming: String): List<Suggestion> {
+        val own = index().suggest(incoming, 3, System.currentTimeMillis(), withPopular = false)
+        if (own.any { it.score >= ReplyIndex.AUTO_MIN }) return own
+        val builtin = fallback(incoming)?.let { Suggestion(it, 0.0, builtin = true) }
+        return if (builtin == null) own else listOf(builtin) + own
+    }
 
     /** Called after the user sent [body] in [threadId]: learns it when it answers an incoming text. */
     suspend fun onUserSent(threadId: Long, body: String) {

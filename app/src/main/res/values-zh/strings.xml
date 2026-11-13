@@ -228,13 +228,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">仅限联系人</string>
     <string name="contacts_only_sub">从不回复未保存的号码</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">回复间隔</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">立即：每条消息</string>
     <string name="time_window">仅在指定时间段</string>
     <string name="time_window_value">从 %1$s 到 %2$s</string>
     <string name="from_time">从 %1$s</string>
     <string name="to_time">到 %1$s</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">为安全起见：从不回复服务号、银行号和短号码；在设定的间隔内不会重复回复同一个人。即使在“立即”模式下，10 分钟内对同一个人最多回复 4 次，避免两部手机互相自动回复陷入循环。</string>
     <string name="number_copied">号码已复制</string>
     <string name="tap_number_to_copy">点按号码即可复制</string>
     <string name="messages_button">短信</string>

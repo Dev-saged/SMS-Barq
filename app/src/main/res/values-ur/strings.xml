@@ -228,13 +228,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">صرف رابطے</string>
     <string name="contacts_only_sub">محفوظ نہ کیے گئے نمبروں کو کبھی جواب نہیں دیتا</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">جوابات کے درمیان وقفہ</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">فوری: ہر پیغام پر</string>
     <string name="time_window">صرف مقررہ وقت میں</string>
     <string name="time_window_value">%1$s سے %2$s تک</string>
     <string name="from_time">%1$s سے</string>
     <string name="to_time">%1$s تک</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">حفاظت کے لیے: سروس، بینک یا مختصر نمبروں کو کبھی جواب نہیں دیتا، اور منتخب وقفے میں ایک ہی شخص کو ایک بار سے زیادہ جواب نہیں دیتا۔ «فوری» موڈ میں بھی ایک شخص کو 10 منٹ میں زیادہ سے زیادہ 4 جوابات جاتے ہیں تاکہ دو فون ایک دوسرے کو جواب دیتے نہ رہ جائیں۔</string>
     <string name="number_copied">نمبر کاپی ہو گیا</string>
     <string name="tap_number_to_copy">کاپی کرنے کے لیے نمبر پر ٹیپ کریں</string>
     <string name="messages_button">پیغامات</string>

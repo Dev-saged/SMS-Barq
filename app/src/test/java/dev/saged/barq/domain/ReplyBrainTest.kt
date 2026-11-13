@@ -35,6 +35,38 @@ class ReplyTextTest {
     }
 }
 
+class ReplyIntentsTest {
+    @Test fun dialectsOfHowAreYouAreOneIntent() {
+        for (t in listOf("كيفك", "شلونك؟", "كيف الحال", "شو أخبارك", "How are you", "what's up")) {
+            assertEquals(t, Intent.HOWARE, ReplyIntents.of(t))
+        }
+    }
+
+    @Test fun stretchedLettersAreUnderstood() {
+        assertEquals(Intent.GREETING, ReplyIntents.of("هلااااا"))
+        assertEquals(Intent.GREETING, ReplyIntents.of("مرحبااااا"))
+        assertEquals(ReplyText.key("هلا"), ReplyText.key("هلااااا"))
+    }
+
+    @Test fun otherIntents() {
+        assertEquals(Intent.SALAM, ReplyIntents.of("السلام عليكم ورحمة الله"))
+        assertEquals(Intent.URGENT, ReplyIntents.of("ضروري ردّ علي"))
+        assertEquals(Intent.THANKS, ReplyIntents.of("مشكور يا غالي"))
+        assertEquals(Intent.WHERE, ReplyIntents.of("وين وصلت"))
+        assertEquals(Intent.QUESTION, ReplyIntents.of("بدك تيجي؟"))
+        assertNull(ReplyIntents.of("تمام الاجتماع الساعة 5"))
+    }
+
+    @Test fun urgentWinsOverAGreeting() = assertEquals(Intent.URGENT, ReplyIntents.of("مرحبا ضروري"))
+
+    @Test fun readyMadeAnswerFollowsTheLanguageOfTheText() {
+        assertTrue(ReplyIntents.reply("كيفك")!!.contains("الحمد لله"))
+        assertTrue(ReplyIntents.reply("hello there")!!.startsWith("Hi"))
+        assertNull(ReplyIntents.reply("你好吗"))
+        assertNull(ReplyIntents.reply("الاجتماع بعد الظهر"))
+    }
+}
+
 class ReplyPairingTest {
     private fun incoming(body: String, at: Long, eligible: Boolean = true) = Turn(true, body, at, eligible = eligible)
     private fun mine(body: String, at: Long, auto: Boolean = false) = Turn(false, body, at, auto = auto)
@@ -124,6 +156,17 @@ class ReplyIndexTest {
         val out = i.suggest("zzz qqq", 3, now)
         assertEquals(listOf("تمام"), out.map { it.reply })
         assertTrue(out.single().popular)
+    }
+
+    @Test fun sameMeaningInOtherWordsUsesTheHabit() {
+        // "شلونك" was never seen, but it asks the same as "كيف حالك" which the user answered often.
+        assertEquals("الحمد لله تمام", index.best("شلونك", now)?.reply)
+    }
+
+    @Test fun aSingleOldAnswerIsOnlySuggestedForOtherWords() {
+        val i = ReplyIndex(listOf(memory("كيف حالك", "تمام الحمد لله")))
+        assertNull(i.best("شلونك", now))
+        assertEquals("تمام الحمد لله", i.suggest("شلونك", 1, now).first().reply)
     }
 
     @Test fun emptyMemorySuggestsNothing() {

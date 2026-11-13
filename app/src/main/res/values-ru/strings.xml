@@ -228,13 +228,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">Только контакты</string>
     <string name="contacts_only_sub">Никогда не отвечает на номера, которых нет в контактах</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">Пауза между ответами</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">Сразу: на каждое сообщение</string>
     <string name="time_window">Только в заданное время</string>
     <string name="time_window_value">С %1$s до %2$s</string>
     <string name="from_time">С %1$s</string>
     <string name="to_time">До %1$s</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">Для безопасности: никогда не отвечает сервисным, банковским и коротким номерам и не отвечает одному и тому же человеку чаще, чем позволяет выбранная пауза. Даже в режиме «сразу» отправляет не более 4 ответов одному человеку за 10 минут, чтобы два телефона не зациклились, отвечая друг другу.</string>
     <string name="number_copied">Номер скопирован</string>
     <string name="tap_number_to_copy">Коснитесь номера, чтобы скопировать</string>
     <string name="messages_button">Сообщения</string>

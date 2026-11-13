@@ -253,13 +253,14 @@
     <string name="auto_reply_conditions">الشروط</string>
     <string name="contacts_only">جهات الاتصال فقط</string>
     <string name="contacts_only_sub">لا يرد على الأرقام غير المحفوظة</string>
-    <string name="cooldown">مرة واحدة لكل شخص كل</string>
+    <string name="cooldown">المهلة بين الردود</string>
     <string name="cooldown_value">%1$d دقيقة</string>
+    <string name="cooldown_instant">فوري: على كل رسالة</string>
     <string name="time_window">فترة زمنية فقط</string>
     <string name="time_window_value">من %1$s إلى %2$s</string>
     <string name="from_time">من %1$s</string>
     <string name="to_time">إلى %1$s</string>
-    <string name="auto_reply_safety">للأمان: لا يرد أبداً على أرقام الخدمات والبنوك والأرقام القصيرة، ولا يرد على نفس الشخص أكثر من مرة خلال المدة المحددة.</string>
+    <string name="auto_reply_safety">للأمان: لا يرد أبداً على أرقام الخدمات والبنوك والأرقام القصيرة، ولا يرد على نفس الشخص أكثر من مرة خلال المدة المحددة. حتى في الوضع الفوري لا يزيد على 4 ردود لنفس الشخص خلال 10 دقائق، لمنع حلقة ردود بين هاتفين.</string>
 
     <!-- Contact page -->
     <string name="number_copied">تم نسخ الرقم</string>

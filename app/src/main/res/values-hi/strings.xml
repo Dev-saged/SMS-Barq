@@ -228,13 +228,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">केवल संपर्क</string>
     <string name="contacts_only_sub">सहेजे न गए नंबरों को कभी जवाब नहीं देता</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">जवाबों के बीच का अंतराल</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">तुरंत: हर संदेश पर</string>
     <string name="time_window">केवल तय समय में</string>
     <string name="time_window_value">%1$s से %2$s तक</string>
     <string name="from_time">%1$s से</string>
     <string name="to_time">%1$s तक</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">सुरक्षा के लिए: यह सर्विस, बैंक या छोटे नंबरों को कभी जवाब नहीं देता, और चुने हुए अंतराल में एक ही व्यक्ति को एक बार से ज़्यादा जवाब नहीं देता। «तुरंत» मोड में भी एक व्यक्ति को 10 मिनट में अधिकतम 4 जवाब जाते हैं, ताकि दो फ़ोन एक-दूसरे को जवाब देते न रह जाएँ।</string>
     <string name="number_copied">नंबर कॉपी हो गया</string>
     <string name="tap_number_to_copy">कॉपी करने के लिए नंबर पर टैप करें</string>
     <string name="messages_button">संदेश</string>

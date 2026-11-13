@@ -2,6 +2,7 @@
 
 ## State (2026-11-13)
 - main = 1.6.1. feature/update-system-1-7-0 = 1.7.0. feature/one-ui-1-8-0 = 1.8.1. feature/local-reply-1-9-0 (فوق 1.8.1) = 1.9.0: رد يتعلّم محلياً + شرائح اقتراح في المحادثة؛ حُذف وضع SMART وجدول القواعد. لم يُدمج أيٌّ منها في main.
+- 1.9.1 فوقها: فهم النية بلهجات + جواب جاهز عند غياب العادة + مهلة «فوري» و«5 دقائق» + حارس 4 ردود/10 دقائق.
 - 1.9.0: ReplyBrain/ReplyEngine (استرجاع من ردود المستخدم، IDF-cosine + trigram)، Room v5 (Migration4To5)، AppSettings.learnReplies، واجهة ذاكرة الردود في شاشة الرد التلقائي، نصوص 10 لغات، اختبارات ReplyBrainTest + MigrationTest.smartRulesBecomeTheReplyMemory.
 
 ## Decisions

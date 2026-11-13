@@ -124,7 +124,9 @@ class ToolsViewModel @Inject constructor(
 
     /** What the engine would answer to [incoming]: the reply and whether it would be sent by itself. */
     fun tryReply(incoming: String, onResult: (List<Pair<String, Boolean>>) -> Unit) = io {
-        onResult(replyEngine.preview(incoming).map { it.reply to (it.score >= ReplyIndex.AUTO_MIN) })
+        val found = replyEngine.preview(incoming)
+        val sent = found.indexOfFirst { it.builtin || it.score >= ReplyIndex.AUTO_MIN }
+        onResult(found.mapIndexed { i, s -> s.reply to (i == sent) })
     }
 
     fun update(block: suspend SettingsRepository.() -> Unit) = io { settingsRepo.block() }
@@ -456,7 +458,7 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
                     s.autoReplyContactsOnly,
                 ) { v -> vm.update { setAutoReplyContactsOnly(v) } }
                 RowDivider()
-                ClickRow(Icons.Outlined.Timer, stringResource(R.string.cooldown), stringResource(R.string.cooldown_value, s.autoReplyCooldownMin)) {
+                ClickRow(Icons.Outlined.Timer, stringResource(R.string.cooldown), cooldownLabel(s.autoReplyCooldownMin)) {
                     cooldownDialog = true
                 }
                 RowDivider()
@@ -534,7 +536,7 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
         )
     }
     if (cooldownDialog) {
-        val options = listOf(15, 30, 60, 180, 720, 1440).map { it to stringResource(R.string.cooldown_value, it) }
+        val options = listOf(0, 5, 15, 30, 60, 180, 720, 1440).map { it to cooldownLabel(it) }
         ChoiceDialog(stringResource(R.string.cooldown), options, s.autoReplyCooldownMin, { cooldownDialog = false }) { v ->
             cooldownDialog = false
             vm.update { setAutoReplyCooldown(v) }
@@ -557,5 +559,9 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
         )
     } }
 }
+
+@Composable
+private fun cooldownLabel(minutes: Int): String =
+    if (minutes == 0) stringResource(R.string.cooldown_instant) else stringResource(R.string.cooldown_value, minutes)
 
 private fun hm(minutes: Int): String = "%02d:%02d".format(minutes / 60, minutes % 60)

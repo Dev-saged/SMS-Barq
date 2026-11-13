@@ -7,18 +7,26 @@ import kotlin.math.sqrt
 /** A reply the user once wrote to an incoming text; [incoming] is already reduced to its words. */
 data class Memory(val incoming: String, val reply: String, val uses: Int, val lastUsed: Long)
 
-data class Suggestion(val reply: String, val score: Double, val popular: Boolean = false)
+/** [builtin]: not one of the user's replies but the ready-made answer for a recognised intent. */
+data class Suggestion(val reply: String, val score: Double, val popular: Boolean = false, val builtin: Boolean = false)
 
 /** Text rules shared by learning and suggesting. */
 object ReplyText {
     const val MAX_REPLY = 160
     private const val MAX_TOKENS = 40
+    private val stretched = Regex("""(.)\1{2,}""")
     private val link = Regex("""https?:|www\.|://|@|\.(com|net|org|me|io|ly)\b""", RegexOption.IGNORE_CASE)
     private val spaces = Regex("""\s+""")
 
-    /** Words used for matching: numbers are dropped, so "كم المبلغ 500" matches "كم المبلغ 300". */
+    /**
+     * Words used for matching: numbers are dropped, so "كم المبلغ 500" matches "كم المبلغ 300", and
+     * stretched letters shrink ("هلااااا" = "هلا").
+     */
     fun tokens(text: String): List<String> =
-        TextNorm.words(text).filter { w -> w.length >= 2 && w.none { it.isDigit() } }.take(MAX_TOKENS)
+        TextNorm.words(text)
+            .map { it.replace(stretched, "$1") }
+            .filter { w -> w.length >= 2 && w.none { it.isDigit() } }
+            .take(MAX_TOKENS)
 
     fun key(text: String): String = tokens(text).joinToString(" ")
 
@@ -90,10 +98,17 @@ object ReplyPairing {
  */
 class ReplyIndex(memories: List<Memory>) {
 
-    private class Row(val memory: Memory, val tokens: Set<String>, val grams: Set<String>, var norm: Double = 0.0)
+    private class Row(
+        val memory: Memory,
+        val tokens: Set<String>,
+        val grams: Set<String>,
+        val intent: Intent?,
+        var norm: Double = 0.0,
+    )
 
     private val rows: List<Row> = memories.map { m ->
-        Row(m, m.incoming.split(' ').filter { it.isNotEmpty() }.toSet(), ReplyText.grams(m.incoming))
+        val words = m.incoming.split(' ').filter { it.isNotEmpty() }
+        Row(m, words.toSet(), ReplyText.grams(m.incoming), ReplyIntents.specific(words))
     }
     private val idf: Map<String, Double>
     private val unseenIdf: Double
@@ -134,8 +149,11 @@ class ReplyIndex(memories: List<Memory>) {
             val key = tokens.joinToString(" ")
             val grams = ReplyText.grams(key)
             val norm = sqrt(set.sumOf { t -> (idf[t] ?: unseenIdf).let { it * it } })
+            val intent = ReplyIntents.specific(tokens)
             for (r in rows) {
-                val sim = similarity(set, key, grams, norm, r)
+                var sim = similarity(set, key, grams, norm, r)
+                // Same meaning in other words ("كيفك" / "شلونك" / "كيف الحال"): the user's habit still applies.
+                if (intent != null && r.intent == intent) sim = maxOf(sim, INTENT_FLOOR)
                 if (sim < minScore) continue
                 val score = sim * (0.8 + 0.2 * frequency(r.memory.uses)) * (0.85 + 0.15 * recency(now - r.memory.lastUsed))
                 if (score < minScore) continue
@@ -177,8 +195,76 @@ class ReplyIndex(memories: List<Memory>) {
         const val AUTO_MIN = 0.55
         /** Shown as a chip at or above this score. */
         const val SUGGEST_MIN = 0.30
+        /** Two texts with the same recognised intent are at least this similar. */
+        private const val INTENT_FLOOR = 0.60
         private const val POPULAR_MIN_USES = 3
         private const val POPULAR_MAX_LEN = 40
         private const val DAY_MS = 86_400_000.0
+    }
+}
+
+enum class Intent { URGENT, SALAM, HOWARE, GREETING, THANKS, GOODNIGHT, WHERE, WHEN, QUESTION }
+
+/**
+ * Knows what an incoming text is about, in Arabic (several dialects) and English, so the engine
+ * understands "شلونك" as "كيف حالك" and can still answer when it has not learned anything yet.
+ */
+object ReplyIntents {
+    /** In order of priority: the first intent with a matching phrase wins. */
+    private val phrases: List<Pair<Intent, List<String>>> = listOf(
+        Intent.URGENT to listOf("مستعجل", "ضروري", "عاجل", "بسرعة", "طارئ", "urgent", "asap", "emergency"),
+        Intent.SALAM to listOf("السلام عليكم", "سلام عليكم", "السلام", "سلام", "salam", "assalamu alaikum", "peace be upon you"),
+        Intent.HOWARE to listOf(
+            "كيفك", "كيف حالك", "كيف الحال", "كيف الاحوال", "شلونك", "شلونكم", "كيفكم", "اخبارك", "شو اخبارك",
+            "شو الاخبار", "شخبارك", "علومك", "how are you", "how r u", "whats up", "hows it going",
+        ),
+        Intent.GREETING to listOf(
+            "مرحبا", "مرحبتين", "هلا", "اهلا", "اهلين", "هاي", "هلو", "صباح الخير", "مساء الخير", "صباحو",
+            "hi", "hello", "hey", "good morning", "good evening", "good afternoon",
+        ),
+        Intent.THANKS to listOf("شكرا", "مشكور", "تسلم", "يعطيك العافية", "يسلمو", "thanks", "thank you", "thx"),
+        Intent.GOODNIGHT to listOf("تصبح على خير", "تصبحون على خير", "good night", "goodnight"),
+        Intent.WHERE to listOf("وين", "فين", "اين", "where are you", "where r u", "where"),
+        Intent.WHEN to listOf("متى", "امتى", "when"),
+        Intent.QUESTION to listOf("كيف", "ليش", "شو", "ماذا", "لماذا", "هل", "كم", "مين", "ايش", "what", "why", "how", "who", "can you", "could you"),
+    ).map { (intent, list) ->
+        intent to list.map { " " + ReplyText.key(it) + " " }.filter { it.isNotBlank() }
+    }
+
+    /** The intent of already-split words, or null. */
+    fun detect(words: List<String>): Intent? {
+        if (words.isEmpty()) return null
+        val joined = " " + words.joinToString(" ") + " "
+        return phrases.firstOrNull { (_, list) -> list.any { it in joined } }?.first
+    }
+
+    /** Like [detect] but without the broad "it is a question" intent: used to match habits. */
+    fun specific(words: List<String>): Intent? = detect(words)?.takeIf { it != Intent.QUESTION }
+
+    fun of(text: String): Intent? =
+        detect(ReplyText.tokens(text)) ?: Intent.QUESTION.takeIf { text.contains('?') || text.contains('؟') }
+
+    /**
+     * A ready-made answer for the "I am busy" use of auto-reply, in the language of [text]
+     * (Arabic or English; other scripts get none). It only applies where the user has no habit yet.
+     */
+    fun reply(text: String): String? {
+        val intent = of(text) ?: return null
+        val arabic = text.count { it in '\u0600'..'\u06FF' }
+        val latin = text.count { it in 'a'..'z' || it in 'A'..'Z' }
+        val ar = when {
+            arabic == 0 && latin == 0 -> return null
+            else -> arabic >= latin
+        }
+        return when (intent) {
+            Intent.URGENT -> if (ar) "مشغول الآن، إذا الأمر عاجل اتصل بي من فضلك." else "I'm busy right now. If it's urgent, please call me."
+            Intent.SALAM -> if (ar) "وعليكم السلام ورحمة الله، أنا مشغول حالياً وسأرد عليك قريباً." else "Hello, I'm busy right now and will get back to you soon."
+            Intent.HOWARE -> if (ar) "الحمد لله بخير، أنا مشغول الآن وسأرد عليك بالتفصيل لاحقاً." else "I'm good, thanks. I'm busy now and will reply properly later."
+            Intent.GREETING -> if (ar) "أهلاً، أنا مشغول الآن وسأتواصل معك لاحقاً." else "Hi, I'm busy at the moment and will get in touch later."
+            Intent.THANKS -> if (ar) "العفو، في أي وقت." else "You're welcome, anytime."
+            Intent.GOODNIGHT -> if (ar) "تصبح على خير." else "Good night."
+            Intent.WHERE, Intent.WHEN, Intent.QUESTION ->
+                if (ar) "مشغول حالياً، سأرد على سؤالك بأقرب وقت." else "I'm busy right now and will answer your question as soon as I can."
+        }
     }
 }

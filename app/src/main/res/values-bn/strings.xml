@@ -228,13 +228,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">শুধু কন্টাক্ট</string>
     <string name="contacts_only_sub">সংরক্ষিত নয় এমন নম্বরে কখনও উত্তর দেয় না</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">উত্তরের মধ্যে বিরতি</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">তাৎক্ষণিক: প্রতিটি বার্তায়</string>
     <string name="time_window">শুধু নির্দিষ্ট সময়ে</string>
     <string name="time_window_value">%1$s থেকে %2$s</string>
     <string name="from_time">%1$s থেকে</string>
     <string name="to_time">%1$s পর্যন্ত</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">নিরাপত্তার জন্য: সার্ভিস, ব্যাংক বা ছোট নম্বরে কখনো উত্তর দেয় না, আর নির্বাচিত সময়ের মধ্যে একই ব্যক্তিকে একবারের বেশি উত্তর দেয় না। তাৎক্ষণিক মোডেও ১০ মিনিটে একজনকে সর্বোচ্চ ৪টি উত্তর যায়, যাতে দুটি ফোন একে অপরকে উত্তর দিতে দিতে আটকে না যায়।</string>
     <string name="number_copied">নম্বর কপি হয়েছে</string>
     <string name="tap_number_to_copy">কপি করতে নম্বরে ট্যাপ করুন</string>
     <string name="messages_button">মেসেজ</string>

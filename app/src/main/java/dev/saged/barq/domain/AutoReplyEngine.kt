@@ -20,8 +20,11 @@ import javax.inject.Singleton
  *  - FIXED: same text to everyone.
  *  - LEARNED: answers the way the user usually answers such a text ([ReplyEngine], on this phone
  *             only), falling back to the fixed text when no past reply fits well enough.
- * Safety: never replies to service senders/short codes, and at most once per sender per cooldown,
- * so two phones can never get stuck replying to each other.
+ * In LEARNED mode the order is: the user's own habit, then the ready-made answer for what the text
+ * is about (greeting, "how are you", urgent, question…), then the fixed text.
+ * Safety: never replies to service senders/short codes, at most once per sender per cooldown
+ * (0 = every message) and never more than a few per sender in ten minutes, so two phones can
+ * never get stuck replying to each other.
  */
 @Singleton
 class AutoReplyEngine @Inject constructor(
@@ -32,6 +35,8 @@ class AutoReplyEngine @Inject constructor(
     private val engine: dagger.Lazy<SendEngine>,
     private val replies: ReplyEngine,
 ) {
+    private val recent = HashMap<String, ArrayDeque<Long>>()
+
     suspend fun maybeReply(message: MessageEntity) {
         val s = settings.current()
         if (!s.autoReplyEnabled || !message.isIncoming || message.autoReply) return
@@ -47,6 +52,7 @@ class AutoReplyEngine @Inject constructor(
         if (last != null && now - last.lastAt < s.autoReplyCooldownMin * 60_000L) return
 
         val reply = pickReply(message, s) ?: return
+        if (burstLimited(key, now)) return
         dao.logReply(AutoReplyLogEntity(key, now))
         engine.get().sendAutoReply(address, reply, message.subId)
     }
@@ -54,9 +60,18 @@ class AutoReplyEngine @Inject constructor(
     private suspend fun pickReply(message: MessageEntity, s: AppSettings): String? {
         if (s.autoReplyMode == AutoReplyMode.LEARNED) {
             if (message.category != Category.PERSONAL) return null
-            replies.best(message.body)?.let { return it }
+            (replies.best(message.body) ?: replies.fallback(message.body))?.let { return it }
         }
         return s.autoReplyText.takeIf { it.isNotBlank() }
+    }
+
+    /** Even with no wait between replies, at most [BURST_MAX] per person in [BURST_WINDOW_MS]: no endless ping-pong. */
+    private fun burstLimited(key: String, now: Long): Boolean = synchronized(recent) {
+        val times = recent.getOrPut(key) { ArrayDeque() }
+        while (times.isNotEmpty() && now - times.first() > BURST_WINDOW_MS) times.removeFirst()
+        if (times.size >= BURST_MAX) return true
+        times.addLast(now)
+        false
     }
 
     private fun inWindow(s: AppSettings): Boolean {
@@ -65,5 +80,10 @@ class AutoReplyEngine @Inject constructor(
         val from = s.autoReplyFromMin
         val to = s.autoReplyToMin
         return if (from <= to) minute in from until to else minute >= from || minute < to
+    }
+
+    private companion object {
+        const val BURST_MAX = 4
+        const val BURST_WINDOW_MS = 10 * 60_000L
     }
 }

@@ -228,13 +228,14 @@
     <string name="auto_reply_conditions">Conditions</string>
     <string name="contacts_only">Solo contactos</string>
     <string name="contacts_only_sub">Nunca responde a números no guardados</string>
-    <string name="cooldown">Once per person every</string>
+    <string name="cooldown">Espera entre respuestas</string>
     <string name="cooldown_value">%1$d minutes</string>
+    <string name="cooldown_instant">Al instante: cada mensaje</string>
     <string name="time_window">Solo en un horario</string>
     <string name="time_window_value">De %1$s a %2$s</string>
     <string name="from_time">Desde %1$s</string>
     <string name="to_time">Hasta %1$s</string>
-    <string name="auto_reply_safety">For safety: it never replies to service, bank or short numbers, and never replies to the same person more than once within the chosen time.</string>
+    <string name="auto_reply_safety">Por seguridad: nunca responde a números de servicio, bancos ni cortos, y no responde a la misma persona más de una vez en el tiempo elegido. Incluso en modo instantáneo envía como máximo 4 respuestas a una persona en 10 minutos, para que dos teléfonos no se queden respondiéndose sin fin.</string>
     <string name="number_copied">Número copiado</string>
     <string name="tap_number_to_copy">Toca el número para copiarlo</string>
     <string name="messages_button">Mensajes</string>
