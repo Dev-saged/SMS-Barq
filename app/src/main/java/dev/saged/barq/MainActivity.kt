@@ -24,6 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
 import dev.saged.barq.data.contacts.ContactsRepository
+import dev.saged.barq.data.update.UpdateManager
+import dev.saged.barq.ui.update.UpdateLayer
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.ui.BarqNavHost
 import dev.saged.barq.ui.components.LocalContacts
@@ -40,6 +44,7 @@ class MainActivity : FragmentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     @Inject lateinit var contacts: ContactsRepository
+    @Inject lateinit var updates: UpdateManager
 
     /** Route requested by an external intent (notification tap, sms: link, share). */
     private val pendingRoute = MutableStateFlow<String?>(null)
@@ -68,6 +73,7 @@ class MainActivity : FragmentActivity() {
                                 pendingRoute = pendingRoute,
                                 mainViewModel = viewModel,
                             )
+                            UpdateLayer(updates)
                             if (s.lockEnabled && locked && s.onboardingDone) {
                                 BackHandler { moveTaskToBack(true) }
                                 LockScreen(s.lockMethod) {
@@ -116,6 +122,12 @@ class MainActivity : FragmentActivity() {
         intent ?: return
         val threadId = intent.getLongExtra(EXTRA_THREAD_ID, -1)
         when {
+            intent.action == ACTION_INSTALL_UPDATE -> lifecycleScope.launch {
+                // A cold start from the "downloaded" notification: find the saved file first.
+                withContext(Dispatchers.IO) { updates.restore() }
+                updates.install(this@MainActivity)
+            }
+            intent.action == ACTION_OPEN_UPDATE -> updates.showSheet(true)
             threadId >= 0 -> pendingRoute.value = Routes.thread(threadId)
             intent.action == ACTION_UNREAD -> {
                 viewModel.requestOpenUnread()
@@ -151,6 +163,8 @@ class MainActivity : FragmentActivity() {
 
         /** Home-screen shortcut: open the inbox on its "Unread" view. */
         const val ACTION_UNREAD = "dev.saged.barq.action.UNREAD"
+        const val ACTION_INSTALL_UPDATE = "dev.saged.barq.action.INSTALL_UPDATE"
+        const val ACTION_OPEN_UPDATE = "dev.saged.barq.action.OPEN_UPDATE"
         private val SMS_SCHEMES = setOf("sms", "smsto", "mms", "mmsto")
     }
 }

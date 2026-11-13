@@ -40,6 +40,7 @@ class BarqApp : Application(), Configuration.Provider {
     @Inject lateinit var settings: dev.saged.barq.data.settings.SettingsRepository
     @Inject lateinit var conversations: dev.saged.barq.data.ConversationRepository
     @Inject lateinit var snapshot: dev.saged.barq.data.backup.SettingsSnapshot
+    @Inject lateinit var updates: dev.saged.barq.data.update.UpdateManager
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -59,6 +60,8 @@ class BarqApp : Application(), Configuration.Provider {
             runCatching { snapshot.restoreIfNew() }.onFailure { CrashLog.warn("snapshot", it) }
             seedDefaults()
             resumeQueue()
+            // An update installed meanwhile is deleted at once; one still waiting shows as ready.
+            runCatching { updates.restore() }.onFailure { CrashLog.warn("update-restore", it) }
             // 1.5.0: contacts are always personal — fix conversations sorted by the old rules, once.
             runCatching {
                 if (settings.current().classVersion < CLASS_RULES) {

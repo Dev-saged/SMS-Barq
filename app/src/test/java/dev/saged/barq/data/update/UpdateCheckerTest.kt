@@ -23,4 +23,14 @@ class UpdateCheckerTest {
         val md = "## برق 1.5.3 — عنوان\n\n- **ميزة** أولى\n- ثانية `كود`\n\n> للرجوع لنسخة أقدم: احذف برق"
         assertEquals("• ميزة أولى\n• ثانية كود", UpdateChecker.cleanNotes(md))
     }
+
+    @Test
+    fun sameVersionRebuiltWithHigherBuildCodeIsAnUpdate() {
+        assertTrue(UpdateChecker.isUpdate("1.7.0", 120, "1.7.0", 118))
+        assertFalse(UpdateChecker.isUpdate("1.7.0", 118, "1.7.0", 118))
+        assertFalse(UpdateChecker.isUpdate("1.7.0", 90, "1.7.0", 118))
+        assertFalse(UpdateChecker.isUpdate("1.7.0", null, "1.7.0-debug", 118))
+        assertTrue(UpdateChecker.isUpdate("1.7.1", null, "1.7.0", 118))
+        assertFalse(UpdateChecker.isUpdate("1.6.1", 999, "1.7.0", 118))
+    }
 }
