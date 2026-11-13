@@ -13,7 +13,7 @@
 
 <br>
 
-<img src="docs/readme/chip-version.svg" height="34" alt="الإصدار 1.6.0">
+<img src="docs/readme/chip-version.svg" height="34" alt="الإصدار 1.6.1">
 <img src="docs/readme/chip-android.svg" height="34" alt="أندرويد 8.0 فأحدث">
 <img src="docs/readme/chip-lang.svg" height="34" alt="عربي · English">
 <img src="docs/readme/chip-offline.svg" height="34" alt="بدون إنترنت">

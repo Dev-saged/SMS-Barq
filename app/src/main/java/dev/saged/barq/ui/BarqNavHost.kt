@@ -29,6 +29,7 @@ import androidx.navigation.navArgument
 import dev.saged.barq.ui.compose.ComposeScreen
 import dev.saged.barq.ui.contact.ContactScreen
 import dev.saged.barq.ui.inbox.FolderScreen
+import dev.saged.barq.ui.failed.FailedScreen
 import dev.saged.barq.ui.inbox.InboxScreen
 import dev.saged.barq.ui.onboarding.OnboardingScreen
 import dev.saged.barq.ui.settings.AutoReplyScreen
@@ -62,6 +63,7 @@ object Routes {
     const val HEALTH = "health"
     const val DEVELOPER = "developer"
     const val STARRED = "starred"
+    const val FAILED = "failed"
 
     fun thread(id: Long) = "thread/$id"
     fun threadAt(id: Long, messageId: Long) = "thread/$id?focus=$messageId"
@@ -86,7 +88,11 @@ fun BarqNavHost(
             if (route != null) {
                 // The inbox is the first screen: go back to it instead of opening a second one.
                 if (route == Routes.INBOX) nav.popBackStack(Routes.INBOX, inclusive = false)
-                else nav.navigate(route) { launchSingleTop = true }
+                else {
+                    // محادثة مفتوحة بمعرّف آخر تُستبدل، وإلا أعاد singleTop عرض المفتوحة
+                    if (route.startsWith("thread/")) nav.popBackStack(Routes.THREAD, inclusive = true)
+                    nav.navigate(route) { launchSingleTop = true }
+                }
                 pendingRoute.value = null
             }
         }
@@ -123,6 +129,7 @@ fun BarqNavHost(
                 openArchive = { nav.navigate(Routes.ARCHIVE) },
                 openBin = { nav.navigate(Routes.BIN) },
                 openStarred = { nav.navigate(Routes.STARRED) },
+                openFailed = { nav.navigate(Routes.FAILED) },
                 openSettings = { nav.navigate(Routes.SETTINGS) },
                 openContact = { nav.navigate(Routes.contact(it)) },
                 openThreadAt = { thread, message -> nav.navigate(Routes.threadAt(thread, message)) },
@@ -215,6 +222,9 @@ fun BarqNavHost(
         composable(Routes.SEND_LIMIT) { SendLimitScreen(onBack = back) }
         composable(Routes.STARRED) {
             StarredScreen(onBack = back, openAt = { thread, message -> nav.navigate(Routes.threadAt(thread, message)) })
+        }
+        composable(Routes.FAILED) {
+            FailedScreen(onBack = back, openThread = { nav.navigate(Routes.thread(it)) })
         }
         composable(Routes.DEVELOPER) { DeveloperScreen(onBack = back, open = { nav.navigate(it) }) }
         composable(Routes.HEALTH) { HealthScreen(onBack = back, open = { nav.navigate(it) }) }

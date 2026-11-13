@@ -537,4 +537,16 @@
     <string name="swipe_read_toggle">Read / unread</string>
     <string name="shortcut_unread">Unread</string>
     <string name="shortcut_unread_long">Unread messages</string>
+    <string name="failed_filter">Failed</string>
+    <string name="failed_title">Failed messages</string>
+    <string name="failed_selected">%1$d selected</string>
+    <string name="failed_empty">No failed messages</string>
+    <string name="failed_resend_all">Resend all (%1$d)</string>
+    <string name="failed_resend_n">Resend (%1$d)</string>
+    <string name="failed_delete_all">Delete all (%1$d)</string>
+    <string name="failed_delete_n">Delete (%1$d)</string>
+    <string name="failed_delete_title">Delete failed messages?</string>
+    <string name="failed_delete_body">Only the %1$d failed messages are deleted. Conversations stay as they are.</string>
+    <string name="swipe_call">Call</string>
+    <string name="swipe_call_none">Cannot call this sender</string>
 </resources>

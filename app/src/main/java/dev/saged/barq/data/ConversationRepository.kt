@@ -209,6 +209,21 @@ class ConversationRepository @Inject constructor(
         refresh(msg.threadId)
     }
 
+    /** يحذف الرسائل المحددة فقط، وتبقى المحادثات. */
+    suspend fun deleteMessages(ids: List<Long>) = withContext(Dispatchers.IO) {
+        val found = ids.mapNotNull { messages.get(it) }
+        if (found.isEmpty()) return@withContext
+        lock.withLock {
+            provider.deleteSms(found.mapNotNull { it.providerId })
+            found.forEach { msg ->
+                msg.attachments.forEach { runCatching { File(it.path).delete() } }
+                scheduler.cancel(msg.id)
+            }
+            messages.deleteByIds(found.map { it.id })
+        }
+        refreshMany(found.map { it.threadId }.toSet())
+    }
+
     // ---------------------------------------------------------------- rules / block
 
     /** "Always put this sender in X": saves a rule and re-labels the conversation. */

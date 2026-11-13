@@ -596,4 +596,16 @@
     <string name="swipe_read_toggle">مقروء / غير مقروء</string>
     <string name="shortcut_unread">غير المقروءة</string>
     <string name="shortcut_unread_long">الرسائل غير المقروءة</string>
+    <string name="failed_filter">فاشلة</string>
+    <string name="failed_title">الرسائل الفاشلة</string>
+    <string name="failed_selected">%1$d محددة</string>
+    <string name="failed_empty">لا توجد رسائل فاشلة</string>
+    <string name="failed_resend_all">إعادة إرسال الكل (%1$d)</string>
+    <string name="failed_resend_n">إعادة إرسال (%1$d)</string>
+    <string name="failed_delete_all">حذف الكل (%1$d)</string>
+    <string name="failed_delete_n">حذف (%1$d)</string>
+    <string name="failed_delete_title">حذف الرسائل الفاشلة؟</string>
+    <string name="failed_delete_body">تُحذف %1$d رسالة فاشلة فقط، وتبقى المحادثات كما هي.</string>
+    <string name="swipe_call">اتصال</string>
+    <string name="swipe_call_none">لا يمكن الاتصال بهذا المرسل</string>
 </resources>

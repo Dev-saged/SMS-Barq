@@ -1,10 +1,18 @@
 # session-handoff
 
-## Where we stopped
--
+## State (2026-11-13)
+- المستودع Dev-saged/SMS-Barq، فرع main، آخر commit ee0adbe (docs: token rules). البناء الأخير أخضر.
+- الإصدار 1.6.0 منشور (وسم v1.6.0): غير المقروءة، اختصار الأيقونة، نسخ أندرويد للإعدادات، نسخ gzip، تنظيف شهري، فحص تحديثات من releases/latest.
+- كل المراحل 1.0.0 إلى 1.6.0 موثّقة في docs/PROJECT_CONTEXT.md (الأقسام 11-17 للمراحل الأخيرة).
+- هذه الجلسة: ربط المستودع وقراءة السياق وتعبئة repo-map وhandoff فقط. لم يُعدَّل أي كود تطبيق.
+
+## Decisions
+- المشروع Native Kotlin/Compose بالكامل، بدون WebView. قواعد التعديل الصارمة في CLAUDE.md (تعديلات موجّهة، فرع feature/<name>، خطة أولاً لأي ميزة).
+- أفكار غير منفّذة: MMS صادر اختياري، اختبارات Compose UI. (البحث داخل المحادثة منفّذ في 1.3.0 والإحصائيات في 1.2.0.)
+
+## Open issues
+- docs/code-index.md وversion.json غير موجودين.
+- MMS والشريحتان بلا اختبار على الجهاز.
 
 ## Next step
--
-
-## Decisions made this session
--
+- ينتظر ساجد يحدد الميزة أو الإصلاح التالي (1.6.1 أو 1.7.0). عندها: خطة، موافقة، فرع feature/<name>، تعديل موجّه، تحديث repo-map بسطرين.
