@@ -40,6 +40,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - الأرقام الفلسطينية ← 05x (PhoneUtils.localPs)؛ matchKey آخر 9 خانات.
 
 ## Solved bugs (never reintroduce)
+- بناء 1.7.0: serialization 1.13 وcoroutines 1.11 مبنيتان بـKotlin 2.4 فتفشل مع المترجم 2.2.21 (Incompatible classes). ثبّت 1.10.0 و1.10.2 حتى الانتقال إلى AGP 9/Kotlin 2.4.
 - «لا يظهر تحديث»: المستودع private فيرجع 404 لأي طلب بلا دخول (api وgithub.com)؛ يلزم مستودع عام. الفحص الآن 3 طبقات (version.json ← تحويل /releases/latest ← API) ويعرض السبب؛ المقارنة versionName ثم versionCode.
 - سجل المكالمات يفتح المحادثة المفتوحة: launchSingleTop على thread/{id}؛ احذف المفتوحة قبل navigate (BarqNavHost).
 - السحب ينفَّذ باللمسة: سرعة السحبة؛ فحص الإزاحة 45% داخل confirmValueChange (SwipeableRow).
@@ -50,7 +51,8 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - زر «رسالة» من الجهات كان يفتح compose بدل المحادثة (حُلّ في 1.2.0 عبر threadResolver).
 
 ## Open issues
-- لا يوجد docs/code-index.md ولا version.json (مطلوبان في بروتوكول المالك؛ يُنشآن عند أول عمل).
+- لا يوجد docs/code-index.md (مطلوب في بروتوكول المالك).
+- ترحيل AGP 9 + compileSdk 37 مؤجل (يفتح Hilt 2.60 وCompose 1.12 وKotlin 2.4).
 - MMS والشريحتان لم تُختبرا. استعادة نسخ أندرويد قد لا تعمل خارج Play.
 - أفكار غير منفّذة فعلاً: MMS صادر اختياري، اختبارات Compose UI (البحث داخل المحادثة والإحصائيات منفّذان).
 - ملفات يحذفها المالك يدوياً (اختياري): res/drawable/ic_star.xml.

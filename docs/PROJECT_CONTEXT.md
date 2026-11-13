@@ -669,6 +669,10 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | التثبيت | `PackageInstaller` (MODE_FULL_INSTALL، مصدر STORE على 33+) ومستقبل يفتح شاشة التأكيد؛ إذن «تثبيت التطبيقات» عبر `ACTION_MANAGE_UNKNOWN_APP_SOURCES` | `UpdateManager.install`، `UpdateInstallReceiver.kt` |
 | التنظيف | `UpdateManager.restore()` عند بدء البرنامج (ويشمل بعد MY_PACKAGE_REPLACED): يحذف كل APK بنسخة ≤ المثبتة، ويُظهر الجاهز غير المثبّت | `BarqApp.kt` |
 | الواجهة | ورقة المميزات + زر تنزيل، دائرة نسبة أعلى الشاشة، إشعارات التنزيل/الجاهز/الفشل | `ui/update/UpdateUi.kt`، `UpdateNotifications.kt` |
+| السرعة التلقائية | `sendDelayMs = -1` يعني تلقائي: `AutoSpeed` يرفع نافذة الإرسال تدريجياً حتى «سريع» (3 / 100ms) فقط، ويخفّض عند التعثر (`onStall`). كشف رفع الحد: `SendLimit.RAISED_PER_MINUTE = 600` | `sms/AutoSpeed.kt`، `SendDrainer.kt`، `SendLimit.kt` |
+| التصنيف | قناع أرقام الهواتف قبل البحث عن مرشّح OTP؛ OTP فقط لمرسل غير قابل للرد أو مع عبارة قوية (`strongOtpCue`) | `domain/OtpDetector.kt`، `Classifier.kt` |
+| XML | تصدير/استيراد بصيغة SMS Backup & Restore (`text/xml`)، و`readAny` يميّز JSON/XML | `data/backup/SmsXml.kt`، `BackupManager.kt` |
+| المكتبات | رُقّيت: room 2.8.5، paging 3.5.3، work 2.12.0، datastore 1.3.0، glance 1.2.0، coroutines 1.10.2، serialization 1.10.0، robolectric 4.17، fragment 1.9.1. الأحدث (Compose 1.12، core 1.19، lifecycle 2.11، navigation 2.10، androidx.hilt 1.4، Hilt 2.60، Kotlin 2.4) يحتاج AGP 9 وcompileSdk 37 ← مهمة مستقلة. serialization 1.13 وcoroutines 1.11 تحتاجان Kotlin 2.4 | `gradle/libs.versions.toml` |
 | CI | الخطوة تنشر `version.json` (version, code, apk, notes) مع كل إصدار | `.github/workflows/build.yml` |
 
 ---
