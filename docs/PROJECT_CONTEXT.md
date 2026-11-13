@@ -658,5 +658,18 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | 3 | شريحة «فاشلة · N» في الوارد (تظهر عند وجود فاشل) وشاشة `Routes.FAILED`: تحديد، إعادة إرسال، حذف الرسالة الفاشلة وحدها (`ConversationRepository.deleteMessages`، `SendEngine.resendMany`، `MessageDao.observeFailedRows/failedCount`) | `ui/failed/FailedScreen.kt`، `ui/inbox/InboxScreen.kt` (FilterChips) |
 | 4 | السحب ينفَّذ عند 45% من العرض فقط (فحص الإزاحة داخل `confirmValueChange` لأن سرعة السحبة كانت تنفّذ الإجراء)، واهتزاز عند بلوغ العتبة، وإجراء جديد `SwipeAction.CALL`: `ACTION_CALL` بإذن `CALL_PHONE` (يُطلب عند أول استعمال)، وإلا `ACTION_DIAL` | `ui/inbox/InboxScreen.kt` (SwipeableRow، placeCall)، `SettingsRepository.kt`، المانيفست |
 
+## 19. الإصدار 1.7.0: نظام التحديث الداخلي (البند 14)
+
+> السبب الجذري لـ«لا يظهر تحديث»: المستودع خاص، فأي طلب بلا تسجيل دخول يرجع 404. يلزم مستودع عام للإصدارات. المرجع في التصميم: تطبيق قيد (Dev-saged/Qayd: Updater/Updates/InstallReceiver/UpdateUi).
+
+| الجزء | التفصيل | الملفات |
+|---|---|---|
+| الفحص | ثلاث طبقات مستقلة: version.json كأصل في الإصدار، ثم تحويل `github.com/.../releases/latest`، ثم REST API. `Failed(reason)` يعرض سبب كل محاولة. المقارنة: versionName ثم versionCode للنسخة المعاد بناؤها | `data/update/UpdateChecker.kt` |
+| التنزيل | خدمة أمامية dataSync تنزّل إلى `files/updates/Barq-<v>.apk` (ملف .part ثم إعادة تسمية)، تتحقق من الحجم وأن الحزمة برق وأحدث، وتنشر النسبة | `UpdateManager.kt`، `UpdateDownloadService.kt` |
+| التثبيت | `PackageInstaller` (MODE_FULL_INSTALL، مصدر STORE على 33+) ومستقبل يفتح شاشة التأكيد؛ إذن «تثبيت التطبيقات» عبر `ACTION_MANAGE_UNKNOWN_APP_SOURCES` | `UpdateManager.install`، `UpdateInstallReceiver.kt` |
+| التنظيف | `UpdateManager.restore()` عند بدء البرنامج (ويشمل بعد MY_PACKAGE_REPLACED): يحذف كل APK بنسخة ≤ المثبتة، ويُظهر الجاهز غير المثبّت | `BarqApp.kt` |
+| الواجهة | ورقة المميزات + زر تنزيل، دائرة نسبة أعلى الشاشة، إشعارات التنزيل/الجاهز/الفشل | `ui/update/UpdateUi.kt`، `UpdateNotifications.kt` |
+| CI | الخطوة تنشر `version.json` (version, code, apk, notes) مع كل إصدار | `.github/workflows/build.yml` |
+
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.
