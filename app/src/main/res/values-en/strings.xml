@@ -548,5 +548,5 @@
     <string name="failed_delete_title">Delete failed messages?</string>
     <string name="failed_delete_body">Only the %1$d failed messages are deleted. Conversations stay as they are.</string>
     <string name="swipe_call">Call</string>
-    <string name="swipe_call_none">Can't call this sender</string>
+    <string name="swipe_call_none">Cannot call this sender</string>
 </resources>
