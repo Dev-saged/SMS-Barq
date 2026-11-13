@@ -1,15 +1,18 @@
 package dev.saged.barq.data.backup
 
 import dev.saged.barq.data.db.Box
+import android.app.Application
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.BufferedInputStream
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34], application = Application::class)
 class SmsXmlTest {
 
     private val tricky = "مرحبا \"أحمد\" & <أنت> 'تمام'\nسطر ثانٍ\tتاب 😀\u0001"
