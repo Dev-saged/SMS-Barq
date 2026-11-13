@@ -15,7 +15,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - domain/: Classifier، OtpDetector، AutoReplyEngine، PhoneUtils، TextNorm، SheetImport
 - ui/: inbox، thread، compose، contact، starred، batch، lock، onboarding، settings، whatsnew، BarqNavHost، MainViewModel
 - بناء: .github/workflows/build.yml (+ unpack-zip.yml)، gradle/libs.versions.toml، app/schemas، app/src/main/baseline-prof.txt
-- docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md (يُنشر كنص الإصدار)
+- docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md
 
 ## Versions
 - 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة + نسخ إعدادات (Actions أخضر، وسم v1.6.0)
@@ -35,7 +35,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - مسار الإرسال: SendEngine ← OutgoingRepository.enqueue ← SendQueue/BulkSendService ← SendDrainer ← SmsSender ← SmsStatusReceiver.
 - البوابة (1.4.0): POST /send، مفتاح X-Api-Key، منفذ 8080، شبكة محلية فقط، لوحة ويب assets/gateway.html، متوافقة مع SMS Sendr (بوت المالك).
 - وضع المطوّر: 3 ضغطات على سطر الإصدار. ألوان البراند افتراضياً (dynamicColor=false). خط Readex Pro.
-- المالك: جوال Galaxy S21+، يعمل من الهاتف فقط، يجمع المشاكل ثم يقول «ابدأ» فيُنفَّذ دفعة واحدة، لهجة شامية.
+- المالك: يعمل من الهاتف فقط، يجمع المشاكل ثم يقول «ابدأ»، لهجة شامية.
 - الأرقام الفلسطينية ← 05x (PhoneUtils.localPs)؛ matchKey آخر 9 خانات.
 
 ## Solved bugs (never reintroduce)
