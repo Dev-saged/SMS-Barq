@@ -675,5 +675,17 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | المكتبات | رُقّيت: room 2.8.5، paging 3.5.3، work 2.12.0، datastore 1.3.0، glance 1.2.0، coroutines 1.10.2، serialization 1.10.0، robolectric 4.17، fragment 1.9.1. الأحدث (Compose 1.12، core 1.19، lifecycle 2.11، navigation 2.10، androidx.hilt 1.4، Hilt 2.60، Kotlin 2.4) يحتاج AGP 9 وcompileSdk 37 ← مهمة مستقلة. serialization 1.13 وcoroutines 1.11 تحتاجان Kotlin 2.4 | `gradle/libs.versions.toml` |
 | CI | الخطوة تنشر `version.json` (version, code, apk, notes) مع كل إصدار | `.github/workflows/build.yml` |
 
+## 20. الإصدار 1.8.0: واجهة One UI، شعار جديد، 10 لغات
+
+| الجزء | التفصيل | الملفات |
+|---|---|---|
+| الواجهة | خلفية رمادية فاتحة (0xFFEFEFF6) وجزر بيضاء بزوايا 28dp (`islandColor`، `islandShape`)، `LargeTopAppBar` يتقلّص عند التمرير، شريط تنقّل كبسولة سفلي (`PillNav`)، صورة المحادثة تنتقل بين الوارد والمحادثة (`SharedTransitionLayout` في MainActivity و`sharedAvatar`). تبقى بقية الشاشات بالأسلوب القديم (1.8.x) | `ui/theme/Theme.kt`، `ui/components/*`، `ui/inbox/InboxScreen.kt`، `ui/thread/ThreadScreen.kt` |
+| الأيقونات | عائلة `BIcons` مرسومة يدوياً (24dp، خط 1.8)، تُحلَّل من مسارات SVG | `ui/icons/BIcons.kt` |
+| الشعار | «فقاعة مشقوقة ببرق»: أيقونة التطبيق (أمامية + أحادية) و`logo_mark` والأصول في docs/branding | `res/drawable/ic_launcher_*.xml`، `docs/icon.svg` |
+| اللغات | العربية (الافتراضية) + en, zh, hi, es, fr, bn, pt, ru, ur (الأكثر انتشاراً حسب Ethnologue). كل `values-xx` يحوي كل المفاتيح: الشاشات الأساسية (290 مفتاحاً) مترجمة، والباقي إنجليزي. الترجمة من إعداد Claude ولم يراجعها ناطقون أصليون | `res/values-xx/strings.xml`، `bools.xml` |
+| الاتجاه | `barq_rtl` يحدّد اتجاه الواجهة (true للعربية والأردية فقط)، و`barq_arabic` يحدّد لغة نص رسالة التفاعل المرسلة (عربي فقط للعربية) | `res/values*/bools.xml`، `Theme.kt`، `ReactionRepository.kt` |
+| التبديل | أندرويد 13+: `LocaleManager` (يظهر أيضاً في إعدادات النظام عبر `locales_config.xml`)؛ أقدم: تفضيل `barq_locale` + `attachBaseContext` في التطبيق والنشاط + `recreate()`. صف «اللغة» أول مجموعة المظهر بأعلام SVG مرسومة يدوياً | `util/LocaleHelper.kt`، `ui/settings/LanguageDialog.kt`، `drawable/ic_flag_*.xml` |
+| الاختبار | `LocalizationTest`: تطابق المفاتيح والـplaceholders، هروب `'` و`&`، أعلام الاتجاه، وجود العلم وإعلان اللغة | `app/src/test/.../LocalizationTest.kt` |
+
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.

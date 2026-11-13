@@ -1,7 +1,7 @@
 # repo-map
 
 Keep under 5KB. No code. Update by 2 lines after every change.
-المرجع الكامل: docs/PROJECT_CONTEXT.md (649 سطراً، اقرأ بالأقسام عبر Grep على العناوين، لا كاملاً).
+المرجع الكامل: docs/PROJECT_CONTEXT.md (680 سطراً، اقرأ بالأقسام عبر Grep على العناوين، لا كاملاً).
 
 ## Identity
 - برق (Barq): تطبيق SMS افتراضي لأندرويد، Kotlin + Compose، عربي RTL + values-en. APP_ID=dev.saged.barq. الإصدار 1.6.0 (VERSION_CODE=1 + رقم run). minSdk 26، target/compile 36.
@@ -15,10 +15,11 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - domain/: Classifier، OtpDetector، AutoReplyEngine، PhoneUtils، TextNorm، SheetImport
 - ui/: inbox، thread، compose، contact، starred، batch، lock، onboarding، settings، whatsnew، BarqNavHost، MainViewModel
 - بناء: .github/workflows/build.yml (+ unpack-zip.yml)، gradle/libs.versions.toml، app/schemas، app/src/main/baseline-prof.txt
+- 1.8.0: ui/theme/Theme.kt (islandColor/islandShape)، ui/components/PillNav + SharedAvatar، ui/icons/BIcons، util/LocaleHelper + ui/settings/LanguageDialog، res/values-xx (es fr pt ru zh hi bn pt ur: 558 مفتاحاً، 290 مترجمة والباقي إنجليزي)، drawable/ic_flag_*، اختبار LocalizationTest. barq_rtl للاتجاه (ar وur)، barq_arabic لنص التفاعلات.
 - docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md
 
 ## Versions
-- 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة (أخضر) · 1.6.1 فاشلة/سحب/اتصال (قيد البناء)
+- 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة (أخضر) · 1.6.1 فاشلة/سحب/اتصال · 1.7.0 تحديث داخلي (أخضر) · 1.8.0 One UI + شعار + 10 لغات (أخضر، لم يُجرَّب على الجوال)
 
 ## Decisions
 - التحديث الداخلي (1.7.0): data/update/{UpdateChecker,UpdateManager,UpdateDownloadService,UpdateInstallReceiver,UpdateNotifications}، ui/update/UpdateUi.kt (UpdateLayer)؛ APK في files/updates ويُحذف في UpdateManager.restore() عند بدء البرنامج؛ CI ينشر version.json مع الإصدار.
