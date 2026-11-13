@@ -70,6 +70,8 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import dev.saged.barq.ui.components.sharedAvatar
+import dev.saged.barq.ui.theme.islandColor
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -206,7 +208,10 @@ fun ThreadScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         if (conv != null) {
-                            Avatar(conv.displayName, conv.addresses, conv.threadId, conv.category, size = 40.dp)
+                            Avatar(
+                                conv.displayName, conv.addresses, conv.threadId, conv.category, size = 40.dp,
+                                modifier = Modifier.sharedAvatar(conv.threadId),
+                            )
                         }
                         Column {
                             Text(
@@ -551,7 +556,7 @@ fun Composer(
                             { Icon(Icons.Outlined.Bolt, null, Modifier.size(16.dp), tint = scheme.primary) }
                         } else null,
                         shape = RoundedCornerShape(10.dp),
-                        colors = AssistChipDefaults.assistChipColors(containerColor = scheme.background),
+                        colors = AssistChipDefaults.assistChipColors(containerColor = islandColor()),
                     )
                 }
             }
@@ -562,7 +567,7 @@ fun Composer(
                     .weight(1f)
                     .heightIn(min = 52.dp)
                     .clip(RoundedCornerShape(26.dp))
-                    .background(scheme.surfaceContainer)
+                    .background(islandColor())
                     .padding(start = 18.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

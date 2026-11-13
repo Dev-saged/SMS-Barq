@@ -2,8 +2,10 @@ package dev.saged.barq.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -14,6 +16,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -23,6 +26,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.saged.barq.R
 import dev.saged.barq.data.db.Category
@@ -45,8 +49,8 @@ private val LightColors = lightColorScheme(
     tertiaryContainer = Color(0xFFFFD7F1), onTertiaryContainer = Color(0xFF2D1228),
     error = Color(0xFFBA1A1A), onError = Color.White,
     errorContainer = Color(0xFFFFDAD6), onErrorContainer = Color(0xFF410002),
-    background = Color(0xFFFBF8FF), onBackground = Color(0xFF1B1B21),
-    surface = Color(0xFFFBF8FF), onSurface = Color(0xFF1B1B21),
+    background = Color(0xFFEFEFF6), onBackground = Color(0xFF1B1B21),
+    surface = Color(0xFFEFEFF6), onSurface = Color(0xFF1B1B21),
     surfaceVariant = Color(0xFFE3E1EC), onSurfaceVariant = Color(0xFF46464F),
     outline = Color(0xFF767680), outlineVariant = Color(0xFFC7C5D0),
     surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFF5F2FA),
@@ -128,6 +132,33 @@ data class BarqExtraColors(val dark: Boolean) {
 
 val LocalBarqColors = staticCompositionLocalOf { BarqExtraColors(false) }
 
+/** Corner radii shared by every grouped container ("island") in the One UI style. */
+object BarqShape {
+    val Island = 28.dp
+}
+
+/** Fill of an island: white on the gray light background, one step above the dark background. */
+@Composable
+fun islandColor(): Color {
+    val scheme = MaterialTheme.colorScheme
+    return if (LocalBarqColors.current.dark) scheme.surfaceContainerLow else scheme.surfaceContainerLowest
+}
+
+/** Only the first and last item of a group get the large corners; the rest stay square. */
+fun islandShape(index: Int, count: Int): Shape {
+    val top = if (index == 0) BarqShape.Island else 0.dp
+    val bottom = if (index == count - 1) BarqShape.Island else 0.dp
+    return RoundedCornerShape(topStart = top, topEnd = top, bottomStart = bottom, bottomEnd = bottom)
+}
+
+private val BarqShapes = Shapes(
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(12.dp),
+    medium = RoundedCornerShape(16.dp),
+    large = RoundedCornerShape(22.dp),
+    extraLarge = RoundedCornerShape(BarqShape.Island),
+)
+
 @Composable
 fun BarqTheme(settings: AppSettings, content: @Composable () -> Unit) {
     val dark = when (settings.themeMode) {
@@ -154,6 +185,6 @@ fun BarqTheme(settings: AppSettings, content: @Composable () -> Unit) {
         LocalDensity provides Density(density.density, density.fontScale * settings.fontScale),
         LocalBarqColors provides BarqExtraColors(dark),
     ) {
-        MaterialTheme(colorScheme = scheme, typography = typography(), content = content)
+        MaterialTheme(colorScheme = scheme, typography = typography(), shapes = BarqShapes, content = content)
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import dev.saged.barq.util.CrashLog
+import dev.saged.barq.ui.components.LocalNavVisibilityScope
 import dev.saged.barq.ui.settings.CrashLogScreen
 import dev.saged.barq.ui.settings.GroupScreen
 import dev.saged.barq.ui.settings.GroupsScreen
@@ -22,6 +23,7 @@ import dev.saged.barq.ui.batch.BatchScreen
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.navigation.NavType
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -122,6 +124,7 @@ fun BarqNavHost(
             }
         }
         composable(Routes.INBOX) {
+            CompositionLocalProvider(LocalNavVisibilityScope provides this) {
             InboxScreen(
                 mainViewModel = mainViewModel,
                 openThread = { nav.navigate(Routes.thread(it)) },
@@ -138,6 +141,7 @@ fun BarqNavHost(
                 openExternal = { nav.navigate(Routes.external(it)) },
                 openSendLimit = { nav.navigate(Routes.SEND_LIMIT) },
             )
+            }
         }
         composable(
             Routes.THREAD,
@@ -146,11 +150,13 @@ fun BarqNavHost(
                 navArgument("focus") { type = NavType.LongType; defaultValue = -1L },
             ),
         ) {
+            CompositionLocalProvider(LocalNavVisibilityScope provides this) {
             ThreadScreen(
                 onBack = back,
                 forward = { body -> nav.navigate(Routes.compose("", body)) },
                 openContact = { nav.navigate(Routes.contact(it)) { launchSingleTop = true } },
             )
+            }
         }
         composable(
             Routes.CONTACT,
