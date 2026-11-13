@@ -1,23 +1,42 @@
 # repo-map
 
 Keep under 5KB. No code. Update by 2 lines after every change.
+المرجع الكامل: docs/PROJECT_CONTEXT.md (649 سطراً، اقرأ بالأقسام عبر Grep على العناوين، لا كاملاً).
 
-> First session on this repo: generate this file from the current code (sections, key functions, decisions). Do not modify app code while doing so.
+## Identity
+- برق (Barq): تطبيق SMS افتراضي لأندرويد، Kotlin + Compose، عربي RTL + values-en. APP_ID=dev.saged.barq. الإصدار 1.6.0 (VERSION_CODE=1 + رقم run). minSdk 26، target/compile 36.
+- مكتوب من الصفر (لا كود Fossify). بدون إنترنت إلا فحص التحديثات عند الضغط. ممنوع إيموجي (استثناء: تفاعلات الرسائل).
+- الإرسال دائماً SMS نصي مقسّم، لا تحويل إلى MMS. استقبال MMS اختياري. OTP يُنسخ ولا يُحذف.
 
-## Files
-- (list each file and its purpose)
+## Files (حزمة dev/saged/barq)
+- data/: ConversationRepository، SyncManager، ProviderWatcher، db/ (Room v4: Daos، Entities)، backup/ (BackupManager، SettingsSnapshot)، update/UpdateChecker، telephony/، contacts/، settings/، sim/
+- sms/: SendEngine، SendQueue، SendDrainer، SendTracker، SendLimit، ScheduleManager، BulkSendService، gateway/ (بوابة HTTP للمطوّرين)
+- mms/: MmsPdu، MmsReceivers. notifications/: Notifier، ActiveThread. widget/OtpWidget. work/Maintenance (DbCompactWorker)
+- domain/: Classifier، OtpDetector، AutoReplyEngine، PhoneUtils، TextNorm، SheetImport
+- ui/: inbox، thread، compose، contact، starred، batch، lock، onboarding، settings، whatsnew، BarqNavHost، MainViewModel
+- بناء: .github/workflows/build.yml (+ unpack-zip.yml)، gradle/libs.versions.toml، app/schemas، app/src/main/baseline-prof.txt
+- docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md (يُنشر كنص الإصدار)
 
-## Sections (SECTION markers)
-- (marker name, one-line purpose)
-
-## Key functions and IDs
-- (names that must be preserved)
+## Versions
+- 1.0 أساس · 1.1 جهات · 1.2 بحث وقوائم · 1.3 محرك إرسال · 1.4 بوابة ومجموعات · 1.5.0 قفل وExcel ومفضلة (DB 4) · 1.5.1 Noto · 1.5.2 حد 6 ساعات · 1.6.0 غير المقروءة + نسخ إعدادات (Actions أخضر، وسم v1.6.0)
 
 ## Decisions
-- (decision, reason)
+- Room مصدر حقيقة الواجهة + مزامنة مع content://sms تحت providerLock (منع التكرار).
+- Receivers عبر EntryPoint (di/BarqEntryPoint) لا حقن حقول. goAsync بمهلة 9 ثوانٍ.
+- AGP 8.13.2 وHilt 2.58 عمداً (AGP 9 يغيّر نموذج البناء).
+- خدمة dataSync يجب أن تعالج onTimeout (أندرويد 15+).
+- رفع zip يضيف ويستبدل ولا يحذف: الملف المحذوف يُستبدل بملف فارغ (سطر package فقط).
+- نص واجهة جديد يُضاف في values و values-en بنفس الاسم. تغيير جدول Room = رفع version + Migration + اختبار.
+- الرفع من الجوال فقط، الأسرار الأربعة موجودة، المفتاح خارج المستودع.
 
 ## Solved bugs (never reintroduce)
-- (symptom, root cause, fix)
+- بناء #1: import java.util.Properties مفقود في gradle.kts.
+- بناء #4: ملف محذوف بقي في المستودع (MessageRepository.kt) وكسر البناء؛ الحل ملف فارغ.
+- بناء #8: latestIncoming معرّفة مرتين في MessageDao (Conflicting overloads)؛ احذف المكرر.
+- متغير Paging باسم items يتعارض مع items() في LazyColumn: استعمل pagingItems.
+- زر «رسالة» من الجهات كان يفتح compose بدل المحادثة (حُلّ في 1.2.0 عبر threadResolver).
 
 ## Open issues
-- (none)
+- لا يوجد docs/code-index.md ولا version.json (مطلوبان في بروتوكول المالك؛ يُنشآن عند أول عمل).
+- MMS والشريحتان لم تُختبرا على الجهاز. استعادة نسخ أندرويد قد لا تعمل لتطبيق خارج Play.
+- ملفات يحذفها المالك يدوياً (اختياري): res/drawable/ic_star.xml.
