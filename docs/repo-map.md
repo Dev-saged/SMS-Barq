@@ -29,6 +29,15 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - نص واجهة جديد يُضاف في values و values-en بنفس الاسم. تغيير جدول Room = رفع version + Migration + اختبار.
 - الرفع من الجوال فقط، الأسرار الأربعة موجودة، المفتاح خارج المستودع.
 
+## Details (من PROJECT_CONTEXT، أقسام 4/11/13)
+- Room: v4 (Migration1To2، 2To3، 3To4؛ ممنوع fallbackToDestructiveMigration). جداول: conversations، messages (+FTS4 messages_fts على searchText مطبّع عربياً)، send_groups(+members)، blocked_*، category_rules، templates، auto_reply_*.
+- box: INBOX=1 SENT=2 OUTBOX=4 FAILED=5 QUEUED=6. SendError خاص: CANCELLED=-100، REJECTED=-101.
+- مسار الإرسال: SendEngine ← OutgoingRepository.enqueue ← SendQueue/BulkSendService ← SendDrainer ← SmsSender ← SmsStatusReceiver.
+- البوابة (1.4.0): POST /send، مفتاح X-Api-Key، منفذ 8080، شبكة محلية فقط، لوحة ويب assets/gateway.html، متوافقة مع SMS Sendr (بوت المالك).
+- وضع المطوّر: 3 ضغطات على سطر الإصدار. ألوان البراند افتراضياً (dynamicColor=false). خط Readex Pro.
+- المالك: جوال Galaxy S21+، يعمل من الهاتف فقط، يجمع المشاكل ثم يقول «ابدأ» فيُنفَّذ دفعة واحدة، لهجة شامية.
+- أرقام فلسطينية تُوحَّد إلى 05x (PhoneUtils.localPs)؛ matchKey آخر 9 خانات.
+
 ## Solved bugs (never reintroduce)
 - بناء #1: import java.util.Properties مفقود في gradle.kts.
 - بناء #4: ملف محذوف بقي في المستودع (MessageRepository.kt) وكسر البناء؛ الحل ملف فارغ.
