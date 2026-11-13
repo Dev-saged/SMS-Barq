@@ -56,6 +56,7 @@ class SendDrainer @Inject constructor(
     }
 
     private val mutex = Mutex()
+    private val auto = AutoSpeed()
 
     /** SMS parts handed to the radio recently: (time, parts). Used for Android's limit. */
     private val recent = ArrayDeque<Pair<Long, Int>>()
@@ -74,7 +75,7 @@ class SendDrainer @Inject constructor(
         try {
             loop@ while (true) {
                 val s = settings.current()
-                val speed = Speed.of(s.sendDelayMs)
+                val speed = if (s.sendDelayMs < 0) auto.pace().let { Speed(it.window, it.gapMs) } else Speed.of(s.sendDelayMs)
                 val androidLimit = if (s.respectLimit) limit.current() else null
                 val now = System.currentTimeMillis()
                 val batch = messages.dueQueued(now, BATCH, state.paused.value)
@@ -131,6 +132,7 @@ class SendDrainer @Inject constructor(
                 // No answer at all: the message stays "sending" and its answer is still recorded
                 // when it comes. The queue moves on instead of waiting forever.
                 state.stalled.value = true
+                auto.onStall()
                 inFlight.remove(oldest)
                 tracker.forget(oldest.id)
                 continue
@@ -138,6 +140,7 @@ class SendDrainer @Inject constructor(
             withTimeoutOrNull(left.coerceAtMost(STALL_MS)) { oldest.waiter.await() }
             if (!oldest.waiter.isCompleted && System.currentTimeMillis() - oldest.at > STALL_MS) {
                 state.stalled.value = true
+                auto.onStall()
             }
             inFlight.removeAll { it.waiter.isCompleted }
             if (inFlight.none { System.currentTimeMillis() - it.at > STALL_MS }) state.stalled.value = false
@@ -165,6 +168,7 @@ class SendDrainer @Inject constructor(
     private fun partsOf(message: MessageEntity): Int =
         runCatching { SmsMessage.calculateLength(message.body, false)[0] }.getOrDefault(1).coerceAtLeast(1)
 
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private suspend fun sendOne(message: MessageEntity, deliveryReports: Boolean, inFlight: MutableList<Flight>) {
         val outbox = outgoing.markOutbox(message)
         val waiter = tracker.register(outbox.id)
@@ -175,7 +179,9 @@ class SendDrainer @Inject constructor(
             outgoing.onSendResult(outbox.id, false, SendError.REJECTED)
             return
         }
-        inFlight += Flight(outbox.id, waiter, System.currentTimeMillis())
+        val at = System.currentTimeMillis()
+        waiter.invokeOnCompletion { e -> if (e == null) auto.onResult(System.currentTimeMillis() - at, waiter.getCompleted()) }
+        inFlight += Flight(outbox.id, waiter, at)
     }
 
     private companion object {

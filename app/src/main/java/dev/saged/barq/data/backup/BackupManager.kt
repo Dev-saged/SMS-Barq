@@ -91,7 +91,7 @@ data class BackupSettings(
     val swipeStart: String = SwipeAction.ARCHIVE.name,
     val swipeEnd: String = SwipeAction.DELETE.name,
     val defaultSubId: Int = -1,
-    val sendDelayMs: Long = 250,
+    val sendDelayMs: Long = -1,
     val autoReplyEnabled: Boolean = false,
     val autoReplyMode: String = AutoReplyMode.FIXED.name,
     val autoReplyText: String = "",

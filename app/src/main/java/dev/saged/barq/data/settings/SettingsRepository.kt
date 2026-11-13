@@ -40,7 +40,8 @@ data class AppSettings(
     val swipeStart: SwipeAction = SwipeAction.ARCHIVE,
     val swipeEnd: SwipeAction = SwipeAction.DELETE,
     val defaultSubId: Int = -1,
-    val sendDelayMs: Long = 250,
+    /** Gap between messages in a bulk send; -1 = automatic. */
+    val sendDelayMs: Long = -1,
     val autoReplyEnabled: Boolean = false,
     val autoReplyMode: AutoReplyMode = AutoReplyMode.FIXED,
     val autoReplyText: String = "أنا مشغول حالياً، سأرد عليك في أقرب وقت.",

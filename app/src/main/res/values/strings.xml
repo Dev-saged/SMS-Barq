@@ -160,8 +160,9 @@
     <string name="default_sim">الشريحة الافتراضية</string>
     <string name="ask_system">حسب النظام</string>
     <string name="bulk_speed">سرعة الإرسال الجماعي</string>
+    <string name="speed_auto">تلقائي: يسرّع عند النجاح ويبطّئ عند الفشل (مُستحسن)</string>
     <string name="speed_fast">سريع</string>
-    <string name="speed_balanced">متوازن (مُستحسن)</string>
+    <string name="speed_balanced">متوازن</string>
     <string name="speed_safe">آمن للمشغلات الحساسة</string>
     <string name="mms_receive">استقبال الوسائط (MMS)</string>
     <string name="mms_receive_sub">اختياري. الإرسال يبقى دائماً SMS نصية مهما طالت الرسالة.</string>

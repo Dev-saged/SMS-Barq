@@ -143,8 +143,9 @@
     <string name="default_sim">Default SIM</string>
     <string name="ask_system">System default</string>
     <string name="bulk_speed">Bulk sending speed</string>
+    <string name="speed_auto">Auto: speeds up when sends succeed, slows down on failures (recommended)</string>
     <string name="speed_fast">Fast</string>
-    <string name="speed_balanced">Balanced (recommended)</string>
+    <string name="speed_balanced">Balanced</string>
     <string name="speed_safe">Safe for sensitive carriers</string>
     <string name="mms_receive">Receive media (MMS)</string>
     <string name="mms_receive_sub">Optional. Sending always stays plain SMS, however long the message.</string>
