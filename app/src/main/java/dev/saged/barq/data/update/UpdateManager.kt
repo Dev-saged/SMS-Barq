@@ -60,6 +60,15 @@ class UpdateManager @Inject constructor(
         _sheet.value = show && _state.value !is State.Idle
     }
 
+    private var autoChecked = false
+
+    /** Once per launch of Barq: a silent check that opens the sheet only when a newer version exists. */
+    suspend fun autoCheck() {
+        if (autoChecked) return
+        autoChecked = true
+        check()
+    }
+
     /** "Check for updates": the sheet opens by itself when a newer version is found. */
     suspend fun check(): UpdateChecker.Result {
         val result = checker.check()
@@ -229,11 +238,16 @@ class UpdateManager @Inject constructor(
             val code = info?.let { PackageInfoCompat.getLongVersionCode(it) }
             if (info == null || code == null || code <= installed) {
                 f.delete()
-            } else if (_state.value is State.Idle) {
+            } else {
                 ready = UpdateChecker.Result.Available(info.versionName.orEmpty(), "", "", code.toInt())
             }
         }
-        ready?.let { _state.value = State.Ready(it) }
+        ready?.let { r ->
+            val s = _state.value
+            val known = (s as? State.Available)?.update ?: (s as? State.Failed)?.update
+            if (s is State.Idle) _state.value = State.Ready(r)
+            else if (known != null && known.version == r.version) _state.value = State.Ready(known)
+        }
         if (_state.value is State.Idle) UpdateNotifications.cancelReady(context)
     }
 

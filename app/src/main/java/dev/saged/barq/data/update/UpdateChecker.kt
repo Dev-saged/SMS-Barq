@@ -16,8 +16,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * "Check for updates" — the only time Barq uses the internet (with the update download), and only
- * when the user taps the button, never in the background. Reads the latest official release on
+ * Update check — the only time Barq uses the internet (with the update download): once when the app
+ * opens, and when the user taps "Check for updates"; never in the background. Reads the latest official release on
  * GitHub ("v1.5.3", with its Arabic notes), never the test builds, and compares its version and
  * build code with the installed one. A failure carries the real reason of every attempt.
  */
