@@ -59,5 +59,13 @@ object BIcons {
             "M4.5,12H19.5", "M5.6,8H18.4", "M5.6,16H18.4",
         )
     }
+    val NavBar by lazy {
+        icon(
+            "NavBar",
+            "M5,5H19", "M5,9H14",
+            "M7,14H17A3,3 0 0 1 17,20H7A3,3 0 0 1 7,14Z",
+            "M9.5,17H9.6", "M12,17H12.1", "M14.5,17H14.6",
+        )
+    }
     val Check by lazy { icon("Check", "M5,12.5L10,17.5L19,7") }
 }

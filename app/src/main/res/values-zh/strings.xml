@@ -561,6 +561,8 @@
     <string name="swipe_call_none">无法拨打此发件人</string>
     <string name="language">语言</string>
     <string name="language_system">跟随系统语言</string>
+    <string name="pill_nav">底部导航栏</string>
+    <string name="pill_nav_sub">悬浮栏，可在短信、星标、归档和设置之间快速切换</string>
     <string-array name="default_templates">
         <item>好的</item>
         <item>我在路上</item>

@@ -561,6 +561,8 @@
     <string name="swipe_call_none">No se puede llamar a este remitente</string>
     <string name="language">Idioma</string>
     <string name="language_system">Idioma del sistema</string>
+    <string name="pill_nav">Barra de navegación inferior</string>
+    <string name="pill_nav_sub">Una barra flotante para moverte entre Mensajes, Destacados, Archivo y Ajustes</string>
     <string-array name="default_templates">
         <item>De acuerdo</item>
         <item>Voy en camino</item>

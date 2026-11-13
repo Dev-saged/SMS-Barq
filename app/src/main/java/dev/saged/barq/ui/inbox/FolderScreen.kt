@@ -49,6 +49,7 @@ import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.ui.components.ConversationRow
+import dev.saged.barq.ui.components.LocalBottomBarInset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -135,7 +136,7 @@ fun FolderScreen(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = 24.dp + LocalBottomBarInset.current),
         ) {
             if (bin) {
                 item(key = "hint") {

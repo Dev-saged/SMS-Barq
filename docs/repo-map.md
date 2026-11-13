@@ -15,6 +15,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - domain/: Classifier، OtpDetector، AutoReplyEngine، PhoneUtils، TextNorm، SheetImport
 - ui/: inbox، thread، compose، contact، starred، batch، lock، onboarding، settings، whatsnew، BarqNavHost، MainViewModel
 - بناء: .github/workflows/build.yml (+ unpack-zip.yml)، gradle/libs.versions.toml، app/schemas، app/src/main/baseline-prof.txt
+- 1.8.0 شريط الكبسولة: يُرسم في BarqNavHost (ثابت على INBOX/STARRED/ARCHIVE/SETTINGS فقط)، مفتاح AppSettings.pillNav (إعدادات ← المظهر، ومحفوظ في النسخ)، المحتوى يحجز LocalBottomBarInset، انتقال بين التبويبات تلاشٍ (tabSwap).
 - 1.8.0: ui/theme/Theme.kt (islandColor/islandShape)، ui/components/PillNav + SharedAvatar، ui/icons/BIcons، util/LocaleHelper + ui/settings/LanguageDialog، res/values-xx (es fr pt ru zh hi bn ur: 558 مفتاحاً، 290 مترجمة والباقي إنجليزي)، drawable/ic_flag_*، اختبار LocalizationTest. barq_rtl للاتجاه (ar وur)، barq_arabic لنص التفاعلات.
 - docs/: PROJECT_CONTEXT.md، PHASE3_PLAN.md، PUBLISHING.md، releases/vX.Y.Z.md
 

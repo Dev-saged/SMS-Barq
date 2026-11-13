@@ -44,6 +44,7 @@ import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.data.db.StarredMessage
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
+import dev.saged.barq.ui.components.LocalBottomBarInset
 import dev.saged.barq.ui.components.TimeFormat
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -99,7 +100,7 @@ fun StarredScreen(onBack: () -> Unit, openAt: (Long, Long) -> Unit, vm: StarredV
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 16.dp + LocalBottomBarInset.current),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             items(items.orEmpty(), key = { it.message.id }) { s -> StarredRow(s, settings) { openAt(s.message.threadId, s.message.id) } }

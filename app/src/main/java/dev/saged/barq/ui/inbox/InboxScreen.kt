@@ -141,8 +141,9 @@ import dev.saged.barq.domain.TextNorm
 import dev.saged.barq.notifications.NotificationActionReceiver
 import dev.saged.barq.ui.MainViewModel
 import dev.saged.barq.ui.components.Avatar
-import dev.saged.barq.ui.components.PillNav
-import dev.saged.barq.ui.components.PillNavItem
+import dev.saged.barq.ui.Routes
+import dev.saged.barq.ui.components.LocalBottomBarInset
+import dev.saged.barq.ui.components.LocalTabReselect
 import dev.saged.barq.ui.icons.BIcons
 import dev.saged.barq.ui.theme.islandColor
 import dev.saged.barq.ui.theme.islandShape
@@ -209,6 +210,10 @@ fun InboxScreen(
             snapshotFlow { pagingItems.itemCount }.first { it > 0 }
             listState.scrollToItem(index, vm.scrollOffset)
         }
+    }
+    val reselect = LocalTabReselect.current
+    LaunchedEffect(reselect) {
+        reselect?.collect { if (it == Routes.INBOX) listState.animateScrollToItem(0) }
     }
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex < 2 } }
     val snackbar = remember { SnackbarHostState() }
@@ -299,20 +304,6 @@ fun InboxScreen(
                 )
             }
         },
-        bottomBar = {
-            if (selection.isEmpty()) {
-                PillNav(
-                    listOf(
-                        PillNavItem(BIcons.Messages, stringResource(R.string.inbox_title), true) {
-                            scope.launch { listState.animateScrollToItem(0) }
-                        },
-                        PillNavItem(BIcons.Star, stringResource(R.string.starred_title), false, openStarred),
-                        PillNavItem(BIcons.Archive, stringResource(R.string.archive), false, openArchive),
-                        PillNavItem(BIcons.Settings, stringResource(R.string.settings), false, openSettings),
-                    ),
-                )
-            }
-        },
         floatingActionButton = {
             if (selection.isEmpty()) {
                 ExtendedFloatingActionButton(
@@ -323,6 +314,7 @@ fun InboxScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
                 )
             }
         },
@@ -330,7 +322,7 @@ fun InboxScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(bottom = 96.dp + LocalBottomBarInset.current),
         ) {
             if (!isDefault) {
                 item(key = "default", contentType = "card") {

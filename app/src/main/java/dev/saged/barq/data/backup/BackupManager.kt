@@ -101,6 +101,7 @@ data class BackupSettings(
     val autoReplyFromMin: Int = 22 * 60,
     val autoReplyToMin: Int = 7 * 60,
     val backupFrequency: String = BackupFrequency.OFF.name,
+    val pillNav: Boolean = true,
 )
 
 @Serializable
@@ -135,12 +136,13 @@ fun AppSettings.toBackup() = BackupSettings(
     themeMode.name, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled,
     spamFilter, recycleBin, swipeStart.name, swipeEnd.name, defaultSubId, sendDelayMs, autoReplyEnabled,
     autoReplyMode.name, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow,
-    autoReplyFromMin, autoReplyToMin, backupFrequency.name,
+    autoReplyFromMin, autoReplyToMin, backupFrequency.name, pillNav,
 )
 
 fun BackupSettings.toSettings(base: AppSettings) = base.copy(
     themeMode = enumOr(themeMode, base.themeMode),
     dynamicColor = dynamicColor,
+    pillNav = pillNav,
     fontScale = fontScale,
     datePattern = datePattern,
     use24h = use24h,

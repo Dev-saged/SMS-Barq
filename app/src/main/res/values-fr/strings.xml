@@ -561,6 +561,8 @@
     <string name="swipe_call_none">Impossible d’appeler cet expéditeur</string>
     <string name="language">Langue</string>
     <string name="language_system">Langue du système</string>
+    <string name="pill_nav">Barre de navigation inférieure</string>
+    <string name="pill_nav_sub">Une barre flottante pour passer entre Messages, Favoris, Archive et Réglages</string>
     <string-array name="default_templates">
         <item>D’accord</item>
         <item>Je suis en route</item>

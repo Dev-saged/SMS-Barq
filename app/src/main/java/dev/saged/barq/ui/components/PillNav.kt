@@ -21,7 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,16 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import dev.saged.barq.ui.theme.islandColor
+import kotlinx.coroutines.flow.MutableSharedFlow
+
+/** Room a tab screen leaves at the bottom while the floating bar is shown (0 when it is off or hidden). */
+val LocalBottomBarInset = compositionLocalOf { 0.dp }
+
+/** Height the floating bar takes above the system bar: 64dp capsule plus its 12dp margins. */
+val PillNavHeight = 88.dp
+
+/** Emits a tab's route when the user taps the tab that is already open (the list scrolls to its top). */
+val LocalTabReselect = staticCompositionLocalOf<MutableSharedFlow<String>?> { null }
 
 data class PillNavItem(
     val icon: ImageVector,

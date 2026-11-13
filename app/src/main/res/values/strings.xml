@@ -146,6 +146,8 @@
     <string name="theme_dark">داكن</string>
     <string name="language">اللغة</string>
     <string name="language_system">لغة النظام</string>
+    <string name="pill_nav">شريط التنقّل السفلي</string>
+    <string name="pill_nav_sub">شريط عائم للتنقل بين الرسائل والمفضلة والأرشيف والإعدادات</string>
     <string name="material_you">ألوان Material You</string>
     <string name="material_you_sub">ألوان التطبيق من خلفية هاتفك</string>
     <string name="font_size">حجم الخط</string>

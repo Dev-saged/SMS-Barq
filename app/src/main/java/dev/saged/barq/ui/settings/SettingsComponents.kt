@@ -39,6 +39,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.LocalBottomBarInset
 
 @Composable
 fun SettingsScaffold(
@@ -64,7 +65,7 @@ fun SettingsScaffold(
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomPadding + LocalBottomBarInset.current),
             content = content,
         )
     }

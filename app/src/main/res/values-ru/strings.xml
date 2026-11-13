@@ -561,6 +561,8 @@
     <string name="swipe_call_none">Этому отправителю нельзя позвонить</string>
     <string name="language">Язык</string>
     <string name="language_system">Язык системы</string>
+    <string name="pill_nav">Нижняя панель навигации</string>
+    <string name="pill_nav_sub">Плавающая панель для перехода между сообщениями, избранным, архивом и настройками</string>
     <string-array name="default_templates">
         <item>Хорошо</item>
         <item>Уже в пути</item>

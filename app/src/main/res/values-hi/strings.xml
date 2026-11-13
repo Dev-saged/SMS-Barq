@@ -561,6 +561,8 @@
     <string name="swipe_call_none">इस भेजने वाले को कॉल नहीं किया जा सकता</string>
     <string name="language">भाषा</string>
     <string name="language_system">सिस्टम की भाषा</string>
+    <string name="pill_nav">निचला नेविगेशन बार</string>
+    <string name="pill_nav_sub">संदेश, स्टार, संग्रह और सेटिंग्स के बीच जाने के लिए तैरता हुआ बार</string>
     <string-array name="default_templates">
         <item>ठीक है</item>
         <item>मैं रास्ते में हूँ</item>

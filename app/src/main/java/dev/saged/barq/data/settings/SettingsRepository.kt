@@ -28,6 +28,8 @@ data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     /** Off by default since 1.4.0: Barq's own colours look the same on every phone (Material You is optional). */
     val dynamicColor: Boolean = false,
+    /** The floating bottom navigation bar between Messages, Starred, Archive and Settings. */
+    val pillNav: Boolean = true,
     val fontScale: Float = 1f,
     val datePattern: String = "dd/MM/yyyy",
     val use24h: Boolean = true,
@@ -101,6 +103,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     private object K {
         val themeMode = stringPreferencesKey("theme_mode")
         val dynamicColor = booleanPreferencesKey("dynamic_color")
+        val pillNav = booleanPreferencesKey("pill_nav")
         val fontScale = floatPreferencesKey("font_scale")
         val datePattern = stringPreferencesKey("date_pattern")
         val use24h = booleanPreferencesKey("use_24h")
@@ -153,6 +156,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         AppSettings(
             themeMode = p.enumOf(K.themeMode, d.themeMode),
             dynamicColor = p[K.dynamicColor] ?: d.dynamicColor,
+            pillNav = p[K.pillNav] ?: d.pillNav,
             fontScale = p[K.fontScale] ?: d.fontScale,
             datePattern = p[K.datePattern] ?: d.datePattern,
             use24h = p[K.use24h] ?: d.use24h,
@@ -206,6 +210,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
 
     suspend fun setThemeMode(v: ThemeMode) = set(K.themeMode, v.name)
     suspend fun setDynamicColor(v: Boolean) = set(K.dynamicColor, v)
+    suspend fun setPillNav(v: Boolean) = set(K.pillNav, v)
     suspend fun setFontScale(v: Float) = set(K.fontScale, v)
     suspend fun setDatePattern(v: String) = set(K.datePattern, v)
     suspend fun setUse24h(v: Boolean) = set(K.use24h, v)
@@ -256,6 +261,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         context.dataStore.edit {
             it[K.themeMode] = s.themeMode.name
             it[K.dynamicColor] = s.dynamicColor
+            it[K.pillNav] = s.pillNav
             it[K.fontScale] = s.fontScale
             it[K.datePattern] = s.datePattern
             it[K.use24h] = s.use24h

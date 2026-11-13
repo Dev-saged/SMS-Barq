@@ -561,6 +561,8 @@
     <string name="swipe_call_none">এই প্রেরককে কল করা যায় না</string>
     <string name="language">ভাষা</string>
     <string name="language_system">সিস্টেমের ভাষা</string>
+    <string name="pill_nav">নিচের নেভিগেশন বার</string>
+    <string name="pill_nav_sub">মেসেজ, স্টার, আর্কাইভ ও সেটিংসের মধ্যে যেতে ভাসমান বার</string>
     <string-array name="default_templates">
         <item>ঠিক আছে</item>
         <item>আমি আসছি</item>

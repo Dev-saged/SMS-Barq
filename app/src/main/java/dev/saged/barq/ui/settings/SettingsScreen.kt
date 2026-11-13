@@ -262,6 +262,11 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                         ?: stringResource(R.string.language_system),
                 ) { dialog = Dialog.LANGUAGE }
                 RowDivider()
+                SwitchRow(
+                    dev.saged.barq.ui.icons.BIcons.NavBar, stringResource(R.string.pill_nav), stringResource(R.string.pill_nav_sub),
+                    s.pillNav,
+                ) { v -> vm.update { setPillNav(v) } }
+                RowDivider()
                 ClickRow(Icons.Outlined.DarkMode, stringResource(R.string.theme), label(themeLabels, s.themeMode)) { dialog = Dialog.THEME }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     RowDivider()

@@ -561,6 +561,8 @@
     <string name="swipe_call_none">Não é possível ligar para este remetente</string>
     <string name="language">Idioma</string>
     <string name="language_system">Idioma do sistema</string>
+    <string name="pill_nav">Barra de navegação inferior</string>
+    <string name="pill_nav_sub">Uma barra flutuante para alternar entre Mensagens, Favoritas, Arquivo e Configurações</string>
     <string-array name="default_templates">
         <item>Ok</item>
         <item>Estou a caminho</item>
