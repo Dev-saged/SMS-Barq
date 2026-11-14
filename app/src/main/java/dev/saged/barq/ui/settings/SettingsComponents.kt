@@ -1,5 +1,9 @@
 package dev.saged.barq.ui.settings
 
+import dev.saged.barq.ui.theme.islandColor
+import dev.saged.barq.ui.theme.BarqShape
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +32,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -39,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.LocalBottomBarInset
 
 @Composable
 fun SettingsScaffold(
@@ -49,31 +53,72 @@ fun SettingsScaffold(
     bottomPadding: Dp = 96.dp,
     content: LazyListScope.() -> Unit,
 ) {
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = floating,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back)) }
                 },
                 title = { Text(title) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
+                scrollBehavior = scroll,
             )
         },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomPadding),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = bottomPadding + LocalBottomBarInset.current),
             content = content,
         )
     }
 }
 
+/** Text typed in the settings search: rows that do not mention it hide themselves. */
+val LocalSettingsQuery = androidx.compose.runtime.compositionLocalOf { "" }
+
+@Composable
+private fun searching(): Boolean = LocalSettingsQuery.current.isNotBlank()
+
+@Composable
+private fun matchesSearch(vararg texts: String?): Boolean {
+    val query = LocalSettingsQuery.current
+    if (query.isBlank()) return true
+    val needle = dev.saged.barq.domain.TextNorm.forName(query)
+    return texts.any { it != null && dev.saged.barq.domain.TextNorm.forName(it).contains(needle) }
+}
+
+@Composable
+fun SettingsSearchField(query: String, onChange: (String) -> Unit) {
+    val container = islandColor()
+    androidx.compose.material3.TextField(
+        value = query,
+        onValueChange = onChange,
+        singleLine = true,
+        placeholder = { Text(stringResource(R.string.search_settings)) },
+        leadingIcon = { Icon(dev.saged.barq.ui.icons.BIcons.Search, null) },
+        shape = CircleShape,
+        colors = androidx.compose.material3.TextFieldDefaults.colors(
+            focusedContainerColor = container,
+            unfocusedContainerColor = container,
+            focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+            unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+    )
+}
+
 @Composable
 fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.padding(top = 18.dp)) {
-        Text(
+    val searching = searching()
+    Column(Modifier.padding(top = if (searching) 6.dp else 18.dp)) {
+        if (!searching) Text(
             title,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
@@ -82,8 +127,8 @@ fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLow),
+                .clip(RoundedCornerShape(BarqShape.Island))
+                .background(islandColor()),
             content = content,
         )
     }
@@ -101,6 +146,7 @@ private fun RowIcon(icon: ImageVector) {
 
 @Composable
 fun SwitchRow(icon: ImageVector, title: String, subtitle: String? = null, checked: Boolean, onChange: (Boolean) -> Unit) {
+    if (!matchesSearch(title, subtitle)) return
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -122,6 +168,7 @@ fun SwitchRow(icon: ImageVector, title: String, subtitle: String? = null, checke
 
 @Composable
 fun ClickRow(icon: ImageVector, title: String, value: String? = null, onClick: () -> Unit) {
+    if (!matchesSearch(title, value)) return
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -141,10 +188,13 @@ fun ClickRow(icon: ImageVector, title: String, value: String? = null, onClick: (
 }
 
 @Composable
-fun RowDivider() = HorizontalDivider(
-    modifier = Modifier.padding(start = 70.dp),
-    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-)
+fun RowDivider() {
+    if (searching()) return
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 70.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+    )
+}
 
 @Composable
 fun <T> ChoiceDialog(

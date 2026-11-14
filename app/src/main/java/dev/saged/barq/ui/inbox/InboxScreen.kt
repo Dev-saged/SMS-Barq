@@ -41,7 +41,6 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DoneAll
-import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.MarkChatUnread
 import androidx.compose.material.icons.outlined.MarkEmailRead
 import androidx.compose.material.icons.outlined.MarkEmailUnread
@@ -78,8 +77,10 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -105,6 +106,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -139,6 +141,12 @@ import dev.saged.barq.domain.TextNorm
 import dev.saged.barq.notifications.NotificationActionReceiver
 import dev.saged.barq.ui.MainViewModel
 import dev.saged.barq.ui.components.Avatar
+import dev.saged.barq.ui.Routes
+import dev.saged.barq.ui.components.LocalBottomBarInset
+import dev.saged.barq.ui.components.LocalTabReselect
+import dev.saged.barq.ui.icons.BIcons
+import dev.saged.barq.ui.theme.islandColor
+import dev.saged.barq.ui.theme.islandShape
 import dev.saged.barq.ui.components.ConversationRow
 import dev.saged.barq.ui.components.TimeFormat
 import dev.saged.barq.ui.components.label
@@ -186,6 +194,8 @@ fun InboxScreen(
     val crashPending by mainViewModel.crashPending.collectAsStateWithLifecycle()
 
     val listState = rememberLazyListState()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val island = islandColor()
     LaunchedEffect(listState) {
         snapshotFlow { listState.firstVisibleItemIndex to listState.firstVisibleItemScrollOffset }.collect { (i, o) ->
             if (pagingItems.itemCount > 0) {
@@ -200,6 +210,10 @@ fun InboxScreen(
             snapshotFlow { pagingItems.itemCount }.first { it > 0 }
             listState.scrollToItem(index, vm.scrollOffset)
         }
+    }
+    val reselect = LocalTabReselect.current
+    LaunchedEffect(reselect) {
+        reselect?.collect { if (it == Routes.INBOX) listState.animateScrollToItem(0) }
     }
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex < 2 } }
     val snackbar = remember { SnackbarHostState() }
@@ -263,11 +277,12 @@ fun InboxScreen(
     }
 
     Scaffold(
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             if (selection.isEmpty()) {
-                InboxTopBar(openArchive, openBin, openSettings, openStarred)
+                InboxTopBar(openArchive, openBin, openSettings, openStarred, scrollBehavior)
             } else {
                 // The buttons follow what is selected: all pinned → "unpin", all muted → "unmute".
                 val chosen = pagingItems.itemSnapshotList.items.filter { it.threadId in selection }
@@ -294,11 +309,12 @@ fun InboxScreen(
                 ExtendedFloatingActionButton(
                     onClick = newMessage,
                     expanded = expandedFab,
-                    icon = { Icon(Icons.Outlined.Edit, contentDescription = null) },
+                    icon = { Icon(BIcons.Edit, contentDescription = null) },
                     text = { Text(stringResource(R.string.new_message)) },
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                     shape = RoundedCornerShape(18.dp),
+                    modifier = Modifier.padding(bottom = LocalBottomBarInset.current),
                 )
             }
         },
@@ -306,7 +322,7 @@ fun InboxScreen(
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 96.dp),
+            contentPadding = PaddingValues(bottom = 96.dp + LocalBottomBarInset.current),
         ) {
             if (!isDefault) {
                 item(key = "default", contentType = "card") {
@@ -423,26 +439,30 @@ fun InboxScreen(
                 contentType = pagingItems.itemContentType { "conversation" },
             ) { index ->
                 val c = pagingItems[index] ?: return@items
-                SwipeableRow(
-                    conversation = c,
-                    settings = settings,
-                    enabled = selection.isEmpty() && !searching,
-                    onSwipe = ::onSwipe,
-                ) {
-                    ConversationRow(
+                Box(Modifier.padding(horizontal = 12.dp).clip(islandShape(index, pagingItems.itemCount))) {
+                    SwipeableRow(
                         conversation = c,
                         settings = settings,
-                        selected = c.threadId in selection,
-                        onClick = {
-                            if (selection.isNotEmpty()) {
-                                vm.toggleSelection(c.threadId)
-                            } else {
-                                openThread(c.threadId)
-                            }
-                        },
-                        onLongClick = { vm.toggleSelection(c.threadId) },
-                        onAvatarClick = if (selection.isEmpty()) ({ openContact(c.threadId) }) else null,
-                    )
+                        enabled = selection.isEmpty() && !searching,
+                        onSwipe = ::onSwipe,
+                    ) {
+                        ConversationRow(
+                            conversation = c,
+                            settings = settings,
+                            selected = c.threadId in selection,
+                            onClick = {
+                                if (selection.isNotEmpty()) {
+                                    vm.toggleSelection(c.threadId)
+                                } else {
+                                    openThread(c.threadId)
+                                }
+                            },
+                            onLongClick = { vm.toggleSelection(c.threadId) },
+                            onAvatarClick = if (selection.isEmpty()) ({ openContact(c.threadId) }) else null,
+                            container = island,
+                            divider = index < pagingItems.itemCount - 1,
+                        )
+                    }
                 }
             }
             if (searching && hits.isNotEmpty()) {
@@ -573,15 +593,16 @@ private fun UnreadEmptyState() {
 }
 
 @Composable
-private fun InboxTopBar(openArchive: () -> Unit, openBin: () -> Unit, openSettings: () -> Unit, openStarred: () -> Unit) {
+private fun InboxTopBar(
+    openArchive: () -> Unit,
+    openBin: () -> Unit,
+    openSettings: () -> Unit,
+    openStarred: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
     var menu by remember { mutableStateOf(false) }
-    TopAppBar(
-        title = {
-            Text(
-                stringResource(R.string.inbox_title),
-                style = MaterialTheme.typography.headlineMedium,
-            )
-        },
+    LargeTopAppBar(
+        title = { Text(stringResource(R.string.inbox_title)) },
         actions = {
             Box {
                 IconButton(onClick = { menu = true }) {
@@ -611,7 +632,11 @@ private fun InboxTopBar(openArchive: () -> Unit, openBin: () -> Unit, openSettin
                 }
             }
         },
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+            scrolledContainerColor = MaterialTheme.colorScheme.background,
+        ),
+        scrollBehavior = scrollBehavior,
     )
 }
 
@@ -684,7 +709,7 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .height(52.dp)
             .clip(RoundedCornerShape(26.dp))
-            .background(scheme.surfaceContainer)
+            .background(islandColor())
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

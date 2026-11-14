@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flag of the United Kingdom, drawn as a vector (no emoji). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="20dp"
+    android:viewportWidth="60"
+    android:viewportHeight="40">
+    <path android:fillColor="#012169" android:pathData="M0,0h60v40h-60z" />
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="8" android:pathData="M0,0L60,40M60,0L0,40" />
+    <group>
+        <clip-path android:pathData="M30,20L60,20L60,40Z M30,20L30,40L0,40Z M30,20L0,20L0,0Z M30,20L30,0L60,0Z" />
+        <path android:strokeColor="#FFC8102E" android:strokeWidth="5" android:pathData="M0,0L60,40M60,0L0,40" />
+    </group>
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="13" android:pathData="M30,0V40M0,20H60" />
+    <path android:strokeColor="#FFC8102E" android:strokeWidth="8" android:pathData="M30,0V40M0,20H60" />
+</vector>

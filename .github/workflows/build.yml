@@ -151,6 +151,14 @@ jobs:
             '{version:$v,code:$c,apk:$apk,notes:$n}' > dist/version.json
           gh release upload "$TAG" dist/version.json --clobber
 
+      - name: Upload database schema
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Barq-schemas-${{ github.run_number }}
+          path: app/schemas
+          if-no-files-found: ignore
+
       - name: Unit tests
         if: steps.check.outputs.ready == 'true'
         id: tests
@@ -160,6 +168,20 @@ jobs:
       - name: Report failed tests
         if: steps.check.outputs.ready == 'true' && steps.tests.outcome == 'failure'
         run: echo "::warning::Some unit tests failed (the APK was still published). Open the 'Unit tests' step to see which."
+
+      - name: Lint
+        if: steps.check.outputs.ready == 'true'
+        id: lint
+        continue-on-error: true
+        run: ./gradlew --no-daemon lintDebug
+
+      - name: Upload lint report
+        if: steps.check.outputs.ready == 'true' && always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Barq-lint-${{ github.run_number }}
+          path: app/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
 
   # One-time helper: earlier builds' APKs (kept by GitHub for 90 days) become releases v1.0.0, v1.1.0…
   backfill:

@@ -37,6 +37,14 @@ object Classifier {
 
     private val shortener = Regex("(?i)(bit\\.ly|tinyurl|t\\.co/|goo\\.gl|cutt\\.ly|rb\\.gy|is\\.gd|shorturl|t\\.ly|ow\\.ly|s\\.id)")
 
+    /**
+     * A person's number sends a code only with a clear code word; "password", "confirm"… in a
+     * chat between people are just talk. Banks and shops (names, short codes) keep the wide list.
+     */
+    private val strongOtpCue = Regex(
+        "(?i)(otp|verification code|security code|one[- ]?time|passcode|رمز التحقق|رمز التفعيل|رمز الأمان|رمز|كود التحقق|كود التفعيل|كود)"
+    )
+
     fun matchRule(address: String, rules: List<CategoryRuleEntity>): CategoryRuleEntity? =
         rules.firstOrNull { rule ->
             PhoneUtils.same(rule.sender, address) ||
@@ -53,7 +61,7 @@ object Classifier {
     ): Category {
         matchRule(address, rules)?.let { return it.category }
         if (isContact) return Category.PERSONAL
-        if (otp != null) return Category.OTP
+        if (otp != null && (!PhoneUtils.isReplyable(address) || strongOtpCue.containsMatchIn(body))) return Category.OTP
         if (spamFilter && spamScore(address, body) >= 3) return Category.SPAM
         val person = PhoneUtils.isReplyable(address)
         if (!person) {

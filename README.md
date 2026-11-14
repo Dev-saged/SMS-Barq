@@ -1,21 +1,12 @@
 <div align="center" dir="rtl">
 
-<img src="docs/cover.jpg" alt="برق — تطبيق رسائل SMS سريع وذكي لأندرويد" width="100%">
+<img src="docs/readme/hero.svg" alt="برق — رسائلك أسرع من البرق" width="100%">
 
 <br><br>
 
-<img src="docs/icon.png" width="88" alt="أيقونة برق">
-
-# برق
-
-**رسائلك أسرع من البرق.**<br>
-تطبيق رسائل SMS لأندرويد: سريع، ذكي، خاص، ويرسل لألف شخص بضغطة واحدة.
-
-<br>
-
-<img src="docs/readme/chip-version.svg" height="34" alt="الإصدار 1.6.1">
+<img src="docs/readme/chip-version.svg" height="34" alt="الإصدار الحالي">
 <img src="docs/readme/chip-android.svg" height="34" alt="أندرويد 8.0 فأحدث">
-<img src="docs/readme/chip-lang.svg" height="34" alt="عربي · English">
+<img src="docs/readme/chip-lang.svg" height="34" alt="10 لغات">
 <img src="docs/readme/chip-offline.svg" height="34" alt="بدون إنترنت">
 
 <br><br>
@@ -31,22 +22,26 @@
 ## لماذا برق؟
 
 <img src="docs/readme/feature-fast.svg" width="31%" alt="سريع وخفيف">
+<img src="docs/readme/feature-reply.svg" width="31%" alt="رد يفهمك">
 <img src="docs/readme/feature-bulk.svg" width="31%" alt="إرسال جماعي">
-<img src="docs/readme/feature-groups.svg" width="31%" alt="مجموعات ذكية">
 <br>
+<img src="docs/readme/feature-groups.svg" width="31%" alt="مجموعات ذكية">
 <img src="docs/readme/feature-smart.svg" width="31%" alt="ذكي محلياً">
-<img src="docs/readme/feature-gateway.svg" width="31%" alt="بوابة للمطوّرين">
 <img src="docs/readme/feature-private.svg" width="31%" alt="خاص وآمن">
+<br>
+<img src="docs/readme/feature-langs.svg" width="31%" alt="10 لغات">
+<img src="docs/readme/feature-comfort.svg" width="31%" alt="مريح للعين">
+<img src="docs/readme/feature-gateway.svg" width="31%" alt="بوابة للمطوّرين">
 
 <br><br>
 
 ## من داخل التطبيق
 
-<img src="docs/readme/screen-inbox.png" width="31%" alt="صندوق الوارد">
-<img src="docs/readme/screen-chat.png" width="31%" alt="المحادثة">
-<img src="docs/readme/screen-groups.png" width="31%" alt="رسالة جديدة لمجموعات">
+<img src="docs/readme/screen-inbox.svg" width="31%" alt="صندوق الوارد">
+<img src="docs/readme/screen-chat.svg" width="31%" alt="المحادثة مع الردود المقترحة">
+<img src="docs/readme/screen-reply.svg" width="31%" alt="الرد التلقائي">
 
-<sub>معاينة لواجهة برق: الوارد · المحادثة · رسالة جديدة لعدة مجموعات</sub>
+<sub>معاينة لواجهة برق: الوارد · المحادثة والردود المقترحة · الرد التلقائي</sub>
 
 </div>
 
@@ -56,42 +51,57 @@
 
 ## كل ما تحتاجه في تطبيق رسائل
 
-- **رموز التحقق** تُكتشف وحدها، وتُنسخ بلمسة من الإشعار أو من أعلى الوارد.
-- **تصنيف تلقائي** للبنوك والعروض والرسائل الشخصية، و**فلتر سبام** يعزل الاحتيال.
-- **إرسال جماعي** لمئات الأرقام، كل شخص في محادثته، مع متابعة حيّة لكل رسالة وإعادة محاولة تلقائية.
-- **المجموعات**: مجموعات برق ومجموعات الهاتف معاً، دمج بضغطة، وكل رقم يُرسل له مرة واحدة فقط.
-- **الأرقام الفلسطينية** بأي صيغة (‎+970‎، ‎+972‎، ‎00970‎) تتوحّد تلقائياً إلى ‎05x‎.
-- **تفاعلات** على الرسائل، **جدولة** للإرسال، **قوالب** و**رد تلقائي**.
-- **الشريحتان**، **تقارير التسليم**، **بحث فوري** يفهم العربية، و**نسخ احتياطي**.
-- **فاتح وداكن**، عربي من اليمين لليسار، وإنجليزي تلقائياً حسب لغة الجوال.
+<img src="docs/readme/ic-reply.svg" width="22" align="top" alt=""> &nbsp;**رد تلقائي يفهم الرسالة**: يصوغ الجواب من مضمونها بالنبرة التي تختارها (فخمة، ودّية، مختصرة)، ويتعلّم أسلوبك من ردودك.
 
-## الجديد في 1.6.0
+<img src="docs/readme/ic-bolt.svg" width="22" align="top" alt=""> &nbsp;**ردود مقترحة** فوق خانة الكتابة: لمسة واحدة وتكون الرسالة جاهزة.
 
-- **غير المقروءة**: زر فوق القائمة يعرض المحادثات غير المقروءة فقط مع عددها، و«قراءة الكل»، ويعمل مع كل التصنيفات. واختصار «غير المقروءة» من أيقونة برق مباشرة.
-- **تحديد كغير مقروء** من القائمة أو بالسحب.
-- **إعداداتك تنتقل معك** إلى جوال جديد عبر نسخ أندرويد المشفّر (المجموعات والقوالب والإعدادات، بدون الرسائل).
-- **نسخ احتياطية مضغوطة** أصغر بكثير، وتنظيف شهري لقاعدة البيانات أثناء الشحن.
-- **فحص التحديثات** يعرض رقم النسخة الجديدة وما الجديد فيها.
+<img src="docs/readme/ic-key.svg" width="22" align="top" alt=""> &nbsp;**رموز التحقق** تُكتشف وحدها، وتُنسخ بلمسة من الإشعار أو من أعلى الوارد.
 
-## الجديد في 1.5.1 و1.5.2
+<img src="docs/readme/ic-tag.svg" width="22" align="top" alt=""> &nbsp;**تصنيف تلقائي** للبنوك والعروض والرسائل الشخصية، وفلتر يعزل رسائل الاحتيال.
 
-- **إيموجي التفاعلات صارت بستايل Google Noto** اللامع، الأقرب لشكل الآيفون.
-- **الإرسال الجماعي الطويل أثبت**: على أندرويد 15 وأحدث يتوقف مؤقتاً بهدوء عند حد الـ 6 ساعات ويسألك تكمّل، بدل ما ينقطع.
-- **أخف**: خطوط أصغر، كود أنظف، ونسخ احتياطي تلقائي يحتفظ بآخر 3 نسخ.
+<img src="docs/readme/ic-send.svg" width="22" align="top" alt=""> &nbsp;**إرسال جماعي** لمئات الأرقام، كل شخص في محادثته، مع متابعة حيّة وإعادة محاولة تلقائية.
 
-## الجديد في 1.5.0
+<img src="docs/readme/ic-people.svg" width="22" align="top" alt=""> &nbsp;**المجموعات**: مجموعات برق ومجموعات الهاتف معاً، واستيراد من Excel، ورسالة باسم كل شخص.
 
-- **قفل التطبيق** ببصمة الإصبع أو الوجه أو رمز الهاتف، وتختار متى يقفل.
-- **استيراد من Excel** ورسائل باسم كل شخص عبر ‎{الاسم}‎.
-- **مفتاح الشريحة**، **الرسائل المفضّلة**، وتصنيف أذكى يُبقي جهات اتصالك شخصية دائماً.
-- **تفاعلات بإيموجي جديدة**، وشاشة «شو الجديد» بعد كل تحديث.
-- **بوابة أقوى للمطوّرين**: رقم لكل رسالة، عدة أرقام بطلب واحد، جدولة، واختيار الشريحة.
+<img src="docs/readme/ic-clock.svg" width="22" align="top" alt=""> &nbsp;**جدولة** الإرسال، **قوالب** جاهزة، **تفاعلات** على الرسائل، ورسائل **مفضّلة**.
 
-كل النسخ السابقة وملاحظاتها في **[صفحة الإصدارات](https://github.com/Dev-saged/SMS-Barq/releases)**.
+<img src="docs/readme/ic-search.svg" width="22" align="top" alt=""> &nbsp;**بحث فوري** يفهم العربية في الرسائل والإعدادات.
+
+<img src="docs/readme/ic-bin.svg" width="22" align="top" alt=""> &nbsp;**سلة محذوفات** للمحادثات والرسائل: استعدها خلال 30 يوماً.
+
+<img src="docs/readme/ic-lock.svg" width="22" align="top" alt=""> &nbsp;**قفل التطبيق** بالبصمة أو الوجه أو رمز الهاتف، وحظر للأرقام والكلمات.
+
+<img src="docs/readme/ic-backup.svg" width="22" align="top" alt=""> &nbsp;**نسخ احتياطي** تلقائي واستيراد وتصدير، وإعداداتك تنتقل معك إلى جوال جديد.
+
+<img src="docs/readme/ic-sim.svg" width="22" align="top" alt=""> &nbsp;**الشريحتان** وتقارير التسليم، والأرقام الفلسطينية تتوحّد بأي صيغة كُتبت.
+
+<img src="docs/readme/ic-eye.svg" width="22" align="top" alt=""> &nbsp;**واجهة مريحة**: فاتح وداكن، خط بحجم تختاره، وشريط تنقّل سريع.
+
+<img src="docs/readme/ic-globe.svg" width="22" align="top" alt=""> &nbsp;**10 لغات**: العربية، الإنجليزية، الصينية، الهندية، الإسبانية، الفرنسية، البنغالية، البرتغالية، الروسية، الأردية.
+
+<img src="docs/readme/ic-update.svg" width="22" align="top" alt=""> &nbsp;**تحديث من داخل التطبيق**: يخبرك بالنسخة الجديدة ويثبّتها فوق الحالية دون فقد رسائلك.
+
+## الجديد في 2.0
+
+<img src="docs/readme/ic-reply.svg" width="22" align="top" alt=""> &nbsp;الرد التلقائي يفهم 32 نوعاً من الرسائل بلهجات متعددة، ويجيب عن كل ما في الرسالة بنبرتك.
+
+<img src="docs/readme/ic-shield.svg" width="22" align="top" alt=""> &nbsp;لا يَعِد بشيء باسمك، ولا يرد على «تمام» وأمثالها، ويجيب الأخبار الثقيلة بوقار.
+
+<img src="docs/readme/ic-bin.svg" width="22" align="top" alt=""> &nbsp;الرسالة المحذوفة تذهب إلى السلة ويمكن استعادتها.
+
+<img src="docs/readme/ic-search.svg" width="22" align="top" alt=""> &nbsp;بحث داخل الإعدادات، ومحادثات أهدأ للعين.
+
+كل الإصدارات وملاحظاتها في **[صفحة الإصدارات](https://github.com/Dev-saged/SMS-Barq/releases)**.
 
 ## التثبيت
 
-نزّل أحدث نسخة من [صفحة الإصدارات](https://github.com/Dev-saged/SMS-Barq/releases/latest)، ثبّته، ثم اختر **«اجعل برق تطبيق الرسائل الافتراضي»**. كل نسخة جديدة تُثبَّت فوق السابقة بدون أن تُفقد رسائلك.
+1. نزّل أحدث نسخة من **[صفحة الإصدارات](https://github.com/Dev-saged/SMS-Barq/releases/latest)**.
+2. ثبّت الملف وافتح برق.
+3. اختر **«اجعل برق تطبيق الرسائل الافتراضي»**.
+
+## خصوصيتك
+
+رسائلك تبقى على جوالك. التصنيف والبحث والرد التلقائي تعمل كلها محلياً بلا خوادم، والإنترنت يُستخدم فقط لفحص التحديثات.
 
 </div>
 

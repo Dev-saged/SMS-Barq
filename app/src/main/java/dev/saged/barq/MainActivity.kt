@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.runtime.LaunchedEffect
 import androidx.fragment.app.FragmentActivity
 import dev.saged.barq.ui.lock.AppLock
@@ -30,6 +31,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.ui.BarqNavHost
+import dev.saged.barq.ui.components.LocalSharedTransitionScope
 import dev.saged.barq.ui.components.LocalContacts
 import dev.saged.barq.ui.MainViewModel
 import dev.saged.barq.ui.Routes
@@ -48,6 +50,10 @@ class MainActivity : FragmentActivity() {
 
     /** Route requested by an external intent (notification tap, sms: link, share). */
     private val pendingRoute = MutableStateFlow<String?>(null)
+
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(dev.saged.barq.util.LocaleHelper.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -68,11 +74,15 @@ class MainActivity : FragmentActivity() {
                 BarqTheme(s) {
                     CompositionLocalProvider(LocalContacts provides contacts) {
                         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                            BarqNavHost(
-                                startOnboarding = !s.onboardingDone,
-                                pendingRoute = pendingRoute,
-                                mainViewModel = viewModel,
-                            )
+                            SharedTransitionLayout(Modifier.fillMaxSize()) {
+                                CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                                    BarqNavHost(
+                                        startOnboarding = !s.onboardingDone,
+                                        pendingRoute = pendingRoute,
+                                        mainViewModel = viewModel,
+                                    )
+                                }
+                            }
                             UpdateLayer(updates)
                             if (s.lockEnabled && locked && s.onboardingDone) {
                                 BackHandler { moveTaskToBack(true) }

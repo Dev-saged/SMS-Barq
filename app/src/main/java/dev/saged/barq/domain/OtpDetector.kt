@@ -23,8 +23,13 @@ object OtpDetector {
         "(?i)(ريال|ر\\.س|دينار|د\\.ا|شيكل|شيقل|شاقل|جنيه|درهم|ليرة|دولار|\\$|€|₪|usd|sar|ils|nis|jod|egp|aed|kwd|qar|try|eur)"
     )
 
+    /** Phone numbers written with spaces or dashes ("059 912 3456", "+972 59 123 4567") are not codes. */
+    private val phone = Regex(
+        "(?<!\\d)(?:(?:\\+|00)\\d{1,3}[ -]?\\(?\\d{1,3}\\)?(?:[ -]?\\d{2,4}){2,4}|0\\d{2,3}[ -]?\\d{3}[ -]?\\d{3,4})(?!\\d)"
+    )
+
     fun detect(body: String): String? {
-        val text = PhoneUtils.normalizeDigits(body)
+        val text = phone.replace(PhoneUtils.normalizeDigits(body)) { "#".repeat(it.value.length) }
         val kw = keywords.find(text) ?: return null
         val matches = candidate.findAll(text)
             .filter { !isAmount(text, it.range) }

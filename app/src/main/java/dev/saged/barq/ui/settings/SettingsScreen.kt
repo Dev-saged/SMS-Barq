@@ -140,6 +140,13 @@ class SettingsViewModel @Inject constructor(
         done(n)
     }
 
+    fun exportXml(uri: Uri, done: (Int?) -> Unit) = viewModelScope.launch {
+        val n = runCatching { context.contentResolver.openOutputStream(uri)?.use { backup.exportXml(it) } }.getOrNull()
+        done(n)
+    }
+
+    fun xmlFileName() = backup.xmlFileName()
+
     fun import(uri: Uri, done: (Int?) -> Unit) = viewModelScope.launch {
         val result = runCatching { backup.import(uri) }.getOrNull()
         done(result?.imported)
@@ -161,7 +168,7 @@ class SettingsViewModel @Inject constructor(
     fun backupFileName() = backup.backupFileName()
 }
 
-private enum class Dialog { THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP, LOCK_METHOD, LOCK_AFTER }
+private enum class Dialog { LANGUAGE, THEME, FONT, DATE, SIM, SWIPE_START, SWIPE_END, BACKUP, LOCK_METHOD, LOCK_AFTER }
 
 private tailrec fun android.content.Context.findActivity(): androidx.fragment.app.FragmentActivity? = when (this) {
     is androidx.fragment.app.FragmentActivity -> this
@@ -205,6 +212,9 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(dev.saged.barq.data.backup.BackupManager.MIME)) { uri ->
         if (uri != null) vm.export(uri) { n -> toast(if (n != null) String.format(exportedMsg, n) else failedMsg) }
     }
+    val xmlExportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(dev.saged.barq.data.backup.SmsXml.MIME)) { uri ->
+        if (uri != null) vm.exportXml(uri) { n -> toast(if (n != null) String.format(exportedMsg, n) else failedMsg) }
+    }
     val importLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) vm.import(uri) { n -> toast(if (n != null) String.format(importedMsg, n) else failedMsg) }
     }
@@ -242,9 +252,24 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     )
     fun <T> label(list: List<Pair<T, String>>, v: T) = list.firstOrNull { it.first == v }?.second.orEmpty()
 
+    var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsQuery provides query) {
     SettingsScaffold(title = stringResource(R.string.settings), onBack = onBack, bottomPadding = 16.dp) {
+        item(key = "search") { SettingsSearchField(query) { query = it } }
         item {
             SettingsGroup(stringResource(R.string.group_appearance)) {
+                val chosenLang = dev.saged.barq.util.LocaleHelper.chosen(context)
+                ClickRow(
+                    dev.saged.barq.ui.icons.BIcons.Language, stringResource(R.string.language),
+                    dev.saged.barq.util.LocaleHelper.languages.firstOrNull { it.tag == chosenLang }?.nativeName
+                        ?: stringResource(R.string.language_system),
+                ) { dialog = Dialog.LANGUAGE }
+                RowDivider()
+                SwitchRow(
+                    dev.saged.barq.ui.icons.BIcons.NavBar, stringResource(R.string.pill_nav), stringResource(R.string.pill_nav_sub),
+                    s.pillNav,
+                ) { v -> vm.update { setPillNav(v) } }
+                RowDivider()
                 ClickRow(Icons.Outlined.DarkMode, stringResource(R.string.theme), label(themeLabels, s.themeMode)) { dialog = Dialog.THEME }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                     RowDivider()
@@ -366,6 +391,10 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
                     exportLauncher.launch(vm.backupFileName())
                 }
                 RowDivider()
+                ClickRow(Icons.Outlined.Upload, stringResource(R.string.export_xml), stringResource(R.string.export_xml_sub)) {
+                    xmlExportLauncher.launch(vm.xmlFileName())
+                }
+                RowDivider()
                 ClickRow(Icons.Outlined.Download, stringResource(R.string.import_messages), stringResource(R.string.import_sub)) {
                     importLauncher.launch(arrayOf("application/gzip", "application/x-gzip", "application/json", "text/plain", "*/*"))
                 }
@@ -422,7 +451,8 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
             }
         }
         // The very last thing in Settings, with nothing under it.
-        item { AboutCard() }
+        if (query.isBlank()) item { AboutCard() }
+    }
     }
 
     if (showWhatsNew) dev.saged.barq.ui.whatsnew.WhatsNewSheet(onClose = { showWhatsNew = false })
@@ -454,6 +484,13 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     }
 
     when (dialog) {
+        Dialog.LANGUAGE -> LanguageDialog(
+            chosen = dev.saged.barq.util.LocaleHelper.chosen(context),
+            onDismiss = { dialog = null },
+        ) { tag ->
+            dialog = null
+            activity?.let { dev.saged.barq.util.LocaleHelper.apply(it, tag) }
+        }
         Dialog.THEME -> ChoiceDialog(stringResource(R.string.theme), themeLabels, s.themeMode, { dialog = null }) { v ->
             dialog = null; vm.update { setThemeMode(v) }
         }

@@ -28,7 +28,8 @@ class SendLimit @Inject constructor(@ApplicationContext private val context: Con
     ) {
         /** Messages per minute, for display. */
         val perMinute: Int get() = if (intervalMs <= 0) maxCount else (maxCount * 60_000L / intervalMs).toInt()
-        val raised: Boolean get() = !isDefault && maxCount >= RAISED_COUNT / 2
+        /** Raised enough that the radio, not Android, sets the pace (any value from ~10 per second). */
+        val raised: Boolean get() = !isDefault && perMinute >= RAISED_PER_MINUTE
     }
 
     fun current(): Limit {
@@ -69,6 +70,7 @@ class SendLimit @Inject constructor(@ApplicationContext private val context: Con
         const val DEFAULT_COUNT = 30
         const val DEFAULT_INTERVAL_MS = 60_000L
         const val RAISED_COUNT = 10_000
+        const val RAISED_PER_MINUTE = 600
 
         /** The command the user runs once (from a computer or the phone's own wireless debugging). */
         fun grantCommand(packageName: String) = "adb shell pm grant $packageName $WRITE_SECURE_SETTINGS"

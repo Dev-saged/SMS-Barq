@@ -1,5 +1,12 @@
 package dev.saged.barq.ui.inbox
 
+import dev.saged.barq.ui.theme.islandShape
+import dev.saged.barq.ui.theme.islandColor
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,7 +29,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -45,10 +51,15 @@ import androidx.paging.compose.itemKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
 import dev.saged.barq.data.ConversationRepository
+import dev.saged.barq.data.db.Box as MessageBox
 import dev.saged.barq.data.db.ConversationDao
+import dev.saged.barq.data.db.ConversationEntity
+import dev.saged.barq.data.db.TrashDao
+import dev.saged.barq.data.db.TrashedMessage
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.ui.components.ConversationRow
+import dev.saged.barq.ui.components.LocalBottomBarInset
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
@@ -59,6 +70,7 @@ import javax.inject.Inject
 class FolderViewModel @Inject constructor(
     private val dao: ConversationDao,
     private val repository: ConversationRepository,
+    trashDao: TrashDao,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
     private val config = PagingConfig(pageSize = 40, enablePlaceholders = false)
@@ -66,6 +78,17 @@ class FolderViewModel @Inject constructor(
     val bin = Pager(config) { dao.recycleBin() }.flow.cachedIn(viewModelScope)
     val settings = settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
     val selection = MutableStateFlow<Set<Long>>(emptySet())
+    val trashed = trashDao.observe().stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+    val messageSelection = MutableStateFlow<Set<Long>>(emptySet())
+
+    fun toggleMessage(id: Long) {
+        messageSelection.value = messageSelection.value.let { if (id in it) it - id else it + id }
+    }
+
+    fun clearSelection() {
+        selection.value = emptySet()
+        messageSelection.value = emptySet()
+    }
 
     fun toggle(id: Long) {
         selection.value = selection.value.let { if (id in it) it - id else it + id }
@@ -77,9 +100,22 @@ class FolderViewModel @Inject constructor(
         if (ids.isNotEmpty()) viewModelScope.launch { block(ids) }
     }
 
+    private fun actOnMessages(block: suspend (List<Long>) -> Unit) {
+        val ids = messageSelection.value.toList()
+        messageSelection.value = emptySet()
+        if (ids.isNotEmpty()) viewModelScope.launch { block(ids) }
+    }
+
     fun unarchive() = act { repository.setArchived(it, false) }
-    fun restore() = act { repository.restore(it) }
-    fun deleteForever() = act { repository.deleteForever(it) }
+    fun restore() {
+        act { repository.restore(it) }
+        actOnMessages { repository.restoreMessages(it) }
+    }
+
+    fun deleteForever() {
+        act { repository.deleteForever(it) }
+        actOnMessages { repository.deleteTrashedForever(it) }
+    }
     fun emptyBin() = viewModelScope.launch { repository.emptyRecycleBin() }
 }
 
@@ -93,28 +129,34 @@ fun FolderScreen(
     val pagingItems = (if (bin) vm.bin else vm.archived).collectAsLazyPagingItems()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val selection by vm.selection.collectAsStateWithLifecycle()
+    val trashed by vm.trashed.collectAsStateWithLifecycle()
+    val messageSelection by vm.messageSelection.collectAsStateWithLifecycle()
+    val binMessages = if (bin) trashed else emptyList()
+    val picked = selection.size + messageSelection.size
     var confirmEmpty by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
+    val scroll = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
+        modifier = Modifier.nestedScroll(scroll.nestedScrollConnection),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
+            LargeTopAppBar(
                 navigationIcon = {
                     IconButton(onClick = {
-                        if (selection.isEmpty()) onBack() else { vm.selection.value = emptySet() }
+                        if (picked == 0) onBack() else vm.clearSelection()
                     }) {
                         Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
                     }
                 },
                 title = {
                     Text(
-                        if (selection.isNotEmpty()) selection.size.toString()
+                        if (picked > 0) picked.toString()
                         else stringResource(if (bin) R.string.recycle_bin else R.string.archive)
                     )
                 },
                 actions = {
-                    if (selection.isNotEmpty()) {
+                    if (picked > 0) {
                         if (bin) {
                             IconButton(onClick = vm::restore) { Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore)) }
                             IconButton(onClick = { confirmDelete = true }) {
@@ -123,19 +165,23 @@ fun FolderScreen(
                         } else {
                             IconButton(onClick = vm::unarchive) { Icon(Icons.Outlined.Unarchive, stringResource(R.string.unarchive)) }
                         }
-                    } else if (bin && pagingItems.itemCount > 0) {
+                    } else if (bin && (pagingItems.itemCount > 0 || binMessages.isNotEmpty())) {
                         IconButton(onClick = { confirmEmpty = true }) {
                             Icon(Icons.Outlined.DeleteSweep, stringResource(R.string.empty_bin))
                         }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
+                colors = TopAppBarDefaults.largeTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                ),
+                scrollBehavior = scroll,
             )
         },
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
-            contentPadding = PaddingValues(bottom = 24.dp),
+            contentPadding = PaddingValues(bottom = 24.dp + LocalBottomBarInset.current),
         ) {
             if (bin) {
                 item(key = "hint") {
@@ -147,17 +193,41 @@ fun FolderScreen(
                     )
                 }
             }
+            if (binMessages.isNotEmpty()) {
+                item(key = "messages-title") { BinSectionTitle(stringResource(R.string.bin_messages)) }
+                items(count = binMessages.size, key = { "m" + binMessages[it].message.id }) { i ->
+                    val t = binMessages[i]
+                    Box(Modifier.padding(horizontal = 12.dp).clip(islandShape(i, binMessages.size))) {
+                        ConversationRow(
+                            conversation = t.asRow(),
+                            settings = settings,
+                            selected = t.message.id in messageSelection,
+                            onClick = { vm.toggleMessage(t.message.id) },
+                            onLongClick = { vm.toggleMessage(t.message.id) },
+                            container = islandColor(),
+                            divider = i < binMessages.size - 1,
+                        )
+                    }
+                }
+                if (pagingItems.itemCount > 0) {
+                    item(key = "conversations-title") { BinSectionTitle(stringResource(R.string.bin_conversations)) }
+                }
+            }
             items(count = pagingItems.itemCount, key = pagingItems.itemKey { it.threadId }) { i ->
                 val c = pagingItems[i] ?: return@items
-                ConversationRow(
-                    conversation = c,
-                    settings = settings,
-                    selected = c.threadId in selection,
-                    onClick = { if (selection.isNotEmpty() || bin) vm.toggle(c.threadId) else openThread(c.threadId) },
-                    onLongClick = { vm.toggle(c.threadId) },
-                )
+                Box(Modifier.padding(horizontal = 12.dp).clip(islandShape(i, pagingItems.itemCount))) {
+                    ConversationRow(
+                        conversation = c,
+                        settings = settings,
+                        selected = c.threadId in selection,
+                        onClick = { if (picked > 0 || bin) vm.toggle(c.threadId) else openThread(c.threadId) },
+                        onLongClick = { vm.toggle(c.threadId) },
+                        container = islandColor(),
+                        divider = i < pagingItems.itemCount - 1,
+                    )
+                }
             }
-            if (pagingItems.itemCount == 0) {
+            if (pagingItems.itemCount == 0 && binMessages.isEmpty()) {
                 item(key = "empty") {
                     Column(
                         Modifier.fillMaxWidth().padding(top = 96.dp),
@@ -193,6 +263,28 @@ fun FolderScreen(
         )
     }
 }
+
+@Composable
+private fun BinSectionTitle(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 8.dp),
+    )
+}
+
+/** A binned message drawn like a conversation row: who, what, when. */
+private fun TrashedMessage.asRow() = ConversationEntity(
+    threadId = -message.id,
+    addresses = message.address,
+    displayName = displayName ?: message.address,
+    snippet = message.body,
+    date = message.date,
+    subId = message.subId,
+    lastFromMe = message.box != MessageBox.INBOX,
+    lastBox = message.box,
+)
 
 @Composable
 fun ConfirmDialog(text: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {

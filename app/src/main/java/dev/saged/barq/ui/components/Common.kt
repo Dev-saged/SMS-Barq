@@ -138,6 +138,7 @@ fun Avatar(
     size: Dp = 48.dp,
     photoUri: String? = null,
     onClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val contacts = LocalContacts.current
     val version = contactsVersion()
@@ -150,7 +151,7 @@ fun Avatar(
     val isService = !PhoneUtils.isReplyable(address) || category == Category.BANK || category == Category.OTP
     val colors = if (isService) extra.category(category, scheme) else extra.avatar(seed)
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(size)
             .clip(CircleShape)
             .background(colors.container)

@@ -61,7 +61,7 @@
 - **قوالب وردود سريعة** تظهر كأزرار فوق مربع الكتابة. القوالب الافتراضية: تمام، أنا بالطريق، بتواصل معك لاحقاً، شكراً لك، مشغول حالياً.
 - **الرد التلقائي**:
   - `FIXED`: نص واحد للجميع
-  - `SMART`: قواعد (كلمات مفصولة بـ `|`) ← رد مناسب، وإن لم تنطبق قاعدة يُستخدم النص الثابت
+  - `LEARNED` (منذ 1.9.0، وكان `SMART`): أقرب رد سابق كتبه المستخدم لمثل الرسالة (`ReplyEngine.best`)، وإن لم يجد بثقة كافية يُستخدم النص الثابت؛ لا يرد على غير الجهات الشخصية
   - الشروط: جهات الاتصال فقط، نافذة زمنية (افتراضياً 22:00–07:00)، ومهلة بين الردود لكل مرسل (15 دقيقة إلى 24 ساعة، الافتراضي 60 دقيقة)
   - الحماية: لا يرد على المرسلين الأبجديين ولا على الأرقام القصيرة (أقل من 7 أرقام)، ولا على المحظورين أو السبام
 - **كتم المحادثة** (بدون إشعار)
@@ -181,7 +181,7 @@ Barq/
 ├── gradle.properties                  # APP_ID, VERSION_NAME, VERSION_CODE
 ├── app/build.gradle.kts               # التوقيع من الأسرار، R8، Compose
 ├── app/proguard-rules.pro
-├── docs/  (PUBLISHING.md, PROJECT_CONTEXT.md, PHASE3_PLAN.md, cover.jpg, icon.svg/png, FONT_LICENSE_OFL.txt, readme/ = أصول README بصيغة SVG)
+├── docs/  (PUBLISHING.md, PROJECT_CONTEXT.md, PHASE3_PLAN.md, icon.svg/png, FONT_LICENSE_OFL.txt, readme/ = أصول README بصيغة SVG)
 ├── README.md · LICENSE · NOTICE.md
 └── app/src/
     ├── main/AndroidManifest.xml
@@ -248,7 +248,7 @@ Barq/
 | `blocked_numbers` / `blocked_keywords` | number / keyword |
 | `category_rules` | sender (unique) ← category |
 | `templates` | text، position |
-| `auto_reply_rules` | keywords، reply، enabled |
+| `reply_memory` (منذ 1.9.0، حلّ محل `auto_reply_rules`) | incoming (كلمات الرسالة)، reply، uses، lastUsed |
 | `auto_reply_log` | address ← lastAt (مهلة الرد) |
 
 - **قيم `box`** (مطابقة لـ Telephony): `INBOX=1`, `SENT=2`, `OUTBOX=4`, `FAILED=5`, `QUEUED=6`
@@ -548,7 +548,7 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 ### ملاحظات
 - لا تغيير في قاعدة البيانات (ما زالت الإصدار 3).
 - `VERSION_NAME = 1.4.0`.
-- الصور في README معاينات؛ إن أرسل المالك لقطات حقيقية تُستبدل بها `docs/readme/screen-inbox.png` و`screen-chat.png` و`screen-groups.png`.
+- صور README كلها SVG تُولَّد بـ`tools/readme-assets.py` (يحتاج fonttools + brotli): hero، الشرائح، بطاقات الميزات، ثلاث معاينات للشاشات، وأيقونات `ic-*.svg`. الشاشات معاينات مرسومة لا لقطات حقيقية.
 
 
 ---
@@ -669,7 +669,38 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 | التثبيت | `PackageInstaller` (MODE_FULL_INSTALL، مصدر STORE على 33+) ومستقبل يفتح شاشة التأكيد؛ إذن «تثبيت التطبيقات» عبر `ACTION_MANAGE_UNKNOWN_APP_SOURCES` | `UpdateManager.install`، `UpdateInstallReceiver.kt` |
 | التنظيف | `UpdateManager.restore()` عند بدء البرنامج (ويشمل بعد MY_PACKAGE_REPLACED): يحذف كل APK بنسخة ≤ المثبتة، ويُظهر الجاهز غير المثبّت | `BarqApp.kt` |
 | الواجهة | ورقة المميزات + زر تنزيل، دائرة نسبة أعلى الشاشة، إشعارات التنزيل/الجاهز/الفشل | `ui/update/UpdateUi.kt`، `UpdateNotifications.kt` |
+| السرعة التلقائية | `sendDelayMs = -1` يعني تلقائي: `AutoSpeed` يرفع نافذة الإرسال تدريجياً حتى «سريع» (3 / 100ms) فقط، ويخفّض عند التعثر (`onStall`). كشف رفع الحد: `SendLimit.RAISED_PER_MINUTE = 600` | `sms/AutoSpeed.kt`، `SendDrainer.kt`، `SendLimit.kt` |
+| التصنيف | قناع أرقام الهواتف قبل البحث عن مرشّح OTP؛ OTP فقط لمرسل غير قابل للرد أو مع عبارة قوية (`strongOtpCue`) | `domain/OtpDetector.kt`، `Classifier.kt` |
+| XML | تصدير/استيراد بصيغة SMS Backup & Restore (`text/xml`)، و`readAny` يميّز JSON/XML | `data/backup/SmsXml.kt`، `BackupManager.kt` |
+| المكتبات | رُقّيت: room 2.8.5، paging 3.5.3، work 2.12.0، datastore 1.3.0، glance 1.2.0، coroutines 1.10.2، serialization 1.10.0، robolectric 4.17، fragment 1.9.1. الأحدث (Compose 1.12، core 1.19، lifecycle 2.11، navigation 2.10، androidx.hilt 1.4، Hilt 2.60، Kotlin 2.4) يحتاج AGP 9 وcompileSdk 37 ← مهمة مستقلة. serialization 1.13 وcoroutines 1.11 تحتاجان Kotlin 2.4 | `gradle/libs.versions.toml` |
 | CI | الخطوة تنشر `version.json` (version, code, apk, notes) مع كل إصدار | `.github/workflows/build.yml` |
+
+## 20. الإصدار 1.8.0: واجهة One UI، شعار جديد، 10 لغات
+
+| الجزء | التفصيل | الملفات |
+|---|---|---|
+| الواجهة | خلفية رمادية فاتحة (0xFFEFEFF6) وجزر بيضاء بزوايا 28dp (`islandColor`، `islandShape`)، `LargeTopAppBar` يتقلّص عند التمرير، شريط تنقّل كبسولة سفلي (`PillNav`)، صورة المحادثة تنتقل بين الوارد والمحادثة (`SharedTransitionLayout` في MainActivity و`sharedAvatar`). تبقى بقية الشاشات بالأسلوب القديم (1.8.x) | `ui/theme/Theme.kt`، `ui/components/*`، `ui/inbox/InboxScreen.kt`، `ui/thread/ThreadScreen.kt` |
+| شريط التنقّل | `PillNav` يُرسم في `BarqNavHost` (لا في الشاشات) فوق الشاشات الأربع فقط؛ `goTab` يفتح التبويب بـ`popUpTo(INBOX)` ويعيد الوارد بـ`popBackStack`؛ الضغط على التبويب المفتوح يرسل `LocalTabReselect` فيعود الوارد للأعلى؛ الانتقال بين تبويبين تلاشٍ لا انزلاق؛ كل تبويب يحجز `LocalBottomBarInset` (88dp) حتى لا يغطي الشريط المحتوى أو زر الرسالة الجديدة؛ يُخفى في المحادثة وبقية الشاشات الفرعية. المفتاح `AppSettings.pillNav` (افتراضي مفعّل) في إعدادات ← المظهر؛ عند إيقافه تبقى القائمة المنسدلة في الوارد للوصول | `ui/BarqNavHost.kt`، `ui/components/PillNav.kt`، `SettingsRepository.kt` |
+| الأيقونات | عائلة `BIcons` مرسومة يدوياً (24dp، خط 1.8)، تُحلَّل من مسارات SVG | `ui/icons/BIcons.kt` |
+| الشعار | «فقاعة مشقوقة ببرق»: أيقونة التطبيق (أمامية + أحادية) و`logo_mark` والأصول في docs/branding | `res/drawable/ic_launcher_*.xml`، `docs/icon.svg` |
+| اللغات | العربية (الافتراضية) + en, zh, hi, es, fr, bn, pt, ru, ur (الأكثر انتشاراً حسب Ethnologue). كل `values-xx` يحوي كل المفاتيح: الشاشات الأساسية (290 مفتاحاً) مترجمة، والباقي إنجليزي. الترجمة من إعداد Claude ولم يراجعها ناطقون أصليون | `res/values-xx/strings.xml`، `bools.xml` |
+| الاتجاه | `barq_rtl` يحدّد اتجاه الواجهة (true للعربية والأردية فقط)، و`barq_arabic` يحدّد لغة نص رسالة التفاعل المرسلة (عربي فقط للعربية) | `res/values*/bools.xml`، `Theme.kt`، `ReactionRepository.kt` |
+| التبديل | أندرويد 13+: `LocaleManager` (يظهر أيضاً في إعدادات النظام عبر `locales_config.xml`)؛ أقدم: تفضيل `barq_locale` + `attachBaseContext` في التطبيق والنشاط + `recreate()`. صف «اللغة» أول مجموعة المظهر بأعلام SVG مرسومة يدوياً | `util/LocaleHelper.kt`، `ui/settings/LanguageDialog.kt`، `drawable/ic_flag_*.xml` |
+| الاختبار | `LocalizationTest`: تطابق المفاتيح والـplaceholders، هروب `'` و`&`، أعلام الاتجاه، وجود العلم وإعلان اللغة | `app/src/test/.../LocalizationTest.kt` |
+
+## 21. الإصدار 1.9.0: ردود تتعلّم أسلوب المستخدم محلياً
+
+| الجزء | التفصيل | الملفات |
+|---|---|---|
+| المحرك | بلا نموذج ولا شبكة: استرجاع من ردود المستخدم السابقة. التشابه = cosine موزون بـIDF على الكلمات المطبّعة (70%) + تداخل trigram الحروف (30%)؛ درجة الرد × (0.8+0.2·تكرار) × (0.85+0.15·حداثة). `AUTO_MIN=0.55` للإرسال التلقائي، `SUGGEST_MIN=0.30` للشرائح؛ الشرائح تُكمَّل بأكثر ردود قصيرة استخداماً (≥3 مرات) | `domain/ReplyBrain.kt` |
+| التعلّم | `ReplyPairing.Walker` يربط كل رد يدوي (ليس autoReply) بآخر رسالة واردة مؤهلة قبله خلال 12 ساعة، أول رد فقط. يُتعلَّم عند كل إرسال (`SendEngine.sendToThread` ← `ReplyEngine.onUserSent`) ومن كل التاريخ عند الطلب/أول تشغيل (`rebuild`، صفحات 2000 بمؤشر threadId/date/id). حد 4000 سجل (الأقل استخداماً يُحذف) | `domain/ReplyEngine.kt`، `Daos.kt` (`learnRows`, `lastTurns`) |
+| الأمان | ردّ آمن: 2–160 حرفاً، بلا أرقام ولا روابط ولا `@` ولا كلمة من اسم جهة المحادثة؛ محادثات الفرد الواحد وجهات PERSONAL قابلة للرد فقط | `ReplyText.isSafeReply`، `ReplyEngine` |
+| الواجهة | شاشة الرد التلقائي: مفتاح التعلّم (`learnReplies`)، جرّب المحرك، إعادة التعلّم، مسح. المحادثة: `ThreadViewModel.suggestions` ← شرائح فوق خانة الكتابة عندما تكون آخر رسالة واردة وخانة الكتابة فارغة | `ToolsScreens.kt`، `ThreadScreen.kt` |
+| النية (1.9.1) | `ReplyIntents`: عبارات مطبّعة بنفس خط `ReplyText.key` (URGENT، SALAM، HOWARE، GREETING، THANKS، GOODNIGHT، WHERE، WHEN، QUESTION بهذا الترتيب). نصان بنفس النية المحدَّدة (بلا QUESTION) تشابههما ≥ 0.60 فتنطبق عادة المستخدم على الصياغات الأخرى، ويُرسل تلقائياً إذا تكرر الرد ≥ 3 مرات. عند غياب العادة: جواب جاهز بلغة الرسالة (عربي/إنجليزي فقط) | `domain/ReplyBrain.kt`، `AutoReplyEngine.pickReply` |
+| الصياغة (1.9.2) | `ReplyIntents.reply`: يجيب عن كل نية اجتماعية في الرسالة (حتى اثنتين) بجملة تناسبها ويعكس الدعاء، وسطر «مشغول» فقط للمستعجل والأسئلة؛ يضيف «يا <لقب>» إن كانت عادة المستخدم (`ReplyIndex.addressTerm`). الاسترجاع محروس بقائمة «الكلمات العامة» فلا يخرج رد خارج الموضوع، و`best` صارم. قاعدي بلا نموذج لغوي | `domain/ReplyBrain.kt`، `ReplyEngine.suggest/fallback` |
+| الفهم والنبرة (2.0.0) | `domain/ReplyIntents.kt`: 32 نية، ثلاث نبرات (`ReplyTone`، الافتراضية FORMAL)، صياغات متعددة تُختار بـ`seed`، مطابقة لهجة المرسل، الأخبار الثقيلة تُجاب وحدها، ما يحتاج قرار المستخدم يُجاب بـ«وصلتني». `ReplyEngine.answer` يقرأ سياق المحادثة ويرجع Send/Silent/Unknown (Silent للإقرارات وللتحية المكررة ولجواب سؤال المستخدم) | `ReplyIntents.kt`، `ReplyEngine.kt`، `AutoReplyEngine.pickReply` |
+| المهلة (1.9.1) | `autoReplyCooldownMin = 0` = فوري على كل رسالة؛ خيارات 0، 5، 15، 30، 60، 180، 720، 1440؛ حارس `burstLimited` يمنع أكثر من 4 ردود/10 دقائق لنفس الشخص مهما كانت المهلة | `AutoReplyEngine.kt`، `ToolsScreens.kt` |
+| قاعدة البيانات | v5: `reply_memory` + حذف `auto_reply_rules` (`Migration4To5`)؛ النسخ الاحتياطي لم يعد يكتب القواعد ويتجاهل مفتاحها في الملفات القديمة؛ `SMART` المخزّن يُقرأ `LEARNED` (`autoReplyModeOf`) | `BarqDatabase.kt`، `SettingsRepository.kt`، `BackupManager.kt` |
 
 ---
 © 2026 ساجد العبادلة — جميع الحقوق محفوظة. صُنع بكل حب من فلسطين — غزة.

@@ -61,6 +61,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
+import androidx.compose.ui.graphics.luminance
 import dev.saged.barq.R
 import dev.saged.barq.data.db.Attachment
 import dev.saged.barq.data.db.Box as MsgBox
@@ -109,24 +110,30 @@ fun MessageBubble(
     onLongPress: () -> Unit,
     onResend: () -> Unit,
     onCancelScheduled: () -> Unit,
+    joinsOlder: Boolean = false,
+    joinsNewer: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
+    // Dark theme: a bright bubble glares at night, so my messages use the deeper container tone.
+    val dark = scheme.background.luminance() < 0.5f
     val incoming = message.isIncoming
     val scheduled = message.box == MsgBox.QUEUED && message.scheduledAt > System.currentTimeMillis()
     val container = when {
         incoming -> scheme.surfaceContainerHigh
         scheduled -> scheme.surface
         message.box == MsgBox.FAILED -> scheme.errorContainer
-        else -> scheme.primary
+        else -> if (dark) scheme.primaryContainer else scheme.primary
     }
     val content = when {
         incoming || scheduled -> scheme.onSurface
         message.box == MsgBox.FAILED -> scheme.onErrorContainer
-        else -> scheme.onPrimary
+        else -> if (dark) scheme.onPrimaryContainer else scheme.onPrimary
     }
     // RTL: start = right side. Incoming on the start side, mine on the end side.
-    val shape = if (incoming) RoundedCornerShape(20.dp, 20.dp, 20.dp, 6.dp)
-    else RoundedCornerShape(20.dp, 20.dp, 6.dp, 20.dp)
+    // Messages sent in a row read as one block: tight spacing and a squared corner where they meet.
+    val joint = if (joinsOlder) 6.dp else 20.dp
+    val shape = if (incoming) RoundedCornerShape(joint, 20.dp, 20.dp, 6.dp)
+    else RoundedCornerShape(20.dp, joint, 6.dp, 20.dp)
     val failed = message.box == MsgBox.FAILED
     // A message opened from search flashes briefly.
     val flash by animateColorAsState(
@@ -138,7 +145,10 @@ fun MessageBubble(
         modifier = Modifier
             .fillMaxWidth()
             .background(flash)
-            .padding(horizontal = 12.dp, vertical = 3.dp),
+            .padding(
+                start = 12.dp, end = 12.dp,
+                top = if (joinsOlder) 1.dp else 5.dp, bottom = if (joinsNewer) 1.dp else 5.dp,
+            ),
         horizontalAlignment = if (incoming) Alignment.Start else Alignment.End,
     ) {
       Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -432,3 +442,8 @@ private fun FailedFooter(message: MessageEntity, onResend: () -> Unit) {
         }
     }
 }
+
+/** Two neighbouring messages from the same side, minutes apart on the same day, are shown as one block. */
+fun MessageEntity.joins(other: MessageEntity?): Boolean =
+    other != null && other.isIncoming == isIncoming && other.reactionTo == 0L && reactionTo == 0L &&
+        kotlin.math.abs(other.date - date) < 3 * 60_000L && TimeFormat.isSameDay(other.date, date)

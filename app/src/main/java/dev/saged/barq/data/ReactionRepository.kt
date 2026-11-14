@@ -36,7 +36,7 @@ class ReactionRepository @Inject constructor(
         if (newValue != null && settings.current().reactionsAsSms) {
             val conv = conversations.get(msg.threadId) ?: return@withContext
             if (PhoneUtils.splitAddresses(conv.addresses).all { PhoneUtils.isPhoneNumber(it) }) {
-                val arabic = context.resources.getBoolean(R.bool.barq_rtl)
+                val arabic = context.resources.getBoolean(R.bool.barq_arabic)
                 engine.get().sendReaction(msg.threadId, ReactionText.outgoing(newValue, msg.body, arabic), msg.id)
             }
         }

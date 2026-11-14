@@ -75,6 +75,9 @@ interface ConversationDao {
     @Query("SELECT * FROM conversations WHERE threadId = :threadId")
     suspend fun get(threadId: Long): ConversationEntity?
 
+    @Query("SELECT threadId, displayName, addresses FROM conversations")
+    suspend fun names(): List<ThreadNames>
+
     @Query("SELECT * FROM conversations WHERE threadId = :threadId")
     fun observe(threadId: Long): Flow<ConversationEntity?>
 
@@ -160,6 +163,31 @@ interface MessageDao {
 
     @Query("SELECT * FROM messages WHERE threadId = :threadId AND box = 1 ORDER BY date DESC LIMIT 1")
     suspend fun latestIncoming(threadId: Long): MessageEntity?
+
+    /** The message the conversation ends with, kept up to date (drives the reply suggestions). */
+    @Query(
+        """SELECT * FROM messages WHERE threadId = :threadId AND NOT (box = 6 AND scheduledAt > 0)
+           AND reactionTo = 0
+           ORDER BY date DESC, id DESC LIMIT 1"""
+    )
+    fun observeLatestVisible(threadId: Long): Flow<MessageEntity?>
+
+    /** The two newest messages (newest first): the one just sent and what it answers. */
+    @Query(
+        """SELECT * FROM messages WHERE threadId = :threadId AND NOT (box = 6 AND scheduledAt > 0)
+           AND reactionTo = 0
+           ORDER BY date DESC, id DESC LIMIT 2"""
+    )
+    suspend fun lastTurns(threadId: Long): List<MessageEntity>
+
+    /** Plain texts of every conversation in time order, one page after the given position. */
+    @Query(
+        """SELECT id, threadId, box, body, date, autoReply, category, address FROM messages
+           WHERE box IN (1, 2) AND isMms = 0 AND reactionTo = 0
+           AND (threadId > :t OR (threadId = :t AND (date > :d OR (date = :d AND id > :i))))
+           ORDER BY threadId ASC, date ASC, id ASC LIMIT :limit"""
+    )
+    suspend fun learnRows(t: Long, d: Long, i: Long, limit: Int): List<LearnRow>
 
     /** Position of a message in [thread] (newest first) — used to jump to a search result. */
     @Query(
@@ -406,6 +434,9 @@ interface MessageDao {
     @Query("SELECT * FROM messages WHERE isMms = 0 ORDER BY id ASC LIMIT :limit OFFSET :offset")
     suspend fun page(limit: Int, offset: Int): List<MessageEntity>
 
+    @Query("SELECT COUNT(*) FROM messages WHERE isMms = 0 AND box != 6")
+    suspend fun countExportable(): Int
+
     @Query("SELECT COUNT(*) FROM messages WHERE address = :address AND date = :date AND body = :body")
     suspend fun countSame(address: String, date: Long, body: String): Int
 
@@ -418,6 +449,31 @@ data class ThreadHit(val id: Long, val date: Long)
 data class StatRow(val date: Long, val box: Int, val subId: Int, val body: String)
 
 data class TopThread(val threadId: Long, val name: String, val addresses: String, val count: Int)
+
+@Dao
+interface TrashDao {
+    @Insert
+    suspend fun insertAll(rows: List<TrashedMessageEntity>)
+
+    @Query(
+        """SELECT t.*, c.displayName AS displayName
+           FROM trashed_messages t LEFT JOIN conversations c ON c.threadId = t.threadId
+           ORDER BY t.deletedAt DESC, t.id DESC"""
+    )
+    fun observe(): Flow<List<TrashedMessage>>
+
+    @Query("SELECT * FROM trashed_messages WHERE id IN (:ids)")
+    suspend fun get(ids: List<Long>): List<TrashedMessageEntity>
+
+    @Query("SELECT id FROM trashed_messages")
+    suspend fun allIds(): List<Long>
+
+    @Query("SELECT id FROM trashed_messages WHERE deletedAt < :before")
+    suspend fun idsBefore(before: Long): List<Long>
+
+    @Query("DELETE FROM trashed_messages WHERE id IN (:ids)")
+    suspend fun delete(ids: List<Long>)
+}
 
 @Dao
 interface GroupDao {
@@ -521,27 +577,37 @@ interface TemplateDao {
 
 @Dao
 interface AutoReplyDao {
-    @Query("SELECT * FROM auto_reply_rules ORDER BY id ASC")
-    fun observeRules(): Flow<List<AutoReplyRuleEntity>>
-
-    @Query("SELECT * FROM auto_reply_rules WHERE enabled = 1 ORDER BY id ASC")
-    suspend fun enabledRules(): List<AutoReplyRuleEntity>
-
-    @Query("SELECT * FROM auto_reply_rules")
-    suspend fun allRules(): List<AutoReplyRuleEntity>
-
-    @Upsert
-    suspend fun upsertRule(rule: AutoReplyRuleEntity)
-
-    @Query("DELETE FROM auto_reply_rules WHERE id = :id")
-    suspend fun deleteRule(id: Long)
-
-    @Query("SELECT COUNT(*) FROM auto_reply_rules")
-    suspend fun ruleCount(): Int
-
     @Query("SELECT * FROM auto_reply_log WHERE address = :address")
     suspend fun lastReply(address: String): AutoReplyLogEntity?
 
     @Upsert
     suspend fun logReply(log: AutoReplyLogEntity)
+}
+
+@Dao
+interface ReplyDao {
+    @Query("SELECT * FROM reply_memory")
+    suspend fun all(): List<ReplyMemoryEntity>
+
+    @Query("SELECT COUNT(*) FROM reply_memory")
+    fun observeCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM reply_memory")
+    suspend fun count(): Int
+
+    @Query("UPDATE reply_memory SET uses = uses + 1, lastUsed = MAX(lastUsed, :at) WHERE incoming = :incoming AND reply = :reply")
+    suspend fun bump(incoming: String, reply: String, at: Long): Int
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insert(entry: ReplyMemoryEntity): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(entries: List<ReplyMemoryEntity>)
+
+    @Query("DELETE FROM reply_memory")
+    suspend fun clear()
+
+    /** Forgets the [n] least used, oldest entries. */
+    @Query("DELETE FROM reply_memory WHERE id IN (SELECT id FROM reply_memory ORDER BY uses ASC, lastUsed ASC LIMIT :n)")
+    suspend fun prune(n: Int)
 }

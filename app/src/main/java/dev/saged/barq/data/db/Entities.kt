@@ -126,6 +126,35 @@ data class MessageEntity(
     @ColumnInfo(defaultValue = "0") val starred: Boolean = false,
 )
 
+/**
+ * A single message the user deleted, kept in the recycle bin until restored or purged.
+ * It no longer exists in `messages` nor in the system's SMS store.
+ */
+@Entity(tableName = "trashed_messages", indices = [Index(value = ["deletedAt"])])
+data class TrashedMessageEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val threadId: Long,
+    val address: String,
+    val body: String,
+    val date: Long,
+    val dateSent: Long,
+    val box: Int,
+    val subId: Int,
+    val category: Category,
+    val isMms: Boolean,
+    val attachments: List<Attachment>,
+    val subject: String?,
+    val otp: String?,
+    val starred: Boolean,
+    val deletedAt: Long,
+)
+
+/** A binned message with the name of its conversation (null once the conversation is gone). */
+data class TrashedMessage(
+    @androidx.room.Embedded val message: TrashedMessageEntity,
+    val displayName: String?,
+)
+
 /** A starred message with the name of its conversation. */
 data class StarredMessage(
     @androidx.room.Embedded val message: MessageEntity,
@@ -161,15 +190,33 @@ data class TemplateEntity(
     val position: Int = 0,
 )
 
-/** Smart auto-reply: when an incoming text contains any keyword, answer with [reply]. */
-@Entity(tableName = "auto_reply_rules")
-data class AutoReplyRuleEntity(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    /** Keywords separated by | or comma. */
-    val keywords: String,
-    val reply: String,
-    val enabled: Boolean = true,
+/** A reply the user wrote to an incoming text: the engine's memory (words only, never the full text). */
+@Entity(
+    tableName = "reply_memory",
+    indices = [Index(value = ["incoming", "reply"], unique = true), Index(value = ["lastUsed"])],
 )
+data class ReplyMemoryEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    /** The incoming text reduced to its words (see ReplyText.key). */
+    val incoming: String,
+    val reply: String,
+    val uses: Int,
+    val lastUsed: Long,
+)
+
+/** What the learner reads from the history. */
+data class LearnRow(
+    val id: Long,
+    val threadId: Long,
+    val box: Int,
+    val body: String,
+    val date: Long,
+    val autoReply: Boolean,
+    val category: Category,
+    val address: String,
+)
+
+data class ThreadNames(val threadId: Long, val displayName: String, val addresses: String)
 
 /** Remembers when we last auto-replied to a sender, to avoid reply loops and costs. */
 /** Unread totals for the inbox's "Unread" view. */

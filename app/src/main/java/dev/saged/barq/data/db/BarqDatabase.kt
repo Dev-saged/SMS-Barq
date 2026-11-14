@@ -34,12 +34,13 @@ class Converters {
         BlockedKeywordEntity::class,
         CategoryRuleEntity::class,
         TemplateEntity::class,
-        AutoReplyRuleEntity::class,
+        ReplyMemoryEntity::class,
+        TrashedMessageEntity::class,
         AutoReplyLogEntity::class,
         SendGroupEntity::class,
         SendGroupMemberEntity::class,
     ],
-    version = 4,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -50,10 +51,12 @@ abstract class BarqDatabase : RoomDatabase() {
     abstract fun rules(): RuleDao
     abstract fun templates(): TemplateDao
     abstract fun autoReply(): AutoReplyDao
+    abstract fun replies(): ReplyDao
     abstract fun groups(): GroupDao
+    abstract fun trash(): TrashDao
 
     companion object {
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3, Migration3To4)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
     }
 }
 
@@ -144,5 +147,36 @@ object Migration3To4 : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {
         db.execSQL("ALTER TABLE `messages` ADD COLUMN `starred` INTEGER NOT NULL DEFAULT 0")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_messages_starred_date` ON `messages` (`starred`, `date`)")
+    }
+}
+
+/**
+ * Version 4 → 5 (Barq 1.9.0): the reply engine's memory replaces the smart-reply rules.
+ *  - reply_memory     : replies the user wrote, keyed by the words of the text they answered
+ *  - auto_reply_rules : dropped (keyword rules are replaced by the learned replies)
+ */
+object Migration4To5 : Migration(4, 5) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("DROP TABLE IF EXISTS `auto_reply_rules`")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `reply_memory` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`incoming` TEXT NOT NULL, `reply` TEXT NOT NULL, `uses` INTEGER NOT NULL, `lastUsed` INTEGER NOT NULL)"
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_reply_memory_incoming_reply` ON `reply_memory` (`incoming`, `reply`)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_reply_memory_lastUsed` ON `reply_memory` (`lastUsed`)")
+    }
+}
+
+/** Version 5 → 6 (Barq 1.9.3): single deleted messages go to the recycle bin instead of vanishing. */
+object Migration5To6 : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `trashed_messages` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`threadId` INTEGER NOT NULL, `address` TEXT NOT NULL, `body` TEXT NOT NULL, `date` INTEGER NOT NULL, " +
+                "`dateSent` INTEGER NOT NULL, `box` INTEGER NOT NULL, `subId` INTEGER NOT NULL, `category` TEXT NOT NULL, " +
+                "`isMms` INTEGER NOT NULL, `attachments` TEXT NOT NULL, `subject` TEXT, `otp` TEXT, " +
+                "`starred` INTEGER NOT NULL, `deletedAt` INTEGER NOT NULL)"
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS `index_trashed_messages_deletedAt` ON `trashed_messages` (`deletedAt`)")
     }
 }

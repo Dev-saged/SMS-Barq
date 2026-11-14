@@ -15,6 +15,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import dev.saged.barq.ui.theme.islandColor
+import dev.saged.barq.ui.theme.islandShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -161,9 +164,13 @@ fun BatchScreen(onBack: () -> Unit, openThread: (Long) -> Unit, vm: BatchViewMod
                 )
             }
             LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
-                items(shown, key = { it.id }) { row ->
-                    BatchRowItem(row, settings, onClick = { openThread(row.threadId) }, onResend = { vm.resendOne(row.id) })
-                    HorizontalDivider(Modifier.padding(start = 64.dp), color = scheme.outlineVariant.copy(alpha = 0.5f))
+                itemsIndexed(shown, key = { _, it -> it.id }) { i, row ->
+                    Column(Modifier.padding(horizontal = 12.dp).clip(islandShape(i, shown.size)).background(islandColor())) {
+                        BatchRowItem(row, settings, onClick = { openThread(row.threadId) }, onResend = { vm.resendOne(row.id) })
+                        if (i < shown.size - 1) {
+                            HorizontalDivider(Modifier.padding(start = 64.dp), color = scheme.outlineVariant.copy(alpha = 0.5f))
+                        }
+                    }
                 }
             }
         }

@@ -32,6 +32,11 @@ import java.io.File
 @SQLiteMode(SQLiteMode.Mode.NATIVE)
 class MigrationTest {
 
+    /** Tables a later version dropped on purpose (1.9.0: smart-reply rules became the reply memory). */
+    private companion object {
+        val REMOVED_TABLES = setOf("auto_reply_rules")
+    }
+
     private val schemas = File("schemas/${BarqDatabase::class.java.name}")
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -46,6 +51,71 @@ class MigrationTest {
         val versions = savedVersions()
         assumeTrue("No saved schema yet (made by the build)", versions.isNotEmpty())
         versions.forEach { version -> upgradeFrom(version) }
+    }
+
+    /** Works without saved schema files: a current database is turned back into version 4 first. */
+    @Test
+    fun smartRulesBecomeTheReplyMemory() {
+        val context = RuntimeEnvironment.getApplication()
+        val name = "migration-4-to-5.db"
+        context.deleteDatabase(name)
+        val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
+        Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
+            .allowMainThreadQueries().build().apply { openHelper.writableDatabase; close() }
+        SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
+            db.execSQL("DROP TABLE `reply_memory`")
+            db.execSQL(
+                "CREATE TABLE `auto_reply_rules` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                    "`keywords` TEXT NOT NULL, `reply` TEXT NOT NULL, `enabled` INTEGER NOT NULL)",
+            )
+            db.execSQL("INSERT INTO `auto_reply_rules` (`keywords`, `reply`, `enabled`) VALUES ('hi', 'hello', 1)")
+            db.version = 4
+        }
+        val room = Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
+            .addMigrations(*BarqDatabase.ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val db = room.openHelper.writableDatabase
+            db.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'auto_reply_rules'").use {
+                assertEquals(0, it.count)
+            }
+            db.query("SELECT COUNT(*) FROM `reply_memory`").use { c ->
+                c.moveToFirst()
+                assertEquals(0L, c.getLong(0))
+            }
+        } finally {
+            room.close()
+            context.deleteDatabase(name)
+        }
+    }
+
+    /** Version 5 had no bin for single messages: the table appears and Room accepts its shape. */
+    @Test
+    fun deletedMessagesGetABin() {
+        val context = RuntimeEnvironment.getApplication()
+        val name = "migration-5-to-6.db"
+        context.deleteDatabase(name)
+        val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
+        Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
+            .allowMainThreadQueries().build().apply { openHelper.writableDatabase; close() }
+        SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
+            db.execSQL("DROP TABLE `trashed_messages`")
+            db.version = 5
+        }
+        val room = Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
+            .addMigrations(*BarqDatabase.ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            room.openHelper.writableDatabase.query("SELECT COUNT(*) FROM `trashed_messages`").use { c ->
+                c.moveToFirst()
+                assertEquals(0L, c.getLong(0))
+            }
+        } finally {
+            room.close()
+            context.deleteDatabase(name)
+        }
     }
 
     private fun upgradeFrom(version: Int) {
@@ -81,7 +151,7 @@ class MigrationTest {
             .build()
         try {
             val db = room.openHelper.writableDatabase
-            rowsBefore.forEach { (table, before) ->
+            rowsBefore.filterKeys { it !in REMOVED_TABLES }.forEach { (table, before) ->
                 db.query("SELECT COUNT(*) FROM `$table`").use { c ->
                     c.moveToFirst()
                     assertEquals("Rows lost in $table when upgrading from version $version", before, c.getLong(0))

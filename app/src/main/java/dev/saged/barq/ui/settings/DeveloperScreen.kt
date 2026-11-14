@@ -122,6 +122,7 @@ fun DeveloperScreen(onBack: () -> Unit, open: (String) -> Unit, vm: DeveloperVie
     }
 
     val speedLabels = listOf(
+        -1L to stringResource(R.string.speed_auto),
         0L to stringResource(R.string.speed_max),
         100L to stringResource(R.string.speed_fast),
         250L to stringResource(R.string.speed_balanced),

@@ -31,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,10 +67,12 @@ fun ConversationRow(
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
     onAvatarClick: (() -> Unit)? = null,
+    container: Color = MaterialTheme.colorScheme.background,
+    divider: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
     val unread = conversation.unreadCount > 0
-    val bg by animateColorAsState(if (selected) scheme.secondaryContainer else scheme.background, label = "rowBg")
+    val bg by animateColorAsState(if (selected) scheme.secondaryContainer else container, label = "rowBg")
     val yesterday = stringResource(R.string.yesterday)
     val draft = conversation.draft
     val failed = conversation.lastBox == MsgBox.FAILED
@@ -94,6 +97,7 @@ fun ConversationRow(
                     category = conversation.category,
                     size = AvatarSize,
                     onClick = onAvatarClick,
+                    modifier = Modifier.sharedAvatar(conversation.threadId),
                 )
                 if (selected) {
                     Icon(
@@ -102,7 +106,7 @@ fun ConversationRow(
                             .align(Alignment.BottomEnd)
                             .size(20.dp)
                             .clip(CircleShape)
-                            .background(scheme.background),
+                            .background(container),
                     )
                 }
             }
@@ -184,11 +188,13 @@ fun ConversationRow(
                 }
             }
         }
-        HorizontalDivider(
-            modifier = Modifier.padding(start = RowPadding + AvatarSize + AvatarGap),
-            thickness = 0.6.dp,
-            color = scheme.outlineVariant.copy(alpha = 0.55f),
-        )
+        if (divider) {
+            HorizontalDivider(
+                modifier = Modifier.padding(start = RowPadding + AvatarSize + AvatarGap),
+                thickness = 0.6.dp,
+                color = scheme.outlineVariant.copy(alpha = 0.55f),
+            )
+        }
     }
 }
 

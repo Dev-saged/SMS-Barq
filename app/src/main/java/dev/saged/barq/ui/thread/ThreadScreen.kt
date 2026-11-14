@@ -70,6 +70,9 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
+import dev.saged.barq.ui.components.sharedAvatar
+import dev.saged.barq.ui.icons.BIcons
+import dev.saged.barq.ui.theme.islandColor
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -117,6 +120,7 @@ fun ThreadScreen(
     val conversation by vm.conversation.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val templates by vm.templates.collectAsStateWithLifecycle()
+    val suggestions by vm.suggestions.collectAsStateWithLifecycle()
     val text by vm.text.collectAsStateWithLifecycle()
     val count by vm.count.collectAsStateWithLifecycle()
     val subId by vm.subId.collectAsStateWithLifecycle()
@@ -206,7 +210,10 @@ fun ThreadScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         if (conv != null) {
-                            Avatar(conv.displayName, conv.addresses, conv.threadId, conv.category, size = 40.dp)
+                            Avatar(
+                                conv.displayName, conv.addresses, conv.threadId, conv.category, size = 40.dp,
+                                modifier = Modifier.sharedAvatar(conv.threadId),
+                            )
                         }
                         Column {
                             Text(
@@ -292,6 +299,8 @@ fun ThreadScreen(
                     count = count,
                     showCounter = settings.showCounter,
                     templates = templates.map { it.text },
+                    suggestions = suggestions,
+                    onSuggestion = vm::insertTemplate,
                     sims = sims,
                     subId = subId,
                     onText = vm::onTextChange,
@@ -331,6 +340,7 @@ fun ThreadScreen(
             ) { index ->
                 val m = pagingItems[index] ?: return@items
                 val older = if (index + 1 < pagingItems.itemCount) pagingItems.peek(index + 1) else null
+                val newer = if (index > 0) pagingItems.peek(index - 1) else null
                 Column {
                     if (older == null || !TimeFormat.isSameDay(older.date, m.date)) {
                         DayHeader(TimeFormat.dayHeader(m.date, settings, today, yesterday))
@@ -343,6 +353,8 @@ fun ThreadScreen(
                             onLongPress = { messageMenu = m },
                             onResend = { vm.resend(m.id) },
                             onCancelScheduled = { vm.cancelScheduled(m.id) },
+                            joinsOlder = m.joins(older),
+                            joinsNewer = m.joins(newer),
                         )
                         MessageMenu(
                             message = messageMenu?.takeIf { it.id == m.id },
@@ -523,6 +535,8 @@ fun Composer(
     subId: Int,
     onText: (String) -> Unit,
     onTemplate: (String) -> Unit,
+    suggestions: List<String> = emptyList(),
+    onSuggestion: (String) -> Unit = {},
     onPickSim: (Int) -> Unit,
     onSchedule: () -> Unit,
     onSend: () -> Unit,
@@ -538,6 +552,25 @@ fun Composer(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         dev.saged.barq.ui.components.SimSwitch(sims, subId, onPickSim)
+        if (text.isBlank() && suggestions.isNotEmpty()) {
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                suggestions.forEachIndexed { i, r ->
+                    AssistChip(
+                        onClick = { onSuggestion(r) },
+                        label = { Text(r, maxLines = 1) },
+                        leadingIcon = if (i == 0) {
+                            { Icon(BIcons.Sparkle, null, Modifier.size(16.dp), tint = scheme.primary) }
+                        } else null,
+                        shape = RoundedCornerShape(18.dp),
+                        colors = AssistChipDefaults.assistChipColors(containerColor = scheme.primaryContainer, labelColor = scheme.onPrimaryContainer),
+                        border = null,
+                    )
+                }
+            }
+        }
         if (templates.isNotEmpty()) {
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -551,7 +584,7 @@ fun Composer(
                             { Icon(Icons.Outlined.Bolt, null, Modifier.size(16.dp), tint = scheme.primary) }
                         } else null,
                         shape = RoundedCornerShape(10.dp),
-                        colors = AssistChipDefaults.assistChipColors(containerColor = scheme.background),
+                        colors = AssistChipDefaults.assistChipColors(containerColor = islandColor()),
                     )
                 }
             }
@@ -562,7 +595,7 @@ fun Composer(
                     .weight(1f)
                     .heightIn(min = 52.dp)
                     .clip(RoundedCornerShape(26.dp))
-                    .background(scheme.surfaceContainer)
+                    .background(islandColor())
                     .padding(start = 18.dp, end = 6.dp, top = 4.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

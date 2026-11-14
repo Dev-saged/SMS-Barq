@@ -29,6 +29,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,6 +60,7 @@ fun UpdateLayer(manager: UpdateManager) {
     val state by manager.state.collectAsStateWithLifecycle()
     val sheet by manager.sheet.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    LaunchedEffect(Unit) { manager.autoCheck() }
     Box(Modifier.fillMaxSize()) {
         if (!sheet) {
             UpdatePill(

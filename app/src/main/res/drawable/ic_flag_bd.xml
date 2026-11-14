@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flag of Bangladesh, drawn as a vector. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="30dp"
+    android:height="20dp"
+    android:viewportWidth="30"
+    android:viewportHeight="20">
+    <path android:fillColor="#006A4E" android:pathData="M0,0h30v20h-30z" />
+    <path android:fillColor="#F42A41" android:pathData="M7.5,10a6,6 0 1,0 12,0a6,6 0 1,0 -12,0z" />
+</vector>

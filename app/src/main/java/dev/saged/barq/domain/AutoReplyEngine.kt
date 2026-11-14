@@ -4,7 +4,7 @@ import dev.saged.barq.data.BlockList
 import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.db.AutoReplyDao
 import dev.saged.barq.data.db.AutoReplyLogEntity
-import dev.saged.barq.data.db.AutoReplyRuleEntity
+import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.MessageEntity
 import dev.saged.barq.data.db.isIncoming
 import dev.saged.barq.data.settings.AppSettings
@@ -18,10 +18,13 @@ import javax.inject.Singleton
 /**
  * "I'm busy" auto-reply. Off by default, switched on by the user when needed.
  *  - FIXED: same text to everyone.
- *  - SMART: reads the incoming text and picks the matching rule (greeting, question, urgent…),
- *           falling back to the fixed text.
- * Safety: never replies to service senders/short codes, and at most once per sender per cooldown,
- * so two phones can never get stuck replying to each other.
+ *  - LEARNED: answers the way the user usually answers such a text ([ReplyEngine], on this phone
+ *             only), falling back to the fixed text when no past reply fits well enough.
+ * In LEARNED mode the order is: the user's own habit, then the ready-made answer for what the text
+ * is about (greeting, "how are you", urgent, question…), then the fixed text.
+ * Safety: never replies to service senders/short codes, at most once per sender per cooldown
+ * (0 = every message) and never more than a few per sender in ten minutes, so two phones can
+ * never get stuck replying to each other.
  */
 @Singleton
 class AutoReplyEngine @Inject constructor(
@@ -30,7 +33,10 @@ class AutoReplyEngine @Inject constructor(
     private val contacts: ContactsRepository,
     private val blockList: BlockList,
     private val engine: dagger.Lazy<SendEngine>,
+    private val replies: ReplyEngine,
 ) {
+    private val recent = HashMap<String, ArrayDeque<Long>>()
+
     suspend fun maybeReply(message: MessageEntity) {
         val s = settings.current()
         if (!s.autoReplyEnabled || !message.isIncoming || message.autoReply) return
@@ -45,26 +51,32 @@ class AutoReplyEngine @Inject constructor(
         val now = System.currentTimeMillis()
         if (last != null && now - last.lastAt < s.autoReplyCooldownMin * 60_000L) return
 
-        val reply = pickReply(message.body, s) ?: return
+        val reply = pickReply(message, s) ?: return
+        if (burstLimited(key, now)) return
         dao.logReply(AutoReplyLogEntity(key, now))
         engine.get().sendAutoReply(address, reply, message.subId)
     }
 
-    suspend fun pickReply(incoming: String, s: AppSettings): String? {
-        if (s.autoReplyMode == AutoReplyMode.SMART) {
-            val text = PhoneUtils.normalizeDigits(incoming).lowercase()
-            matchRule(text, dao.enabledRules())?.let { return it.reply }
+    private suspend fun pickReply(message: MessageEntity, s: AppSettings): String? {
+        if (s.autoReplyMode == AutoReplyMode.LEARNED) {
+            if (message.category != Category.PERSONAL) return null
+            when (val answer = replies.answer(message.body, message.threadId)) {
+                is ReplyEngine.Answer.Send -> return answer.text
+                ReplyEngine.Answer.Silent -> return null
+                ReplyEngine.Answer.Unknown -> Unit
+            }
         }
         return s.autoReplyText.takeIf { it.isNotBlank() }
     }
 
-    private fun matchRule(text: String, rules: List<AutoReplyRuleEntity>): AutoReplyRuleEntity? =
-        rules.firstOrNull { rule ->
-            rule.keywords.split('|', ',', '،')
-                .map { it.trim().lowercase() }
-                .filter { it.isNotEmpty() }
-                .any { text.contains(it) }
-        }
+    /** Even with no wait between replies, at most [BURST_MAX] per person in [BURST_WINDOW_MS]: no endless ping-pong. */
+    private fun burstLimited(key: String, now: Long): Boolean = synchronized(recent) {
+        val times = recent.getOrPut(key) { ArrayDeque() }
+        while (times.isNotEmpty() && now - times.first() > BURST_WINDOW_MS) times.removeFirst()
+        if (times.size >= BURST_MAX) return true
+        times.addLast(now)
+        false
+    }
 
     private fun inWindow(s: AppSettings): Boolean {
         val c = Calendar.getInstance()
@@ -74,13 +86,8 @@ class AutoReplyEngine @Inject constructor(
         return if (from <= to) minute in from until to else minute >= from || minute < to
     }
 
-    companion object {
-        /** Seeded on first run so SMART mode is useful immediately. */
-        val defaultRules = listOf(
-            AutoReplyRuleEntity(keywords = "السلام عليكم|سلام عليكم", reply = "وعليكم السلام، أنا مشغول حالياً وسأرد عليك قريباً."),
-            AutoReplyRuleEntity(keywords = "مستعجل|ضروري|عاجل|urgent", reply = "مشغول الآن، إذا الأمر عاجل اتصل بي من فضلك."),
-            AutoReplyRuleEntity(keywords = "وين|متى|كيف|شو|ليش|؟|?", reply = "مشغول حالياً، سأرد على سؤالك بأقرب وقت."),
-            AutoReplyRuleEntity(keywords = "مرحبا|هلا|اهلا|أهلا|hi|hello", reply = "أهلاً، أنا مشغول الآن وسأتواصل معك لاحقاً."),
-        )
+    private companion object {
+        const val BURST_MAX = 4
+        const val BURST_WINDOW_MS = 10 * 60_000L
     }
 }

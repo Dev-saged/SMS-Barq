@@ -36,7 +36,9 @@ object AppModule {
     @Provides fun ruleDao(db: BarqDatabase) = db.rules()
     @Provides fun templateDao(db: BarqDatabase) = db.templates()
     @Provides fun autoReplyDao(db: BarqDatabase) = db.autoReply()
+    @Provides fun replyDao(db: BarqDatabase) = db.replies()
     @Provides fun groupDao(db: BarqDatabase) = db.groups()
+    @Provides fun trashDao(db: BarqDatabase) = db.trash()
 
     /** Long-lived scope for work that must outlive a screen (receivers, sync). */
     @Provides

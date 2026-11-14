@@ -8,7 +8,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.ProviderLock
 import dev.saged.barq.data.contacts.ContactsRepository
-import dev.saged.barq.data.db.AutoReplyRuleEntity
 import dev.saged.barq.data.db.BarqDatabase
 import dev.saged.barq.data.db.BlockedKeywordEntity
 import dev.saged.barq.data.db.BlockedNumberEntity
@@ -20,6 +19,7 @@ import dev.saged.barq.data.db.SendGroupEntity
 import dev.saged.barq.data.db.SendGroupMemberEntity
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.AutoReplyMode
+import dev.saged.barq.data.settings.autoReplyModeOf
 import dev.saged.barq.data.settings.BackupFrequency
 import dev.saged.barq.data.settings.SwipeAction
 import dev.saged.barq.data.settings.ThemeMode
@@ -72,9 +72,6 @@ data class BackupConversation(
 @Serializable
 data class BackupRule(val sender: String, val category: String)
 
-@Serializable
-data class BackupAutoReply(val keywords: String, val reply: String, val enabled: Boolean = true)
-
 /** Settings the user chose (technical state like the backup folder is not included). */
 @Serializable
 data class BackupSettings(
@@ -91,7 +88,7 @@ data class BackupSettings(
     val swipeStart: String = SwipeAction.ARCHIVE.name,
     val swipeEnd: String = SwipeAction.DELETE.name,
     val defaultSubId: Int = -1,
-    val sendDelayMs: Long = 250,
+    val sendDelayMs: Long = -1,
     val autoReplyEnabled: Boolean = false,
     val autoReplyMode: String = AutoReplyMode.FIXED.name,
     val autoReplyText: String = "",
@@ -101,6 +98,9 @@ data class BackupSettings(
     val autoReplyFromMin: Int = 22 * 60,
     val autoReplyToMin: Int = 7 * 60,
     val backupFrequency: String = BackupFrequency.OFF.name,
+    val pillNav: Boolean = true,
+    val learnReplies: Boolean = true,
+    val replyTone: String = "FORMAL",
 )
 
 @Serializable
@@ -118,7 +118,6 @@ data class BackupFile(
     val blockedKeywords: List<String> = emptyList(),
     val rules: List<BackupRule> = emptyList(),
     val templates: List<String> = emptyList(),
-    val autoReplyRules: List<BackupAutoReply> = emptyList(),
     val conversations: List<BackupConversation> = emptyList(),
     val messages: List<BackupMessage> = emptyList(),
     val groups: List<BackupGroup> = emptyList(),
@@ -135,12 +134,15 @@ fun AppSettings.toBackup() = BackupSettings(
     themeMode.name, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled,
     spamFilter, recycleBin, swipeStart.name, swipeEnd.name, defaultSubId, sendDelayMs, autoReplyEnabled,
     autoReplyMode.name, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow,
-    autoReplyFromMin, autoReplyToMin, backupFrequency.name,
+    autoReplyFromMin, autoReplyToMin, backupFrequency.name, pillNav, learnReplies, replyTone.name,
 )
 
 fun BackupSettings.toSettings(base: AppSettings) = base.copy(
     themeMode = enumOr(themeMode, base.themeMode),
     dynamicColor = dynamicColor,
+    pillNav = pillNav,
+    learnReplies = learnReplies,
+    replyTone = dev.saged.barq.domain.replyToneOf(replyTone, base.replyTone),
     fontScale = fontScale,
     datePattern = datePattern,
     use24h = use24h,
@@ -154,7 +156,7 @@ fun BackupSettings.toSettings(base: AppSettings) = base.copy(
     defaultSubId = defaultSubId,
     sendDelayMs = sendDelayMs,
     autoReplyEnabled = autoReplyEnabled,
-    autoReplyMode = enumOr(autoReplyMode, base.autoReplyMode),
+    autoReplyMode = autoReplyModeOf(autoReplyMode, base.autoReplyMode),
     autoReplyText = autoReplyText.ifBlank { base.autoReplyText },
     autoReplyContactsOnly = autoReplyContactsOnly,
     autoReplyCooldownMin = autoReplyCooldownMin,
@@ -201,7 +203,6 @@ class BackupManager @Inject constructor(
             w.write(",\"blockedKeywords\":" + json.encodeToString(blocks.keywordsOnce().map { it.keyword }))
             w.write(",\"rules\":" + json.encodeToString(db.rules().all().map { BackupRule(it.sender, it.category.name) }))
             w.write(",\"templates\":" + json.encodeToString(db.templates().all().map { it.text }))
-            w.write(",\"autoReplyRules\":" + json.encodeToString(db.autoReply().allRules().map { BackupAutoReply(it.keywords, it.reply, it.enabled) }))
             if (!withMessages) {
                 w.write("}")
                 return@use
@@ -230,7 +231,7 @@ class BackupManager @Inject constructor(
 
     @OptIn(ExperimentalSerializationApi::class)
     suspend fun import(uri: Uri): ImportResult = withContext(Dispatchers.IO) {
-        val backup = context.contentResolver.openInputStream(uri)?.use { read(it) }
+        val backup = context.contentResolver.openInputStream(uri)?.use { readAny(it) }
             ?: return@withContext ImportResult(0, 0)
         restoreLists(backup)
         restoreGroups(backup)
@@ -281,6 +282,34 @@ class BackupManager @Inject constructor(
         ImportResult(imported, skipped, backup.settings?.toSettings(settings.current()))
     }
 
+    /** Barq's own backup or an "SMS Backup & Restore" XML file; the kind is recognised by its first byte. */
+    private fun readAny(input: InputStream): BackupFile {
+        val buffered = BufferedInputStream(input, 64 * 1024)
+        return if (SmsXml.looksLikeXml(buffered)) BackupFile(messages = SmsXml.parse(buffered)) else read(buffered)
+    }
+
+    /** Writes every text message in the XML format other messaging apps can import. */
+    suspend fun exportXml(out: OutputStream): Int = withContext(Dispatchers.IO) {
+        var count = 0
+        out.bufferedWriter(Charsets.UTF_8).use { w ->
+            w.write(SmsXml.header(db.messages().countExportable(), System.currentTimeMillis(), java.util.UUID.randomUUID().toString()))
+            var offset = 0
+            while (true) {
+                val page = db.messages().page(PAGE, offset)
+                if (page.isEmpty()) break
+                page.filter { it.box != Box.QUEUED }.forEach { m ->
+                    w.write(SmsXml.sms(m.address, m.body, m.date, m.dateSent, m.box, m.read, m.subId))
+                    count++
+                }
+                offset += page.size
+            }
+            w.write(SmsXml.FOOTER)
+        }
+        count
+    }
+
+    fun xmlFileName(): String = "sms-" + SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date()) + ".xml"
+
     /** Reads a backup, gzip-compressed (1.5.3+) or plain JSON (older backups). */
     @OptIn(ExperimentalSerializationApi::class)
     fun read(input: InputStream): BackupFile {
@@ -319,11 +348,6 @@ class BackupManager @Inject constructor(
         val existingTemplates = templates.all().map { it.text }.toSet()
         b.templates.filter { it !in existingTemplates }.forEachIndexed { i, t ->
             templates.upsert(TemplateEntity(text = t, position = existingTemplates.size + i))
-        }
-        val ar = db.autoReply()
-        val existingAr = ar.allRules().map { it.keywords to it.reply }.toSet()
-        b.autoReplyRules.filter { (it.keywords to it.reply) !in existingAr }.forEach {
-            ar.upsertRule(AutoReplyRuleEntity(keywords = it.keywords, reply = it.reply, enabled = it.enabled))
         }
     }
 
