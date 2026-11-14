@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,10 +49,11 @@ class ReplyEngine @Inject constructor(
 
     /** Chips for [incoming]; empty when learning is switched off. */
     suspend fun suggest(incoming: String, limit: Int = 3): List<Suggestion> {
-        if (!settings.current().learnReplies) return emptyList()
+        val s = settings.current()
+        if (!s.learnReplies) return emptyList()
         val index = index()
         val own = index.suggest(incoming, limit, System.currentTimeMillis())
-        val composed = ReplyIntents.reply(incoming, index.addressTerm, withBusy = false)
+        val composed = ReplyIntents.reply(incoming, index.addressTerm, withBusy = false, tone = s.replyTone, seed = seed())
             ?.let { Suggestion(it, 0.0, builtin = true) } ?: return own
         val sure = own.any { it.score >= ReplyIndex.AUTO_MIN }
         val merged = if (sure) own + composed else listOf(composed) + own
@@ -64,20 +66,53 @@ class ReplyEngine @Inject constructor(
         return index().best(incoming, System.currentTimeMillis())?.reply
     }
 
-    /** A reply written for what the text says (and in the way the user addresses people); used when no learned reply is sure enough. */
-    suspend fun fallback(incoming: String): String? {
-        val address = if (settings.current().learnReplies) index().addressTerm else null
-        return ReplyIntents.reply(incoming, address)
+    /** What the auto-reply does with an incoming text. */
+    sealed interface Answer {
+        data class Send(val text: String) : Answer
+        /** Nothing should be sent at all (an "ok", an answer to the user's own question, a second greeting). */
+        data object Silent : Answer
+        /** The engine has nothing to say: the fixed text applies. */
+        data object Unknown : Answer
     }
 
     /**
+     * Decides the automatic answer to [incoming] in [threadId]: the user's habitual reply when one
+     * surely fits, otherwise a reply written for what the text says, in the chosen tone.
+     */
+    suspend fun answer(incoming: String, threadId: Long): Answer {
+        if (ReplyIntents.needsNoReply(incoming)) return Answer.Silent
+        val s = settings.current()
+        val now = System.currentTimeMillis()
+        // Newest first; the first row is the incoming text itself.
+        val before = messages.recentInThread(threadId, CONTEXT_DEPTH).dropWhile { it.box == Box.INBOX }
+        val previous = before.firstOrNull()
+        val answersMe = previous != null && !previous.autoReply && now - previous.date < CONTEXT_MS &&
+            (previous.body.contains('?') || previous.body.contains('؟') || ReplyIntents.asks(previous.body))
+        val said = ReplyIntents.all(incoming)
+        if (answersMe && said.isEmpty()) return Answer.Silent
+        val greeted = before.any { it.box != Box.INBOX && now - it.date < GREETED_MS && ReplyIntents.greets(it.body) }
+        if (greeted && ReplyIntents.onlyGreets(incoming)) return Answer.Silent
+        if (!ReplyIntents.isGrave(incoming)) best(incoming)?.let { return Answer.Send(it) }
+        val address = if (s.learnReplies) index().addressTerm else null
+        val composed = ReplyIntents.reply(
+            incoming, address, tone = s.replyTone, greeted = greeted,
+            hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY), seed = seed(),
+        )
+        return if (composed != null) Answer.Send(composed) else Answer.Unknown
+    }
+
+    private fun seed(): Int = (System.currentTimeMillis() / 3_600_000L).toInt()
+
+    /**
      * For the "try it" dialog, learning switch aside: the user's own replies first; when none is
-     * confident enough, the ready-made answer for the recognised intent (marked [Suggestion.builtin]).
+     * confident enough, the reply written for the text (marked [Suggestion.builtin]).
      */
     suspend fun preview(incoming: String): List<Suggestion> {
-        val own = index().suggest(incoming, 3, System.currentTimeMillis(), withPopular = false)
-        if (own.any { it.score >= ReplyIndex.AUTO_MIN }) return own
-        val builtin = ReplyIntents.reply(incoming, index().addressTerm)?.let { Suggestion(it, 0.0, builtin = true) }
+        val index = index()
+        val own = index.suggest(incoming, 3, System.currentTimeMillis(), withPopular = false)
+        if (own.any { it.score >= ReplyIndex.AUTO_MIN } && !ReplyIntents.isGrave(incoming)) return own
+        val builtin = ReplyIntents.reply(incoming, index.addressTerm, tone = settings.current().replyTone, seed = seed())
+            ?.let { Suggestion(it, 0.0, builtin = true) }
         return if (builtin == null) own else listOf(builtin) + own
     }
 
@@ -177,5 +212,8 @@ class ReplyEngine @Inject constructor(
     private companion object {
         const val MAX_ROWS = 4000
         const val PAGE = 2000
+        const val CONTEXT_DEPTH = 8
+        const val CONTEXT_MS = 12 * 60 * 60_000L
+        const val GREETED_MS = 6 * 60 * 60_000L
     }
 }

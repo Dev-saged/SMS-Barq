@@ -60,7 +60,11 @@ class AutoReplyEngine @Inject constructor(
     private suspend fun pickReply(message: MessageEntity, s: AppSettings): String? {
         if (s.autoReplyMode == AutoReplyMode.LEARNED) {
             if (message.category != Category.PERSONAL) return null
-            (replies.best(message.body) ?: replies.fallback(message.body))?.let { return it }
+            when (val answer = replies.answer(message.body, message.threadId)) {
+                is ReplyEngine.Answer.Send -> return answer.text
+                ReplyEngine.Answer.Silent -> return null
+                ReplyEngine.Answer.Unknown -> Unit
+            }
         }
         return s.autoReplyText.takeIf { it.isNotBlank() }
     }

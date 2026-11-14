@@ -11,6 +11,8 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.saged.barq.domain.ReplyTone
+import dev.saged.barq.domain.replyToneOf
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -39,6 +41,7 @@ data class AppSettings(
     val pillNav: Boolean = true,
     /** Learn from the replies the user writes (on this phone only) to suggest and auto-reply. */
     val learnReplies: Boolean = true,
+    val replyTone: ReplyTone = ReplyTone.FORMAL,
     val fontScale: Float = 1f,
     val datePattern: String = "dd/MM/yyyy",
     val use24h: Boolean = true,
@@ -114,6 +117,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val dynamicColor = booleanPreferencesKey("dynamic_color")
         val pillNav = booleanPreferencesKey("pill_nav")
         val learnReplies = booleanPreferencesKey("learn_replies")
+        val replyTone = stringPreferencesKey("reply_tone")
         val fontScale = floatPreferencesKey("font_scale")
         val datePattern = stringPreferencesKey("date_pattern")
         val use24h = booleanPreferencesKey("use_24h")
@@ -168,6 +172,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             dynamicColor = p[K.dynamicColor] ?: d.dynamicColor,
             pillNav = p[K.pillNav] ?: d.pillNav,
             learnReplies = p[K.learnReplies] ?: d.learnReplies,
+            replyTone = replyToneOf(p[K.replyTone], d.replyTone),
             fontScale = p[K.fontScale] ?: d.fontScale,
             datePattern = p[K.datePattern] ?: d.datePattern,
             use24h = p[K.use24h] ?: d.use24h,
@@ -223,6 +228,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setDynamicColor(v: Boolean) = set(K.dynamicColor, v)
     suspend fun setPillNav(v: Boolean) = set(K.pillNav, v)
     suspend fun setLearnReplies(v: Boolean) = set(K.learnReplies, v)
+    suspend fun setReplyTone(v: ReplyTone) = set(K.replyTone, v.name)
     suspend fun setFontScale(v: Float) = set(K.fontScale, v)
     suspend fun setDatePattern(v: String) = set(K.datePattern, v)
     suspend fun setUse24h(v: Boolean) = set(K.use24h, v)
@@ -275,6 +281,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             it[K.dynamicColor] = s.dynamicColor
             it[K.pillNav] = s.pillNav
             it[K.learnReplies] = s.learnReplies
+            it[K.replyTone] = s.replyTone.name
             it[K.fontScale] = s.fontScale
             it[K.datePattern] = s.datePattern
             it[K.use24h] = s.use24h

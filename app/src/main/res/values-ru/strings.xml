@@ -211,6 +211,10 @@
     <string name="mode_learned">Учится у меня</string>
     <string name="mode_fixed_sub">Один и тот же ответ всем, кто вам пишет.</string>
     <string name="mode_learned_sub">Отвечает как вы: выбирает из ваших прошлых ответов самый близкий к входящему сообщению. Если ничего не подходит, отправляет фиксированный ответ.</string>
+    <string name="reply_tone">Тон ответа</string>
+    <string name="tone_formal">Официальный</string>
+    <string name="tone_friendly">Дружеский</string>
+    <string name="tone_brief">Краткий</string>
     <string name="reply_memory">Память ответов</string>
     <string name="learn_replies">Учиться на моих ответах</string>
     <string name="learn_replies_sub">Предлагает ответы над полем ввода и использует их в автоответе. Работает только на вашем телефоне.</string>

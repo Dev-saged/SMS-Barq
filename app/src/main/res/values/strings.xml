@@ -235,7 +235,11 @@
     <string name="mode_fixed">رد ثابت</string>
     <string name="mode_learned">يتعلّم من ردودي</string>
     <string name="mode_fixed_sub">نفس الرد لكل من يراسلك.</string>
-    <string name="mode_learned_sub">يردّ بأسلوبك: يختار من ردودك السابقة الأقرب لرسالة الوارد. إن لم يجد ردّاً مناسباً يستخدم الرد الثابت.</string>
+    <string name="mode_learned_sub">يفهم ما تقوله الرسالة: إن كان لك ردّ معتاد عليها أرسله، وإلا صاغ ردّاً يناسب مضمونها بالنبرة التي تختارها. لا يرد على «تمام» وأمثالها، ولا يَعِد بشيء باسمك. إن لم يفهم الرسالة استخدم الرد الثابت.</string>
+    <string name="reply_tone">نبرة الرد</string>
+    <string name="tone_formal">فخمة</string>
+    <string name="tone_friendly">ودّية</string>
+    <string name="tone_brief">مختصرة</string>
     <string name="reply_memory">ذاكرة الردود</string>
     <string name="learn_replies">التعلّم من ردودي</string>
     <string name="learn_replies_sub">يقترح ردوداً فوق خانة الكتابة في المحادثة ويستخدمها في الرد التلقائي. يعمل على هاتفك فقط.</string>

@@ -211,6 +211,10 @@
     <string name="mode_learned">学习我的回复</string>
     <string name="mode_fixed_sub">对所有给您发短信的人使用同一条回复。</string>
     <string name="mode_learned_sub">按你的习惯回复：从你以前写过的回复中挑选最接近来信内容的一条；没有合适的就使用固定回复。</string>
+    <string name="reply_tone">回复语气</string>
+    <string name="tone_formal">正式</string>
+    <string name="tone_friendly">亲切</string>
+    <string name="tone_brief">简短</string>
     <string name="reply_memory">回复记忆</string>
     <string name="learn_replies">学习我的回复</string>
     <string name="learn_replies_sub">在聊天输入框上方推荐回复，并用于自动回复。仅在你的手机上运行。</string>

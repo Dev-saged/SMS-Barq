@@ -62,6 +62,7 @@ import dev.saged.barq.data.db.TemplateDao
 import dev.saged.barq.data.db.TemplateEntity
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.AutoReplyMode
+import dev.saged.barq.domain.ReplyTone
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.domain.ReplyEngine
 import dev.saged.barq.domain.ReplyIndex
@@ -424,6 +425,33 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                 )
+                if (s.autoReplyMode == AutoReplyMode.LEARNED) {
+                    RowDivider()
+                    Text(
+                        stringResource(R.string.reply_tone),
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp),
+                    )
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(16.dp)) {
+                        ReplyTone.entries.forEachIndexed { i, tone ->
+                            SegmentedButton(
+                                selected = s.replyTone == tone,
+                                onClick = { vm.update { setReplyTone(tone) } },
+                                shape = SegmentedButtonDefaults.itemShape(i, ReplyTone.entries.size),
+                            ) {
+                                Text(
+                                    stringResource(
+                                        when (tone) {
+                                            ReplyTone.FORMAL -> R.string.tone_formal
+                                            ReplyTone.FRIENDLY -> R.string.tone_friendly
+                                            ReplyTone.BRIEF -> R.string.tone_brief
+                                        },
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
                 RowDivider()
                 ClickRow(Icons.Outlined.Edit, stringResource(R.string.fixed_reply_text), s.autoReplyText) { editingText = true }
             }

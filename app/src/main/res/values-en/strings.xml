@@ -214,7 +214,11 @@
     <string name="mode_fixed">Fixed reply</string>
     <string name="mode_learned">Learns from me</string>
     <string name="mode_fixed_sub">The same reply for everyone who messages you.</string>
-    <string name="mode_learned_sub">Replies the way you do: picks the closest of your own past replies to the incoming text. If none fits well, it uses the fixed reply.</string>
+    <string name="mode_learned_sub">Understands what the message says: sends your usual reply when you have one, otherwise writes a reply that fits it in the tone you choose. It stays silent after an "ok" and never promises anything in your name. If it cannot tell what the message is about, it uses the fixed reply.</string>
+    <string name="reply_tone">Reply tone</string>
+    <string name="tone_formal">Formal</string>
+    <string name="tone_friendly">Friendly</string>
+    <string name="tone_brief">Brief</string>
     <string name="reply_memory">Reply memory</string>
     <string name="learn_replies">Learn from my replies</string>
     <string name="learn_replies_sub">Suggests replies above the message box and uses them for auto-reply. Works on your phone only.</string>

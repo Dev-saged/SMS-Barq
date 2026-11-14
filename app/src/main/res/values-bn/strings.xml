@@ -211,6 +211,10 @@
     <string name="mode_learned">আমার থেকে শেখে</string>
     <string name="mode_fixed_sub">যারা আপনাকে লেখে তাদের সবাইকে একই উত্তর।</string>
     <string name="mode_learned_sub">আপনার মতো করে উত্তর দেয়: আপনার আগের উত্তরগুলো থেকে আসা বার্তার সবচেয়ে কাছেরটি বেছে নেয়। উপযুক্ত না পেলে নির্দিষ্ট উত্তর পাঠায়।</string>
+    <string name="reply_tone">উত্তরের সুর</string>
+    <string name="tone_formal">আনুষ্ঠানিক</string>
+    <string name="tone_friendly">বন্ধুত্বপূর্ণ</string>
+    <string name="tone_brief">সংক্ষিপ্ত</string>
     <string name="reply_memory">উত্তরের স্মৃতি</string>
     <string name="learn_replies">আমার উত্তর থেকে শেখা</string>
     <string name="learn_replies_sub">মেসেজ লেখার ঘরের ওপরে উত্তর প্রস্তাব করে এবং স্বয়ংক্রিয় উত্তরে ব্যবহার করে। শুধু আপনার ফোনেই কাজ করে।</string>

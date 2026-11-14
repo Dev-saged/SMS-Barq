@@ -211,6 +211,10 @@
     <string name="mode_learned">Apprend de moi</string>
     <string name="mode_fixed_sub">La même réponse pour tous ceux qui vous écrivent.</string>
     <string name="mode_learned_sub">Répond comme vous : choisit, parmi vos réponses passées, la plus proche du message reçu. Si aucune ne convient, il utilise la réponse fixe.</string>
+    <string name="reply_tone">Ton des réponses</string>
+    <string name="tone_formal">Soutenu</string>
+    <string name="tone_friendly">Amical</string>
+    <string name="tone_brief">Bref</string>
     <string name="reply_memory">Mémoire des réponses</string>
     <string name="learn_replies">Apprendre de mes réponses</string>
     <string name="learn_replies_sub">Propose des réponses au-dessus de la zone de saisie et les utilise pour la réponse automatique. Fonctionne uniquement sur votre téléphone.</string>

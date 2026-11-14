@@ -340,6 +340,7 @@ fun ThreadScreen(
             ) { index ->
                 val m = pagingItems[index] ?: return@items
                 val older = if (index + 1 < pagingItems.itemCount) pagingItems.peek(index + 1) else null
+                val newer = if (index > 0) pagingItems.peek(index - 1) else null
                 Column {
                     if (older == null || !TimeFormat.isSameDay(older.date, m.date)) {
                         DayHeader(TimeFormat.dayHeader(m.date, settings, today, yesterday))
@@ -352,6 +353,8 @@ fun ThreadScreen(
                             onLongPress = { messageMenu = m },
                             onResend = { vm.resend(m.id) },
                             onCancelScheduled = { vm.cancelScheduled(m.id) },
+                            joinsOlder = m.joins(older),
+                            joinsNewer = m.joins(newer),
                         )
                         MessageMenu(
                             message = messageMenu?.takeIf { it.id == m.id },

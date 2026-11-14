@@ -211,6 +211,10 @@
     <string name="mode_learned">मुझसे सीखे</string>
     <string name="mode_fixed_sub">आपको लिखने वाले हर व्यक्ति को एक ही जवाब।</string>
     <string name="mode_learned_sub">आपके अंदाज़ में जवाब देता है: आपके पुराने जवाबों में से आए संदेश से सबसे मिलता-जुलता चुनता है। कोई ठीक न मिले तो तय जवाब भेजता है।</string>
+    <string name="reply_tone">जवाब का लहजा</string>
+    <string name="tone_formal">औपचारिक</string>
+    <string name="tone_friendly">दोस्ताना</string>
+    <string name="tone_brief">संक्षिप्त</string>
     <string name="reply_memory">जवाबों की याददाश्त</string>
     <string name="learn_replies">मेरे जवाबों से सीखें</string>
     <string name="learn_replies_sub">बातचीत में टाइप करने की जगह के ऊपर जवाब सुझाता है और ऑटो-रिप्लाई में इस्तेमाल करता है। सिर्फ़ आपके फ़ोन पर चलता है।</string>

@@ -66,26 +66,90 @@ class ReplyIntentsTest {
         assertNull(ReplyIntents.reply("الاجتماع بعد الظهر"))
     }
 
+    private val friendly = ReplyTone.FRIENDLY
+
     @Test fun aPrayerAndAWishAreAnsweredPartByPart() {
         val text = "اللهم آمين يسعد مساك يا ساجد"
-        assertEquals("آمين وإياك يا رب، يسعدك ويسعد مساك", ReplyIntents.reply(text))
-        assertEquals("آمين وإياك يا رب، يسعدك ويسعد مساك يا غالي", ReplyIntents.reply(text, address = "غالي"))
+        assertEquals("آمين وإياك يا رب، يسعدك ويسعد مساك", ReplyIntents.reply(text, tone = friendly))
+        assertEquals("آمين وإياك يا رب، يسعدك ويسعد مساك يا غالي", ReplyIntents.reply(text, address = "غالي", tone = friendly))
+        assertEquals("اللهم آمين، ولك بمثله وزيادة، أسعد الله مساءك بكل خير", ReplyIntents.reply(text))
+        assertEquals("آمين وإياك، مساء النور", ReplyIntents.reply(text, tone = ReplyTone.BRIEF))
     }
 
     @Test fun greetingsAreAnsweredInKind() {
-        assertEquals("صباح النور", ReplyIntents.reply("صباح الخير"))
-        assertEquals("يسعدك ويسعد صباحك", ReplyIntents.reply("يسعد صباحك"))
-        assertEquals("الله يبارك فيك", ReplyIntents.reply("مبروك"))
-        assertEquals("أهلاً يا غالي", ReplyIntents.reply("هلا والله", address = "غالي"))
+        assertEquals("صباح النور", ReplyIntents.reply("صباح الخير", tone = friendly))
+        assertEquals("يسعدك ويسعد صباحك", ReplyIntents.reply("يسعد صباحك", tone = friendly))
+        assertEquals("الله يبارك فيك، تسلم", ReplyIntents.reply("مبروك", tone = friendly))
+        assertEquals("يا هلا والله يا غالي", ReplyIntents.reply("هلا والله", address = "غالي", tone = friendly))
+        assertEquals("وعليكم السلام ورحمة الله وبركاته", ReplyIntents.reply("السلام عليكم"))
         assertEquals("Good morning.", ReplyIntents.reply("good morning"))
     }
 
-    @Test fun busyLineOnlyForUrgentTextsAndQuestions() {
-        assertEquals("أهلاً. مشغول الآن، إذا الأمر عاجل اتصل بي من فضلك.", ReplyIntents.reply("مرحبا ضروري"))
-        assertEquals("أهلاً", ReplyIntents.reply("مرحبا ضروري", withBusy = false))
-        assertEquals("مشغول حالياً، سأرد على سؤالك بأقرب وقت.", ReplyIntents.reply("بدك تيجي؟"))
+    @Test fun severalThingsInOneTextAreAllAnswered() {
+        assertEquals(
+            "وعليكم السلام ورحمة الله، الحمد لله تمام، وأنت كيف حالك؟",
+            ReplyIntents.reply("السلام عليكم كيف حالك", tone = friendly),
+        )
+    }
+
+    @Test fun theSendersDialectIsMirrored() {
+        assertEquals("الحمد لله بخير، وإنت شلونك؟", ReplyIntents.reply("شلونك", tone = friendly))
+        assertEquals("الحمد لله كويس، وإنت عامل إيه؟", ReplyIntents.reply("ازيك عامل ايه", tone = friendly))
+        assertEquals("الحمد لله منيح، وإنت كيفك؟", ReplyIntents.reply("كيفك", tone = friendly))
+    }
+
+    @Test fun busyLineOnlyForWhatNeedsTheUser() {
+        assertEquals("يا هلا والله. مشغول الآن، إذا الأمر ضروري اتصل علي.", ReplyIntents.reply("مرحبا ضروري", tone = friendly))
+        assertEquals("يا هلا والله", ReplyIntents.reply("مرحبا ضروري", withBusy = false, tone = friendly))
+        assertEquals("وصلني سؤالك، برد عليك بأقرب وقت.", ReplyIntents.reply("بدك تيجي؟", tone = friendly))
         assertNull(ReplyIntents.reply("بدك تيجي؟", withBusy = false))
-        assertEquals("العفو، في أي وقت", ReplyIntents.reply("شكرا", withBusy = true))
+        assertEquals("العفو، ولو", ReplyIntents.reply("شكرا", tone = friendly))
+        assertEquals("وصلني طلبك، وسأرد عليك في أقرب وقت بإذن الله.", ReplyIntents.reply("ممكن تبعتلي الملف"))
+    }
+
+    @Test fun heavyNewsIsAnsweredAloneAndSoberly() {
+        assertEquals(
+            "إنا لله وإنا إليه راجعون، عظّم الله أجركم وأحسن عزاءكم وغفر لفقيدكم",
+            ReplyIntents.reply("مرحبا، توفي والدي اليوم", address = "غالي"),
+        )
+        assertEquals("سلامتك، أسأل الله لك الشفاء العاجل والعافية التامة", ReplyIntents.reply("مرحبا انا مريض"))
+        assertTrue(ReplyIntents.isGrave("ليش ما ترد علي"))
+    }
+
+    @Test fun negationAndLookAlikesAreUnderstood() {
+        assertNull(ReplyIntents.of("مش مستعجل"))
+        assertEquals(Intent.URGENT, ReplyIntents.of("انا مستعجل"))
+        assertNull(ReplyIntents.of("للأسف ما بقدر"))
+        assertEquals(Intent.APOLOGY, ReplyIntents.of("آسف تأخرت عليك"))
+    }
+
+    @Test fun acknowledgementsNeedNoReply() {
+        for (t in listOf("تمام", "ok 👍", "ههههه", "ان شاء الله", "الحمد لله بخير")) assertTrue(t, ReplyIntents.needsNoReply(t))
+        assertFalse(ReplyIntents.needsNoReply("تمام بكرا بنحكي"))
+        assertFalse(ReplyIntents.needsNoReply("كيفك"))
+    }
+
+    @Test fun aSecondGreetingIsNotRepeated() {
+        assertNull(ReplyIntents.reply("السلام عليكم", greeted = true))
+        assertEquals("العفو، ولو", ReplyIntents.reply("السلام عليكم شكرا", tone = friendly, greeted = true))
+        assertTrue(ReplyIntents.onlyGreets("صباح الخير"))
+        assertFalse(ReplyIntents.onlyGreets("صباح الخير كيفك"))
+    }
+
+    @Test fun timeOfDayAndWordingVary() {
+        assertEquals("يا هلا والله، صباح الخير", ReplyIntents.reply("مرحبا", tone = friendly, hour = 9))
+        assertEquals("يا هلا والله، مساء الخير", ReplyIntents.reply("مرحبا", tone = friendly, hour = 20))
+        assertEquals("أهلاً", ReplyIntents.reply("مرحبا", tone = ReplyTone.BRIEF, hour = 9))
+        assertEquals("العفو، في أي وقت", ReplyIntents.reply("شكرا", tone = friendly, seed = 1))
+    }
+
+    @Test fun broadIntentsCarryNoHabit() {
+        assertNull(ReplyIntents.specific(ReplyText.tokens("ممكن خدمة")))
+        assertEquals(Intent.HOWARE, ReplyIntents.specific(ReplyText.tokens("ازيك")))
+    }
+
+    @Test fun everyIntentHasALineInBothLanguages() {
+        for (i in Intent.entries) for (t in ReplyTone.entries) assertNotNull("$i $t", ReplyIntents.sample(i, t))
     }
 }
 

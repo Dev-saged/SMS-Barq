@@ -100,6 +100,7 @@ data class BackupSettings(
     val backupFrequency: String = BackupFrequency.OFF.name,
     val pillNav: Boolean = true,
     val learnReplies: Boolean = true,
+    val replyTone: String = "FORMAL",
 )
 
 @Serializable
@@ -133,7 +134,7 @@ fun AppSettings.toBackup() = BackupSettings(
     themeMode.name, dynamicColor, fontScale, datePattern, use24h, deliveryReports, showCounter, mmsEnabled,
     spamFilter, recycleBin, swipeStart.name, swipeEnd.name, defaultSubId, sendDelayMs, autoReplyEnabled,
     autoReplyMode.name, autoReplyText, autoReplyContactsOnly, autoReplyCooldownMin, autoReplyWindow,
-    autoReplyFromMin, autoReplyToMin, backupFrequency.name, pillNav, learnReplies,
+    autoReplyFromMin, autoReplyToMin, backupFrequency.name, pillNav, learnReplies, replyTone.name,
 )
 
 fun BackupSettings.toSettings(base: AppSettings) = base.copy(
@@ -141,6 +142,7 @@ fun BackupSettings.toSettings(base: AppSettings) = base.copy(
     dynamicColor = dynamicColor,
     pillNav = pillNav,
     learnReplies = learnReplies,
+    replyTone = dev.saged.barq.domain.replyToneOf(replyTone, base.replyTone),
     fontScale = fontScale,
     datePattern = datePattern,
     use24h = use24h,
