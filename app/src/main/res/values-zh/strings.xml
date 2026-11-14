@@ -17,6 +17,7 @@
     <string name="onboarding_later">稍后</string>
     <string name="inbox_title">短信</string>
     <string name="search_hint">搜索短信</string>
+    <string name="search_settings">搜索设置</string>
     <string name="all">全部</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">银行</string>

@@ -17,6 +17,7 @@
     <string name="onboarding_later">Позже</string>
     <string name="inbox_title">Сообщения</string>
     <string name="search_hint">Поиск сообщений</string>
+    <string name="search_settings">Поиск в настройках</string>
     <string name="all">Все</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">Банки</string>

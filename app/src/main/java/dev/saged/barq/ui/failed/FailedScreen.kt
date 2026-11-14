@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import dev.saged.barq.ui.theme.islandColor
+import dev.saged.barq.ui.theme.islandShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -174,7 +176,8 @@ fun FailedScreen(onBack: () -> Unit, openThread: (Long) -> Unit, vm: FailedViewM
             }
         } else {
             LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(bottom = 24.dp)) {
-                items(rows, key = { it.id }, contentType = { "row" }) { row ->
+                itemsIndexed(rows, key = { _, it -> it.id }, contentType = { _, _ -> "row" }) { i, row ->
+                  Column(Modifier.padding(horizontal = 12.dp).clip(islandShape(i, rows.size)).background(islandColor())) {
                     FailedRowItem(
                         row = row,
                         settings = settings,
@@ -184,7 +187,10 @@ fun FailedScreen(onBack: () -> Unit, openThread: (Long) -> Unit, vm: FailedViewM
                         onLongClick = { vm.toggle(row.id) },
                         onResend = { vm.resendOne(row.id) },
                     )
-                    HorizontalDivider(Modifier.padding(start = 64.dp), color = scheme.outlineVariant.copy(alpha = 0.5f))
+                    if (i < rows.size - 1) {
+                        HorizontalDivider(Modifier.padding(start = 64.dp), color = scheme.outlineVariant.copy(alpha = 0.5f))
+                    }
+                  }
                 }
             }
         }

@@ -17,6 +17,7 @@
     <string name="onboarding_later">পরে</string>
     <string name="inbox_title">মেসেজ</string>
     <string name="search_hint">মেসেজ খুঁজুন</string>
+    <string name="search_settings">সেটিংসে খুঁজুন</string>
     <string name="all">সব</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">ব্যাংক</string>

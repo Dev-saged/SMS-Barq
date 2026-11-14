@@ -68,6 +68,7 @@ object BIcons {
         )
     }
     val Check by lazy { icon("Check", "M5,12.5L10,17.5L19,7") }
+    val Search by lazy { icon("Search", "M17,10.5A6.5,6.5 0 1 1 4,10.5A6.5,6.5 0 1 1 17,10.5M15.3,15.3L20,20") }
     val Sparkle by lazy {
         icon(
             "Sparkle",

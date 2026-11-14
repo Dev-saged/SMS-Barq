@@ -17,6 +17,7 @@
     <string name="onboarding_later">Depois</string>
     <string name="inbox_title">Mensagens</string>
     <string name="search_hint">Pesquisar mensagens</string>
+    <string name="search_settings">Pesquisar nas configurações</string>
     <string name="all">Todas</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">Bancos</string>

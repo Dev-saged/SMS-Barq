@@ -252,7 +252,10 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
     )
     fun <T> label(list: List<Pair<T, String>>, v: T) = list.firstOrNull { it.first == v }?.second.orEmpty()
 
+    var query by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
+    androidx.compose.runtime.CompositionLocalProvider(LocalSettingsQuery provides query) {
     SettingsScaffold(title = stringResource(R.string.settings), onBack = onBack, bottomPadding = 16.dp) {
+        item(key = "search") { SettingsSearchField(query) { query = it } }
         item {
             SettingsGroup(stringResource(R.string.group_appearance)) {
                 val chosenLang = dev.saged.barq.util.LocaleHelper.chosen(context)
@@ -448,7 +451,8 @@ fun SettingsScreen(onBack: () -> Unit, open: (String) -> Unit, vm: SettingsViewM
             }
         }
         // The very last thing in Settings, with nothing under it.
-        item { AboutCard() }
+        if (query.isBlank()) item { AboutCard() }
+    }
     }
 
     if (showWhatsNew) dev.saged.barq.ui.whatsnew.WhatsNewSheet(onClose = { showWhatsNew = false })

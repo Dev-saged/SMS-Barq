@@ -20,6 +20,7 @@
     <!-- Inbox -->
     <string name="inbox_title">الرسائل</string>
     <string name="search_hint">ابحث في الرسائل</string>
+    <string name="search_settings">ابحث في الإعدادات</string>
     <string name="all">الكل</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">بنوك</string>

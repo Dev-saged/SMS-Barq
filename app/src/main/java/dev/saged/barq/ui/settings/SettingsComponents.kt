@@ -80,10 +80,45 @@ fun SettingsScaffold(
     }
 }
 
+/** Text typed in the settings search: rows that do not mention it hide themselves. */
+val LocalSettingsQuery = androidx.compose.runtime.compositionLocalOf { "" }
+
+@Composable
+private fun searching(): Boolean = LocalSettingsQuery.current.isNotBlank()
+
+@Composable
+private fun matchesSearch(vararg texts: String?): Boolean {
+    val query = LocalSettingsQuery.current
+    if (query.isBlank()) return true
+    val needle = dev.saged.barq.domain.TextNorm.forName(query)
+    return texts.any { it != null && dev.saged.barq.domain.TextNorm.forName(it).contains(needle) }
+}
+
+@Composable
+fun SettingsSearchField(query: String, onChange: (String) -> Unit) {
+    val container = islandColor()
+    androidx.compose.material3.TextField(
+        value = query,
+        onValueChange = onChange,
+        singleLine = true,
+        placeholder = { Text(stringResource(R.string.search_settings)) },
+        leadingIcon = { Icon(dev.saged.barq.ui.icons.BIcons.Search, null) },
+        shape = CircleShape,
+        colors = androidx.compose.material3.TextFieldDefaults.colors(
+            focusedContainerColor = container,
+            unfocusedContainerColor = container,
+            focusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+            unfocusedIndicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+        ),
+        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+    )
+}
+
 @Composable
 fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Column(Modifier.padding(top = 18.dp)) {
-        Text(
+    val searching = searching()
+    Column(Modifier.padding(top = if (searching) 6.dp else 18.dp)) {
+        if (!searching) Text(
             title,
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.primary,
@@ -111,6 +146,7 @@ private fun RowIcon(icon: ImageVector) {
 
 @Composable
 fun SwitchRow(icon: ImageVector, title: String, subtitle: String? = null, checked: Boolean, onChange: (Boolean) -> Unit) {
+    if (!matchesSearch(title, subtitle)) return
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -132,6 +168,7 @@ fun SwitchRow(icon: ImageVector, title: String, subtitle: String? = null, checke
 
 @Composable
 fun ClickRow(icon: ImageVector, title: String, value: String? = null, onClick: () -> Unit) {
+    if (!matchesSearch(title, value)) return
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -151,10 +188,13 @@ fun ClickRow(icon: ImageVector, title: String, value: String? = null, onClick: (
 }
 
 @Composable
-fun RowDivider() = HorizontalDivider(
-    modifier = Modifier.padding(start = 70.dp),
-    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-)
+fun RowDivider() {
+    if (searching()) return
+    HorizontalDivider(
+        modifier = Modifier.padding(start = 70.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+    )
+}
 
 @Composable
 fun <T> ChoiceDialog(

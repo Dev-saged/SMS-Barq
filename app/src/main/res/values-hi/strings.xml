@@ -17,6 +17,7 @@
     <string name="onboarding_later">बाद में</string>
     <string name="inbox_title">संदेश</string>
     <string name="search_hint">संदेश खोजें</string>
+    <string name="search_settings">सेटिंग खोजें</string>
     <string name="all">सभी</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">बैंक</string>

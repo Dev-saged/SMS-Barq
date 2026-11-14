@@ -151,6 +151,14 @@ jobs:
             '{version:$v,code:$c,apk:$apk,notes:$n}' > dist/version.json
           gh release upload "$TAG" dist/version.json --clobber
 
+      - name: Upload database schema
+        if: steps.check.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Barq-schemas-${{ github.run_number }}
+          path: app/schemas
+          if-no-files-found: ignore
+
       - name: Unit tests
         if: steps.check.outputs.ready == 'true'
         id: tests

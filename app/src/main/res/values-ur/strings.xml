@@ -17,6 +17,7 @@
     <string name="onboarding_later">بعد میں</string>
     <string name="inbox_title">پیغامات</string>
     <string name="search_hint">پیغامات تلاش کریں</string>
+    <string name="search_settings">ترتیبات میں تلاش کریں</string>
     <string name="all">سب</string>
     <string name="cat_otp">OTP</string>
     <string name="cat_bank">بینک</string>
