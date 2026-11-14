@@ -78,6 +78,8 @@
     <string name="archive_empty">संग्रह खाली है</string>
     <string name="bin_empty">रीसायकल बिन खाली है</string>
     <string name="bin_hint">बातचीत 30 दिन बाद हमेशा के लिए हट जाती है। चुनने के लिए किसी बातचीत पर टैप करें।</string>
+    <string name="bin_messages">हटाए गए संदेश</string>
+    <string name="bin_conversations">हटाई गई बातचीत</string>
     <string name="empty_bin">रीसायकल बिन खाली करें</string>
     <string name="confirm_empty_bin">रीसायकल बिन का सब कुछ हमेशा के लिए हटाएँ? इसे वापस नहीं किया जा सकता।</string>
     <string name="confirm_delete_forever">चुनी हुई बातचीत हमेशा के लिए हटाएँ?</string>

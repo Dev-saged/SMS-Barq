@@ -78,6 +78,8 @@
     <string name="archive_empty">Архив пуст</string>
     <string name="bin_empty">Корзина пуста</string>
     <string name="bin_hint">Диалоги удаляются навсегда через 30 дней. Коснитесь диалога, чтобы выбрать его.</string>
+    <string name="bin_messages">Удалённые сообщения</string>
+    <string name="bin_conversations">Удалённые беседы</string>
     <string name="empty_bin">Очистить корзину</string>
     <string name="confirm_empty_bin">Удалить всё из корзины навсегда? Это нельзя отменить.</string>
     <string name="confirm_delete_forever">Удалить выбранные диалоги навсегда?</string>

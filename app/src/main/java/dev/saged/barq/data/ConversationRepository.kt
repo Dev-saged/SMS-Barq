@@ -11,6 +11,8 @@ import dev.saged.barq.data.db.Box
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.CategoryRuleEntity
 import dev.saged.barq.data.db.ConversationEntity
+import dev.saged.barq.data.db.MessageEntity
+import dev.saged.barq.data.db.TrashedMessageEntity
 import dev.saged.barq.data.db.isIncoming
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.telephony.TelephonyProvider
@@ -42,6 +44,7 @@ class ConversationRepository @Inject constructor(
     private val conversations = db.conversations()
     private val messages = db.messages()
     private val rules = db.rules()
+    private val trash = db.trash()
 
     // ---------------------------------------------------------------- summary row
 
@@ -190,39 +193,89 @@ class ConversationRepository @Inject constructor(
         }
     }
 
-    suspend fun emptyRecycleBin() = deleteForever(conversations.allDeletedIds())
+    suspend fun emptyRecycleBin() {
+        deleteForever(conversations.allDeletedIds())
+        deleteTrashedForever(trash.allIds())
+    }
 
     /** Items older than 30 days leave the recycle bin automatically. */
     suspend fun purgeRecycleBin() {
         val before = System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000
         deleteForever(conversations.deletedBefore(before))
+        deleteTrashedForever(trash.idsBefore(before))
     }
 
-    suspend fun deleteMessage(messageId: Long) = withContext(Dispatchers.IO) {
-        val msg = messages.get(messageId) ?: return@withContext
-        lock.withLock {
-            msg.providerId?.let { provider.deleteSms(listOf(it)) }
-            msg.attachments.forEach { runCatching { File(it.path).delete() } }
-            scheduler.cancel(messageId)
-            messages.deleteByIds(listOf(messageId))
-        }
-        refresh(msg.threadId)
-    }
+    suspend fun deleteMessage(messageId: Long) = deleteMessages(listOf(messageId))
 
-    /** يحذف الرسائل المحددة فقط، وتبقى المحادثات. */
+    /** Only messages that are final (received, sent, failed) can wait in the bin; queued ones are simply cancelled. */
+    private fun binnable(m: MessageEntity) =
+        m.reactionTo == 0L && (m.box == Box.INBOX || m.box == Box.SENT || m.box == Box.FAILED)
+
+    /** يحذف الرسائل المحددة فقط وتبقى المحادثات؛ تنتقل إلى السلة إن كانت مفعّلة. */
     suspend fun deleteMessages(ids: List<Long>) = withContext(Dispatchers.IO) {
         val found = ids.mapNotNull { messages.get(it) }
         if (found.isEmpty()) return@withContext
+        val kept = if (settings.current().recycleBin) found.filter(::binnable) else emptyList()
+        val keptIds = kept.mapTo(HashSet()) { it.id }
         lock.withLock {
             provider.deleteSms(found.mapNotNull { it.providerId })
             found.forEach { msg ->
-                msg.attachments.forEach { runCatching { File(it.path).delete() } }
+                if (msg.id !in keptIds) msg.attachments.forEach { runCatching { File(it.path).delete() } }
                 scheduler.cancel(msg.id)
             }
-            messages.deleteByIds(found.map { it.id })
+            val now = System.currentTimeMillis()
+            db.withTransaction {
+                if (kept.isNotEmpty()) trash.insertAll(kept.map { it.toTrash(now) })
+                messages.deleteByIds(found.map { it.id })
+            }
         }
         refreshMany(found.map { it.threadId }.toSet())
     }
+
+    /** Puts binned messages back into their conversation (and into the system's SMS store). */
+    suspend fun restoreMessages(ids: List<Long>) = withContext(Dispatchers.IO) {
+        val rows = trash.get(ids)
+        if (rows.isEmpty()) return@withContext
+        val touched = HashSet<Long>()
+        lock.withLock {
+            rows.forEach { t ->
+                // The conversation may be gone (it was its last message): ask the system for the number's thread.
+                val threadId = if (t.isMms || conversations.get(t.threadId) != null) t.threadId
+                else provider.threadIdFor(listOf(t.address))
+                val providerId = if (t.isMms) null else provider.insertSms(
+                    address = t.address, body = t.body, date = t.date, dateSent = t.dateSent,
+                    type = t.box, read = true, threadId = threadId, subId = t.subId,
+                )
+                db.withTransaction {
+                    messages.insert(
+                        MessageEntity(
+                            providerId = providerId, threadId = threadId, address = t.address, body = t.body,
+                            date = t.date, dateSent = t.dateSent, box = t.box, read = true, subId = t.subId,
+                            otp = t.otp, category = t.category, isMms = t.isMms, attachments = t.attachments,
+                            subject = t.subject, starred = t.starred,
+                        )
+                    )
+                    trash.delete(listOf(t.id))
+                }
+                touched += threadId
+            }
+        }
+        refreshMany(touched, revive = true)
+    }
+
+    suspend fun deleteTrashedForever(ids: List<Long>) = withContext(Dispatchers.IO) {
+        if (ids.isEmpty()) return@withContext
+        ids.chunked(500).forEach { chunk ->
+            trash.get(chunk).flatMap { it.attachments }.forEach { runCatching { File(it.path).delete() } }
+            trash.delete(chunk)
+        }
+    }
+
+    private fun MessageEntity.toTrash(now: Long) = TrashedMessageEntity(
+        threadId = threadId, address = address, body = body, date = date, dateSent = dateSent, box = box,
+        subId = subId, category = category, isMms = isMms, attachments = attachments, subject = subject,
+        otp = otp, starred = starred, deletedAt = now,
+    )
 
     // ---------------------------------------------------------------- rules / block
 

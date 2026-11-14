@@ -78,6 +78,8 @@
     <string name="archive_empty">محفوظ شدہ خالی ہے</string>
     <string name="bin_empty">ری سائیکل بن خالی ہے</string>
     <string name="bin_hint">گفتگو 30 دن بعد ہمیشہ کے لیے حذف ہو جاتی ہے۔ منتخب کرنے کے لیے کسی گفتگو پر ٹیپ کریں۔</string>
+    <string name="bin_messages">حذف شدہ پیغامات</string>
+    <string name="bin_conversations">حذف شدہ گفتگو</string>
     <string name="empty_bin">ری سائیکل بن خالی کریں</string>
     <string name="confirm_empty_bin">ری سائیکل بن کا سب کچھ ہمیشہ کے لیے حذف کریں؟ اسے واپس نہیں کیا جا سکتا۔</string>
     <string name="confirm_delete_forever">منتخب گفتگو ہمیشہ کے لیے حذف کریں؟</string>

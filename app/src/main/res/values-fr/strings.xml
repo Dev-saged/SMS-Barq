@@ -78,6 +78,8 @@
     <string name="archive_empty">L’archive est vide</string>
     <string name="bin_empty">La corbeille est vide</string>
     <string name="bin_hint">Les conversations sont supprimées définitivement après 30 jours. Touchez une conversation pour la sélectionner.</string>
+    <string name="bin_messages">Messages supprimés</string>
+    <string name="bin_conversations">Conversations supprimées</string>
     <string name="empty_bin">Vider la corbeille</string>
     <string name="confirm_empty_bin">Supprimer définitivement tout le contenu de la corbeille ? Cette action est irréversible.</string>
     <string name="confirm_delete_forever">Supprimer définitivement les conversations sélectionnées ?</string>

@@ -90,6 +90,34 @@ class MigrationTest {
         }
     }
 
+    /** Version 5 had no bin for single messages: the table appears and Room accepts its shape. */
+    @Test
+    fun deletedMessagesGetABin() {
+        val context = RuntimeEnvironment.getApplication()
+        val name = "migration-5-to-6.db"
+        context.deleteDatabase(name)
+        val file = context.getDatabasePath(name).apply { parentFile?.mkdirs() }
+        Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
+            .allowMainThreadQueries().build().apply { openHelper.writableDatabase; close() }
+        SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
+            db.execSQL("DROP TABLE `trashed_messages`")
+            db.version = 5
+        }
+        val room = Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
+            .addMigrations(*BarqDatabase.ALL_MIGRATIONS)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            room.openHelper.writableDatabase.query("SELECT COUNT(*) FROM `trashed_messages`").use { c ->
+                c.moveToFirst()
+                assertEquals(0L, c.getLong(0))
+            }
+        } finally {
+            room.close()
+            context.deleteDatabase(name)
+        }
+    }
+
     private fun upgradeFrom(version: Int) {
         val context = RuntimeEnvironment.getApplication()
         val name = "migration-$version.db"

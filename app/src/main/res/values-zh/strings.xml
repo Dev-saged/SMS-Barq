@@ -78,6 +78,8 @@
     <string name="archive_empty">归档为空</string>
     <string name="bin_empty">回收站为空</string>
     <string name="bin_hint">对话将在 30 天后永久删除。点按对话即可选中。</string>
+    <string name="bin_messages">已删除的消息</string>
+    <string name="bin_conversations">已删除的会话</string>
     <string name="empty_bin">清空回收站</string>
     <string name="confirm_empty_bin">永久删除回收站中的所有内容？此操作无法撤销。</string>
     <string name="confirm_delete_forever">永久删除所选对话？</string>

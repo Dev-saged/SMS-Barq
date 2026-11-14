@@ -84,7 +84,9 @@
     <!-- Folders -->
     <string name="archive_empty">الأرشيف فارغ</string>
     <string name="bin_empty">سلة المحذوفات فارغة</string>
-    <string name="bin_hint">تُحذف المحادثات نهائياً بعد 30 يوماً. اضغط على محادثة لتحديدها.</string>
+    <string name="bin_hint">تُحذف المحادثات والرسائل نهائياً بعد 30 يوماً. اضغط على عنصر لتحديده.</string>
+    <string name="bin_messages">رسائل محذوفة</string>
+    <string name="bin_conversations">محادثات محذوفة</string>
     <string name="empty_bin">إفراغ السلة</string>
     <string name="confirm_empty_bin">حذف كل محتوى السلة نهائياً؟ لا يمكن التراجع.</string>
     <string name="confirm_delete_forever">حذف المحادثات المحددة نهائياً؟</string>

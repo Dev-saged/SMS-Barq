@@ -78,6 +78,8 @@
     <string name="archive_empty">El archivo está vacío</string>
     <string name="bin_empty">La papelera está vacía</string>
     <string name="bin_hint">Las conversaciones se eliminan definitivamente a los 30 días. Toca una conversación para seleccionarla.</string>
+    <string name="bin_messages">Mensajes eliminados</string>
+    <string name="bin_conversations">Conversaciones eliminadas</string>
     <string name="empty_bin">Vaciar la papelera</string>
     <string name="confirm_empty_bin">¿Eliminar todo lo de la papelera para siempre? No se puede deshacer.</string>
     <string name="confirm_delete_forever">¿Eliminar para siempre las conversaciones seleccionadas?</string>

@@ -77,7 +77,9 @@
     <string name="me">Me</string>
     <string name="archive_empty">The archive is empty</string>
     <string name="bin_empty">The recycle bin is empty</string>
-    <string name="bin_hint">Conversations are deleted for good after 30 days. Tap a conversation to select it.</string>
+    <string name="bin_hint">Conversations and messages are deleted for good after 30 days. Tap an item to select it.</string>
+    <string name="bin_messages">Deleted messages</string>
+    <string name="bin_conversations">Deleted conversations</string>
     <string name="empty_bin">Empty the bin</string>
     <string name="confirm_empty_bin">Delete everything in the bin for good? This cannot be undone.</string>
     <string name="confirm_delete_forever">Delete the selected conversations for good?</string>

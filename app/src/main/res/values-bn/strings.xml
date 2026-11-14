@@ -78,6 +78,8 @@
     <string name="archive_empty">আর্কাইভ খালি</string>
     <string name="bin_empty">রিসাইকেল বিন খালি</string>
     <string name="bin_hint">কথোপকথন ৩০ দিন পরে চিরতরে মুছে যায়। বেছে নিতে কোনো কথোপকথনে ট্যাপ করুন।</string>
+    <string name="bin_messages">মুছে ফেলা বার্তা</string>
+    <string name="bin_conversations">মুছে ফেলা কথোপকথন</string>
     <string name="empty_bin">রিসাইকেল বিন খালি করুন</string>
     <string name="confirm_empty_bin">রিসাইকেল বিনের সবকিছু চিরতরে মুছবেন? এটি ফেরানো যাবে না।</string>
     <string name="confirm_delete_forever">নির্বাচিত কথোপকথন চিরতরে মুছবেন?</string>

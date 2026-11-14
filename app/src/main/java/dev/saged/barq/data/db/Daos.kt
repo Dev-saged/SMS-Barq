@@ -451,6 +451,31 @@ data class StatRow(val date: Long, val box: Int, val subId: Int, val body: Strin
 data class TopThread(val threadId: Long, val name: String, val addresses: String, val count: Int)
 
 @Dao
+interface TrashDao {
+    @Insert
+    suspend fun insertAll(rows: List<TrashedMessageEntity>)
+
+    @Query(
+        """SELECT t.*, c.displayName AS displayName
+           FROM trashed_messages t LEFT JOIN conversations c ON c.threadId = t.threadId
+           ORDER BY t.deletedAt DESC, t.id DESC"""
+    )
+    fun observe(): Flow<List<TrashedMessage>>
+
+    @Query("SELECT * FROM trashed_messages WHERE id IN (:ids)")
+    suspend fun get(ids: List<Long>): List<TrashedMessageEntity>
+
+    @Query("SELECT id FROM trashed_messages")
+    suspend fun allIds(): List<Long>
+
+    @Query("SELECT id FROM trashed_messages WHERE deletedAt < :before")
+    suspend fun idsBefore(before: Long): List<Long>
+
+    @Query("DELETE FROM trashed_messages WHERE id IN (:ids)")
+    suspend fun delete(ids: List<Long>)
+}
+
+@Dao
 interface GroupDao {
     @Query(
         """SELECT g.id AS id, g.name AS name, g.createdAt AS createdAt,

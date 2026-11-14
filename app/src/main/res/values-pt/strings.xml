@@ -78,6 +78,8 @@
     <string name="archive_empty">O arquivo está vazio</string>
     <string name="bin_empty">A lixeira está vazia</string>
     <string name="bin_hint">As conversas são excluídas definitivamente após 30 dias. Toque em uma conversa para selecioná-la.</string>
+    <string name="bin_messages">Mensagens excluídas</string>
+    <string name="bin_conversations">Conversas excluídas</string>
     <string name="empty_bin">Esvaziar a lixeira</string>
     <string name="confirm_empty_bin">Excluir definitivamente tudo o que está na lixeira? Não é possível desfazer.</string>
     <string name="confirm_delete_forever">Excluir definitivamente as conversas selecionadas?</string>
