@@ -181,7 +181,7 @@ Barq/
 ├── gradle.properties                  # APP_ID, VERSION_NAME, VERSION_CODE
 ├── app/build.gradle.kts               # التوقيع من الأسرار، R8، Compose
 ├── app/proguard-rules.pro
-├── docs/  (PUBLISHING.md, PROJECT_CONTEXT.md, PHASE3_PLAN.md, cover.jpg, icon.svg/png, FONT_LICENSE_OFL.txt, readme/ = أصول README بصيغة SVG)
+├── docs/  (PUBLISHING.md, PROJECT_CONTEXT.md, PHASE3_PLAN.md, icon.svg/png, FONT_LICENSE_OFL.txt, readme/ = أصول README بصيغة SVG)
 ├── README.md · LICENSE · NOTICE.md
 └── app/src/
     ├── main/AndroidManifest.xml
@@ -548,7 +548,7 @@ READ/SEND/RECEIVE_SMS، RECEIVE_MMS، RECEIVE_WAP_PUSH، READ_CONTACTS، READ_PH
 ### ملاحظات
 - لا تغيير في قاعدة البيانات (ما زالت الإصدار 3).
 - `VERSION_NAME = 1.4.0`.
-- الصور في README معاينات؛ إن أرسل المالك لقطات حقيقية تُستبدل بها `docs/readme/screen-inbox.png` و`screen-chat.png` و`screen-groups.png`.
+- صور README كلها SVG تُولَّد بـ`tools/readme-assets.py` (يحتاج fonttools + brotli): hero، الشرائح، بطاقات الميزات، ثلاث معاينات للشاشات، وأيقونات `ic-*.svg`. الشاشات معاينات مرسومة لا لقطات حقيقية.
 
 
 ---
