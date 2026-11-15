@@ -50,8 +50,8 @@ import dev.saged.barq.R
 import dev.saged.barq.data.update.UpdateManager
 import dev.saged.barq.data.update.UpdateManager.State
 
-private const val LRI = "⁦"
-private const val PDI = "⁩"
+private const val LRI = "\u2066"
+private const val PDI = "\u2069"
 private fun ltr(text: String) = "$LRI$text$PDI"
 
 /** Update pill at the top of the screen (percentage ring) and the update sheet. */

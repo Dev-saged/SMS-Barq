@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -54,7 +55,7 @@ import dev.saged.barq.ui.MainViewModel
 @Composable
 fun OnboardingScreen(mainViewModel: MainViewModel, onDone: () -> Unit) {
     val context = LocalContext.current
-    var step by remember { mutableStateOf(if (mainViewModel.isDefaultSmsApp()) 1 else 0) }
+    var step by remember { mutableIntStateOf(if (mainViewModel.isDefaultSmsApp()) 1 else 0) }
 
     val permissions = buildList {
         add(Manifest.permission.READ_SMS)

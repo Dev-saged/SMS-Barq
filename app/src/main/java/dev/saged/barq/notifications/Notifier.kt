@@ -52,7 +52,6 @@ class Notifier @Inject constructor(
     private val system get() = context.getSystemService(NotificationManager::class.java)
 
     fun createChannels() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         system.createNotificationChannels(
             listOf(
                 NotificationChannel(CH_MESSAGES, context.getString(R.string.channel_messages), NotificationManager.IMPORTANCE_HIGH),
@@ -255,15 +254,13 @@ class Notifier @Inject constructor(
     private fun conversationChannelId(threadId: Long) = "conv_$threadId"
 
     private fun conversationChannelExists(threadId: Long): Boolean =
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-            runCatching { system.getNotificationChannel(conversationChannelId(threadId)) != null }.getOrDefault(false)
+        runCatching { system.getNotificationChannel(conversationChannelId(threadId)) != null }.getOrDefault(false)
 
     /**
      * Opens Android's notification settings for this one conversation (sound, vibration…),
      * creating its own channel the first time.
      */
     suspend fun openConversationSettings(threadId: Long) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val conv = conversations.get(threadId) ?: return
         val id = conversationChannelId(threadId)
         if (system.getNotificationChannel(id) == null) {
@@ -281,7 +278,6 @@ class Notifier @Inject constructor(
     }
 
     fun deleteConversationChannel(threadId: Long) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         runCatching { system.deleteNotificationChannel(conversationChannelId(threadId)) }
         runCatching { ShortcutManagerCompat.removeLongLivedShortcuts(context, listOf("thread_$threadId")) }
     }

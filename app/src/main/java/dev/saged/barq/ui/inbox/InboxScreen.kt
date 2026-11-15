@@ -311,6 +311,9 @@ fun InboxScreen(
                     onRead = { if (allRead) vm.unreadSelected() else vm.readSelected() },
                     onDelete = vm::deleteSelected,
                     onBlock = vm::blockSelected,
+                    onCopyNumber = chosen.singleOrNull()?.let { c ->
+                        { NotificationActionReceiver.copyText(context, c.addresses); vm.clearSelection() }
+                    },
                 )
             }
         },
@@ -675,6 +678,7 @@ private fun SelectionTopBar(
     onRead: () -> Unit,
     onDelete: () -> Unit,
     onBlock: () -> Unit,
+    onCopyNumber: (() -> Unit)?,
 ) {
     var menu by remember { mutableStateOf(false) }
     TopAppBar(
@@ -710,6 +714,13 @@ private fun SelectionTopBar(
                         },
                         onClick = { menu = false; onMute() },
                     )
+                    onCopyNumber?.let { copy ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.copy_number)) },
+                            leadingIcon = { Icon(Icons.Outlined.ContentCopy, null) },
+                            onClick = { menu = false; copy() },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text(stringResource(R.string.block)) },
                         leadingIcon = { Icon(Icons.Outlined.Block, null) },

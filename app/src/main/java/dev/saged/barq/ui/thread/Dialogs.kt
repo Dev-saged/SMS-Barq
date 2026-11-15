@@ -26,6 +26,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -53,7 +54,7 @@ private fun at(dayOffset: Int, hour: Int, minute: Int = 0): Long =
 
 @Composable
 fun ScheduleDialog(onDismiss: () -> Unit, onPick: (Long) -> Unit) {
-    var stage by remember { mutableStateOf(0) } // 0 quick list, 1 date, 2 time
+    var stage by remember { mutableIntStateOf(0) } // 0 quick list, 1 date, 2 time
     var pickedDay by remember { mutableStateOf<Long?>(null) }
 
     when (stage) {

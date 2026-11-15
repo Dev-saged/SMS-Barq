@@ -597,4 +597,5 @@
     <string name="sf_amount">С суммой</string>
     <string name="sf_code">С кодом</string>
     <string name="sf_filters">Фильтр результатов</string>
+    <string name="copy_number">Копировать номер</string>
 </resources>

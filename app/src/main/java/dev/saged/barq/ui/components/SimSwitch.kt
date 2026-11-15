@@ -36,6 +36,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import dev.saged.barq.R
 import dev.saged.barq.data.sim.SimInfo
@@ -67,7 +68,7 @@ fun SimSwitch(sims: List<SimInfo>, subId: Int, onPick: (Int) -> Unit, modifier: 
         )
         Box(
             Modifier
-                .offset(x = offset)
+                .offset { IntOffset(offset.roundToPx(), 0) }
                 .width(half)
                 .fillMaxHeight()
                 .shadow(4.dp, RoundedCornerShape(18.dp))
