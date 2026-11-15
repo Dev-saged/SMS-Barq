@@ -19,6 +19,7 @@ import dev.saged.barq.data.db.UnreadSummary
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.settings.SwipeAction
+import dev.saged.barq.domain.SearchFilters
 import dev.saged.barq.domain.TextNorm
 import dev.saged.barq.notifications.Notifier
 import dev.saged.barq.sms.SendEngine
@@ -118,11 +119,18 @@ class InboxViewModel @Inject constructor(
         onDone(n)
     }
 
+    val searchFilters = MutableStateFlow(SearchFilters())
+
     /** Messages matching the search, from the full-text index (instant even with 100k messages). */
-    val messageHits: StateFlow<List<SearchHit>> = debouncedQuery
-        .mapLatest { q ->
-            val match = TextNorm.ftsQuery(q) ?: return@mapLatest emptyList<SearchHit>()
-            runCatching { messages.search(match, 150) }.getOrDefault(emptyList())
+    val messageHits: StateFlow<List<SearchHit>> = combine(debouncedQuery, searchFilters) { q, f -> q to f }
+        .mapLatest { (q, f) ->
+            val match = TextNorm.ftsQuery(q)
+            val found = when {
+                match != null -> runCatching { messages.search(match, if (f.active) 600 else 150) }.getOrDefault(emptyList())
+                f.active -> runCatching { messages.recent(2000) }.getOrDefault(emptyList())
+                else -> emptyList()
+            }
+            if (f.active) found.filter { f.matches(it.body, it.date, it.box) }.take(150) else found
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

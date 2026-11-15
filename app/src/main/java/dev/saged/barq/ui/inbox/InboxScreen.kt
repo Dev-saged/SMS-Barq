@@ -99,6 +99,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.outlined.Call
 import androidx.core.content.ContextCompat
 import dev.saged.barq.domain.PhoneUtils
+import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.runtime.saveable.rememberSaveable
+import dev.saged.barq.domain.SearchDirection
+import dev.saged.barq.domain.SearchFilters
+import dev.saged.barq.domain.SearchHas
+import dev.saged.barq.domain.SearchPeriod
 import kotlin.math.abs
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -222,7 +228,11 @@ fun InboxScreen(
     val archivedMsg = stringResource(R.string.archived_done)
     val deletedMsg = stringResource(R.string.deleted_done)
     val undo = stringResource(R.string.undo)
-    val searching = query.isNotBlank()
+    val searchFilters by vm.searchFilters.collectAsStateWithLifecycle()
+    var filtersOpen by rememberSaveable { mutableStateOf(false) }
+    val textSearch = query.isNotBlank()
+    val searching = textSearch || searchFilters.active
+    val convCount = if (searching && !textSearch) 0 else pagingItems.itemCount
     val readAllDone = stringResource(R.string.unread_all_done)
 
     // The "Unread" shortcut on the home screen opens the inbox straight on this view.
@@ -348,7 +358,19 @@ fun InboxScreen(
                     )
                 }
             }
-            item(key = "search", contentType = "search") { SearchField(query) { vm.query.value = it } }
+            item(key = "search", contentType = "search") {
+                SearchField(
+                    value = query,
+                    filtersActive = searchFilters.active,
+                    onFilters = { filtersOpen = !filtersOpen },
+                    onChange = { vm.query.value = it },
+                )
+            }
+            if (filtersOpen || searchFilters.active) {
+                item(key = "search_filters", contentType = "chips") {
+                    SearchFilterChips(searchFilters) { vm.searchFilters.value = it }
+                }
+            }
             if (!searching) {
                 item(key = "chips", contentType = "chips") {
                     FilterChips(
@@ -430,11 +452,11 @@ fun InboxScreen(
                     )
                 }
             }
-            if (searching && pagingItems.itemCount > 0) {
+            if (searching && convCount > 0) {
                 item(key = "h_conv", contentType = "header") { ListHeader(stringResource(R.string.search_conversations)) }
             }
             items(
-                count = pagingItems.itemCount,
+                count = convCount,
                 key = pagingItems.itemKey { it.threadId },
                 contentType = pagingItems.itemContentType { "conversation" },
             ) { index ->
@@ -473,7 +495,7 @@ fun InboxScreen(
                     SearchHitRow(hit, query, settings) { openThreadAt(hit.threadId, hit.id) }
                 }
             }
-            if (pagingItems.itemCount == 0 && !sync.running && (!searching || hits.isEmpty())) {
+            if (convCount == 0 && !sync.running && (!searching || hits.isEmpty())) {
                 item(key = "empty", contentType = "empty") {
                     if (unreadOnly && !searching) UnreadEmptyState() else EmptyState(searching || filter != null)
                 }
@@ -701,7 +723,12 @@ private fun SelectionTopBar(
 }
 
 @Composable
-private fun SearchField(value: String, onChange: (String) -> Unit) {
+private fun SearchField(
+    value: String,
+    filtersActive: Boolean,
+    onFilters: () -> Unit,
+    onChange: (String) -> Unit,
+) {
     val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -734,6 +761,63 @@ private fun SearchField(value: String, onChange: (String) -> Unit) {
                 tint = scheme.onSurfaceVariant,
                 modifier = Modifier.clip(RoundedCornerShape(12.dp)).clickable { onChange("") },
             )
+        }
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(if (filtersActive) scheme.primaryContainer else Color.Transparent)
+                .clickable(onClick = onFilters),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                Icons.Outlined.Tune,
+                contentDescription = stringResource(R.string.sf_filters),
+                tint = if (filtersActive) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SearchFilterChips(filters: SearchFilters, onChange: (SearchFilters) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    @Composable
+    fun chip(selected: Boolean, label: Int, onClick: () -> Unit) {
+        FilterChip(
+            selected = selected,
+            onClick = onClick,
+            label = { Text(stringResource(label)) },
+            shape = RoundedCornerShape(12.dp),
+            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = scheme.secondaryContainer),
+        )
+    }
+    @Composable
+    fun divider() = Box(Modifier.padding(horizontal = 2.dp).size(width = 1.dp, height = 22.dp).background(scheme.outlineVariant))
+    fun period(p: SearchPeriod) = onChange(filters.copy(period = if (filters.period == p) SearchPeriod.ANY else p))
+    fun direction(d: SearchDirection) = onChange(filters.copy(direction = if (filters.direction == d) SearchDirection.ANY else d))
+    fun has(h: SearchHas) = onChange(filters.copy(has = if (h in filters.has) filters.has - h else filters.has + h))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        chip(filters.period == SearchPeriod.TODAY, R.string.sf_today) { period(SearchPeriod.TODAY) }
+        chip(filters.period == SearchPeriod.WEEK, R.string.sf_week) { period(SearchPeriod.WEEK) }
+        chip(filters.period == SearchPeriod.MONTH, R.string.sf_month) { period(SearchPeriod.MONTH) }
+        divider()
+        chip(filters.direction == SearchDirection.RECEIVED, R.string.sf_received) { direction(SearchDirection.RECEIVED) }
+        chip(filters.direction == SearchDirection.SENT, R.string.sf_sent) { direction(SearchDirection.SENT) }
+        divider()
+        chip(SearchHas.LINK in filters.has, R.string.sf_link) { has(SearchHas.LINK) }
+        chip(SearchHas.AMOUNT in filters.has, R.string.sf_amount) { has(SearchHas.AMOUNT) }
+        chip(SearchHas.CODE in filters.has, R.string.sf_code) { has(SearchHas.CODE) }
+        if (filters.active) {
+            divider()
+            TextButton(onClick = { onChange(SearchFilters()) }) { Text(stringResource(R.string.clear)) }
         }
     }
 }

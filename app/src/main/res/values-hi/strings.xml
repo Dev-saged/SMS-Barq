@@ -588,4 +588,13 @@
         <item>धन्यवाद</item>
         <item>अभी व्यस्त हूँ</item>
     </string-array>
+    <string name="sf_today">आज</string>
+    <string name="sf_week">इस सप्ताह</string>
+    <string name="sf_month">इस महीने</string>
+    <string name="sf_received">प्राप्त</string>
+    <string name="sf_sent">भेजे गए</string>
+    <string name="sf_link">लिंक वाले</string>
+    <string name="sf_amount">राशि वाले</string>
+    <string name="sf_code">कोड वाले</string>
+    <string name="sf_filters">परिणाम फ़िल्टर करें</string>
 </resources>

@@ -49,6 +49,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -72,6 +74,8 @@ import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.notifications.NotificationActionReceiver
 import dev.saged.barq.ui.components.TimeFormat
 import dev.saged.barq.ui.components.rememberWithNames
+import dev.saged.barq.domain.CopyableValues
+import dev.saged.barq.domain.CopySpan
 import dev.saged.barq.sms.SendErrors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -82,20 +86,43 @@ private val urlRegex = Regex("(?i)\\b((https?://|www\\.)[^\\s]+)")
 @Composable
 private fun linkify(text: String): AnnotatedString {
     val linkColor = MaterialTheme.colorScheme.primary
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     return remember(text, linkColor) {
+        val urls = urlRegex.findAll(text).map { m ->
+            val raw = m.value.trimEnd('.', ',', ')', '،')
+            m.range.first until m.range.first + raw.length
+        }.toList()
+        val copies = CopyableValues.find(text)
+        val marks = (urls.map { it to null as CopySpan? } + copies.map { it.range to it }).sortedBy { it.first.first }
         buildAnnotatedString {
             var last = 0
-            urlRegex.findAll(text).forEach { m ->
-                append(text.substring(last, m.range.first))
-                val raw = m.value.trimEnd('.', ',', ')', '،')
-                val url = if (raw.startsWith("www.", ignoreCase = true)) "https://$raw" else raw
-                withLink(
-                    LinkAnnotation.Url(
-                        url,
-                        TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline, fontWeight = FontWeight.Medium))
-                    )
-                ) { append(raw) }
-                last = m.range.first + raw.length
+            marks.forEach { (range, copy) ->
+                if (range.first < last) return@forEach
+                append(text.substring(last, range.first))
+                val raw = text.substring(range.first, range.last + 1)
+                if (copy == null) {
+                    val url = if (raw.startsWith("www.", ignoreCase = true)) "https://$raw" else raw
+                    withLink(
+                        LinkAnnotation.Url(
+                            url,
+                            TextLinkStyles(SpanStyle(textDecoration = TextDecoration.Underline, fontWeight = FontWeight.Medium))
+                        )
+                    ) { append(raw) }
+                } else {
+                    withLink(
+                        LinkAnnotation.Clickable(
+                            tag = copy.value,
+                            styles = TextLinkStyles(
+                                SpanStyle(fontWeight = FontWeight.SemiBold, background = linkColor.copy(alpha = 0.16f))
+                            ),
+                        ) {
+                            NotificationActionReceiver.copyText(context, copy.value)
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }
+                    ) { append(raw) }
+                }
+                last = range.last + 1
             }
             if (last < text.length) append(text.substring(last))
         }
@@ -171,7 +198,7 @@ fun MessageBubble(
                     onClick = { if (failed) onResend() },
                     onLongClick = onLongPress,
                 )
-                .padding(horizontal = 14.dp, vertical = 9.dp),
+                .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             message.attachments.forEach { AttachmentView(it) }
@@ -395,7 +422,7 @@ private fun decodeSampled(path: String, maxSide: Int): ImageBitmap? = runCatchin
 
 @Composable
 fun DayHeader(text: String) {
-    Box(Modifier.fillMaxWidth().padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
+    Box(Modifier.fillMaxWidth().padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
         Text(
             text,
             style = MaterialTheme.typography.labelMedium,

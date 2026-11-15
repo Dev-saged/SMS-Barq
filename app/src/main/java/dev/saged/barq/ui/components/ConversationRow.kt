@@ -86,7 +86,7 @@ fun ConversationRow(
             .combinedClickable(onClick = onClick, onLongClick = onLongClick),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = RowPadding, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = RowPadding, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Box {

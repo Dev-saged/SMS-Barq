@@ -141,6 +141,23 @@ class ReplyEngine @Inject constructor(
         cached = null
     }
 
+    /**
+     * The user took the chip [suggested] for [incoming] but sent [sent] instead: the chip loses a use
+     * (and goes away when spent) and the corrected text gains one, so the next suggestion is closer.
+     */
+    suspend fun onSuggestionEdited(incoming: String, suggested: String, sent: String) {
+        if (!settings.current().learnReplies) return
+        if (ReplyText.replyKey(suggested) == ReplyText.replyKey(sent)) return
+        val key = ReplyText.key(incoming)
+        if (key.isBlank()) return
+        db.withTransaction {
+            replies.demote(key, suggested)
+            replies.deleteSpent()
+            replies.bump(key, sent.trim(), System.currentTimeMillis())
+        }
+        cached = null
+    }
+
     /** Re-reads the whole history in the background (the memory is rebuilt from scratch). */
     fun rebuild() {
         scope.launch { runCatching { rebuildNow() }.onFailure { CrashLog.warn("reply-learn", it) } }

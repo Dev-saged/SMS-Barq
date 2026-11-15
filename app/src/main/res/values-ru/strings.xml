@@ -588,4 +588,13 @@
         <item>Спасибо</item>
         <item>Сейчас занят</item>
     </string-array>
+    <string name="sf_today">Сегодня</string>
+    <string name="sf_week">За неделю</string>
+    <string name="sf_month">За месяц</string>
+    <string name="sf_received">Входящие</string>
+    <string name="sf_sent">Исходящие</string>
+    <string name="sf_link">Со ссылкой</string>
+    <string name="sf_amount">С суммой</string>
+    <string name="sf_code">С кодом</string>
+    <string name="sf_filters">Фильтр результатов</string>
 </resources>
