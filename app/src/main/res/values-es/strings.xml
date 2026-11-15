@@ -597,4 +597,5 @@
     <string name="sf_amount">Con importe</string>
     <string name="sf_code">Con código</string>
     <string name="sf_filters">Filtrar resultados</string>
+    <string name="copy_number">Copiar número</string>
 </resources>

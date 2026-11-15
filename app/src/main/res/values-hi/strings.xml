@@ -597,4 +597,5 @@
     <string name="sf_amount">राशि वाले</string>
     <string name="sf_code">कोड वाले</string>
     <string name="sf_filters">परिणाम फ़िल्टर करें</string>
+    <string name="copy_number">नंबर कॉपी करें</string>
 </resources>

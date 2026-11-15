@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -76,6 +77,7 @@ import dev.saged.barq.ui.icons.BIcons
 import dev.saged.barq.ui.theme.islandColor
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -85,7 +87,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
@@ -133,7 +137,7 @@ fun ThreadScreen(
     val searchTarget by vm.searchTarget.collectAsStateWithLifecycle()
     val pagingItems = vm.messages.collectAsLazyPagingItems()
     val listState = rememberLazyListState()
-    var highlightId by remember { mutableStateOf(-1L) }
+    var highlightId by remember { mutableLongStateOf(-1L) }
     var focusDone by remember { mutableStateOf(false) }
 
     var menu by remember { mutableStateOf(false) }
@@ -145,6 +149,7 @@ fun ThreadScreen(
 
     val conv = conversation
     val addresses = conv?.addresses.orEmpty()
+    val haptic = LocalHapticFeedback.current
     val canReply = PhoneUtils.splitAddresses(addresses).all { PhoneUtils.isPhoneNumber(it) }
     val today = stringResource(R.string.today)
     val yesterday = stringResource(R.string.yesterday)
@@ -205,7 +210,16 @@ fun ThreadScreen(
                     Row(
                         modifier = Modifier
                             .clip(RoundedCornerShape(14.dp))
-                            .clickable(enabled = conv != null) { conv?.let { openContact(it.threadId) } }
+                            .combinedClickable(
+                                enabled = conv != null,
+                                onClick = { conv?.let { openContact(it.threadId) } },
+                                onLongClick = {
+                                    conv?.let {
+                                        NotificationActionReceiver.copyText(context, it.addresses)
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
+                                },
+                            )
                             .padding(end = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -225,9 +239,20 @@ fun ThreadScreen(
                             if (conv != null && conv.displayName != conv.addresses) {
                                 Text(
                                     conv.addresses,
-                                    style = MaterialTheme.typography.labelMedium.copy(textDirection = TextDirection.Ltr),
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        textDirection = TextDirection.Ltr,
+                                        fontFeatureSettings = "tnum",
+                                    ),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
+                                        .clickable {
+                                            NotificationActionReceiver.copyText(context, conv.addresses)
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        }
+                                        .padding(horizontal = 6.dp, vertical = 2.dp),
                                 )
                             }
                         }
@@ -366,6 +391,7 @@ fun ThreadScreen(
                                 cm.setPrimaryClip(ClipData.newPlainText("sms", m.body))
                             },
                             onCopyCode = { code -> NotificationActionReceiver.copyToClipboard(context, code) },
+                            onCopyNumber = { NotificationActionReceiver.copyText(context, m.address) },
                             onForward = { forward(m.body) },
                             onResend = { vm.resend(m.id) },
                             onDelete = { vm.deleteMessage(m.id) },
@@ -413,6 +439,7 @@ private fun MessageMenu(
     onDismiss: () -> Unit,
     onCopy: () -> Unit,
     onCopyCode: (String) -> Unit,
+    onCopyNumber: () -> Unit,
     onForward: () -> Unit,
     onResend: () -> Unit,
     onDelete: () -> Unit,
@@ -451,6 +478,13 @@ private fun MessageMenu(
                 text = { Text(stringResource(R.string.copy_code_value, code)) },
                 leadingIcon = { Icon(Icons.Outlined.VerifiedUser, null) },
                 onClick = { onDismiss(); onCopyCode(code) },
+            )
+        }
+        if (message.box == MsgBox.INBOX && PhoneUtils.isPhoneNumber(message.address)) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.copy_number)) },
+                leadingIcon = { Icon(Icons.Outlined.Call, null) },
+                onClick = { onDismiss(); onCopyNumber() },
             )
         }
         DropdownMenuItem(
