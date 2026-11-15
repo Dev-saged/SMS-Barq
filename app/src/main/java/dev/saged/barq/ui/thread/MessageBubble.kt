@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import androidx.compose.ui.graphics.luminance
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.db.Attachment
 import dev.saged.barq.data.db.Box as MsgBox
 import dev.saged.barq.data.db.DeliveryStatus
@@ -297,7 +298,7 @@ private fun OutgoingFooter(
         message.deliveryStatus == DeliveryStatus.DELIVERED -> stringResource(R.string.status_delivered)
         message.deliveryStatus == DeliveryStatus.FAILED -> stringResource(R.string.status_not_delivered)
         message.fromOtherApp && message.box == MsgBox.SENT -> stringResource(R.string.status_sent_other_app)
-        parts > 1 -> stringResource(R.string.status_sent_parts, parts)
+        parts > 1 -> pluralText(R.plurals.status_sent_parts, parts, parts)
         else -> null
     } ?: return
     Row(

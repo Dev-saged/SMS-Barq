@@ -84,6 +84,24 @@ object PhoneUtils {
         }
     }
 
+    /**
+     * What to look a typed number up by, whatever its prefix: "0599 123 456", "+970599123456" and
+     * "00972599123456" all give "599123456". Empty when [text] isn't a number (or is under 4 digits).
+     */
+    fun searchKey(text: String): String {
+        val a = normalizeDigits(text.trim())
+        if (a.isEmpty() || !a.all { it.isDigit() || it in "+-() ." }) return ""
+        var d = a.filter { it.isDigit() }
+        if (d.startsWith("00")) d = d.drop(2)
+        if (d.length > 9 && (d.startsWith("970") || d.startsWith("972"))) d = d.drop(3)
+        d = d.trimStart('0')
+        return if (d.length >= 3 && a.count { it.isDigit() } >= 4) d else ""
+    }
+
+    /** Every address of a conversation in its raw local form ("0599123456, 0569123456"). */
+    fun localJoined(addresses: String, separator: String = ", "): String =
+        splitAddresses(addresses).joinToString(separator) { localPs(it) }
+
     /** [localPs] for every address, without duplicates of the same real number. */
     fun localPsAll(addresses: List<String>): List<String> =
         addresses.map { localPs(it) }.filter { it.isNotEmpty() }.distinctBy { matchKey(it) }

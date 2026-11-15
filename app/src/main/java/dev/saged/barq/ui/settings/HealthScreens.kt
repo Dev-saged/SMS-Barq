@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.sim.SimRepository
@@ -179,7 +180,7 @@ fun HealthScreen(onBack: () -> Unit, open: (String) -> Unit, vm: HealthViewModel
         item {
             Summary(
                 ok = problems == 0,
-                text = if (problems == 0) stringResource(R.string.health_all_good) else stringResource(R.string.health_problems, problems),
+                text = if (problems == 0) stringResource(R.string.health_all_good) else pluralText(R.plurals.health_problems, problems, problems),
             )
         }
         item {
@@ -307,8 +308,8 @@ fun SendLimitScreen(onBack: () -> Unit, vm: HealthViewModel = hiltViewModel()) {
             ) {
                 Text(stringResource(R.string.limit_now), style = MaterialTheme.typography.labelLarge, color = scheme.onSurfaceVariant)
                 Text(
-                    if (limit.raised) stringResource(R.string.limit_raised_value, limit.maxCount)
-                    else stringResource(R.string.limit_value, limit.perMinute),
+                    if (limit.raised) pluralText(R.plurals.limit_raised_value, limit.maxCount.toInt(), limit.maxCount)
+                    else pluralText(R.plurals.limit_value, limit.perMinute.toInt(), limit.perMinute),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                 )

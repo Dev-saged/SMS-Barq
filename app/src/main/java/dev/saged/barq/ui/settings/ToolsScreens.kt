@@ -54,6 +54,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.BlockList
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.CategoryRuleEntity
@@ -467,7 +468,7 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
                 RowDivider()
                 ClickRow(
                     BIcons.Rewind, stringResource(R.string.reply_rebuild),
-                    if (busy) stringResource(R.string.reply_rebuilding) else stringResource(R.string.reply_memory_count, learned),
+                    if (busy) stringResource(R.string.reply_rebuilding) else pluralText(R.plurals.reply_memory_count, learned, learned),
                 ) { if (!busy) vm.rebuildReplies() }
                 RowDivider()
                 ClickRow(BIcons.Trash, stringResource(R.string.reply_clear)) { confirmClear = true }
@@ -590,6 +591,6 @@ fun AutoReplyScreen(onBack: () -> Unit, vm: ToolsViewModel = hiltViewModel()) {
 
 @Composable
 private fun cooldownLabel(minutes: Int): String =
-    if (minutes == 0) stringResource(R.string.cooldown_instant) else stringResource(R.string.cooldown_value, minutes)
+    if (minutes == 0) stringResource(R.string.cooldown_instant) else pluralText(R.plurals.cooldown_value, minutes, minutes)
 
 private fun hm(minutes: Int): String = "%02d:%02d".format(minutes / 60, minutes % 60)

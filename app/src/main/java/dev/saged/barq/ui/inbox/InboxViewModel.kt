@@ -19,6 +19,7 @@ import dev.saged.barq.data.db.UnreadSummary
 import dev.saged.barq.data.settings.AppSettings
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.data.settings.SwipeAction
+import dev.saged.barq.domain.PhoneUtils
 import dev.saged.barq.domain.SearchFilters
 import dev.saged.barq.domain.TextNorm
 import dev.saged.barq.notifications.Notifier
@@ -97,7 +98,7 @@ class InboxViewModel @Inject constructor(
             .flatMapLatest { l ->
                 scrollIndex = 0
                 scrollOffset = 0
-                Pager(pagingConfig) { conversationDao.inbox(l.category?.name, l.query, l.unread) }.flow
+                Pager(pagingConfig) { conversationDao.inbox(l.category?.name, l.query, PhoneUtils.searchKey(l.query), l.unread) }.flow
             }
             .cachedIn(viewModelScope)
 

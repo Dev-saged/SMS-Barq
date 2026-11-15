@@ -162,7 +162,7 @@ fun ContactScreen(
                     .clip(RoundedCornerShape(16.dp))
                     .clickable {
                         val cm = context.getSystemService(ClipboardManager::class.java)
-                        cm.setPrimaryClip(ClipData.newPlainText("number", ui.address))
+                        cm.setPrimaryClip(ClipData.newPlainText("number", PhoneUtils.localPs(ui.address)))
                         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                             Toast.makeText(context, copiedMsg, Toast.LENGTH_SHORT).show()
                         }
@@ -173,7 +173,7 @@ fun ContactScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    ui.address,
+                    PhoneUtils.localPs(ui.address),
                     style = MaterialTheme.typography.titleMedium.copy(textDirection = TextDirection.Ltr),
                     letterSpacing = 1.sp,
                     color = scheme.onSurface,

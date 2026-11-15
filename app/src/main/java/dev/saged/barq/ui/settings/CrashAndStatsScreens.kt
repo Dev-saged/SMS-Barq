@@ -53,6 +53,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.db.Box
 import dev.saged.barq.data.db.MessageDao
 import dev.saged.barq.data.db.TopThread
@@ -275,7 +276,7 @@ fun StatsScreen(onBack: () -> Unit, openThread: (Long) -> Unit, vm: StatsViewMod
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(p.label, modifier = Modifier.weight(1f))
                             Text(
-                                stringResource(R.string.stats_parts_value, p.parts),
+                                pluralText(R.plurals.stats_parts_value, p.parts.toInt(), p.parts),
                                 fontWeight = FontWeight.Bold,
                                 color = scheme.primary,
                             )
@@ -310,7 +311,7 @@ fun StatsScreen(onBack: () -> Unit, openThread: (Long) -> Unit, vm: StatsViewMod
                         ) {
                             Text("${i + 1}", fontWeight = FontWeight.Bold, color = scheme.primary)
                             Text(t.name, modifier = Modifier.weight(1f), maxLines = 1)
-                            Text(stringResource(R.string.stats_messages, t.count), color = scheme.onSurfaceVariant)
+                            Text(pluralText(R.plurals.stats_messages, t.count.toInt(), t.count), color = scheme.onSurfaceVariant)
                         }
                     }
                 }
