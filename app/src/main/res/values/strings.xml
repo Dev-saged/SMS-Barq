@@ -30,7 +30,6 @@
     <string name="new_message">رسالة جديدة</string>
     <string name="new_code_from">رمز تحقق جديد · %1$s</string>
     <string name="code_card_hint">انسخه والصقه — يبقى الرمز محفوظاً في المحادثة</string>
-    <string name="spam_banner">%1$d محادثات سبام محجوبة</string>
     <string name="show">عرض</string>
     <string name="not_default_banner">برق ليس تطبيق الرسائل الافتراضي — لن تصل الرسائل الجديدة إليه.</string>
     <string name="make_default">تفعيل</string>
@@ -112,7 +111,6 @@
     <string name="status_sending">جارٍ الإرسال…</string>
     <string name="status_delivered">تم التسليم</string>
     <string name="status_not_delivered">لم يتم التسليم</string>
-    <string name="status_sent_parts">SMS · %1$d أجزاء</string>
 
     <!-- Compose -->
     <string name="to_label">إلى</string>
@@ -244,7 +242,6 @@
     <string name="reply_memory">ذاكرة الردود</string>
     <string name="learn_replies">التعلّم من ردودي</string>
     <string name="learn_replies_sub">يقترح ردوداً فوق خانة الكتابة في المحادثة ويستخدمها في الرد التلقائي. يعمل على هاتفك فقط.</string>
-    <string name="reply_memory_count">%1$d رداً متعلَّماً</string>
     <string name="reply_rebuild">إعادة التعلّم من رسائلي</string>
     <string name="reply_rebuilding">جارٍ التعلّم…</string>
     <string name="reply_clear">مسح ما تعلّمه</string>
@@ -261,7 +258,6 @@
     <string name="contacts_only">جهات الاتصال فقط</string>
     <string name="contacts_only_sub">لا يرد على الأرقام غير المحفوظة</string>
     <string name="cooldown">المهلة بين الردود</string>
-    <string name="cooldown_value">%1$d دقيقة</string>
     <string name="cooldown_instant">فوري: على كل رسالة</string>
     <string name="time_window">فترة زمنية فقط</string>
     <string name="time_window_value">من %1$s إلى %2$s</string>
@@ -279,7 +275,6 @@
     <!-- 1.2.0: bulk sending -->
     <string name="channel_sending">الإرسال الجاري</string>
     <string name="channel_conversation_desc">نغمة واهتزاز خاصان بهذه المحادثة</string>
-    <string name="notif_summary">رسائل جديدة في %1$d محادثات</string>
     <string name="bulk_preparing">جارٍ تجهيز الإرسال الجماعي…</string>
     <string name="bulk_sending_title">جارٍ الإرسال %1$d من %2$d</string>
     <string name="bulk_paused_title">متوقف مؤقتاً %1$d من %2$d</string>
@@ -328,7 +323,6 @@
     <string name="groups_hint">أنشئ مجموعة (مثل «العائلة» أو «الزبائن») وأرسل لها من «رسالة جديدة» بضغطة واحدة.</string>
     <string name="group_new">مجموعة جديدة</string>
     <string name="group_name">اسم المجموعة</string>
-    <string name="group_members_count">%1$d رقم</string>
     <string name="group_from_contacts">من جهات الاتصال</string>
     <string name="group_paste">لصق أرقام</string>
     <string name="group_paste_hint">رقم في كل سطر أو مفصولة بفاصلة</string>
@@ -350,10 +344,8 @@
     <string name="stats_received">واردة</string>
     <string name="stats_sent">صادرة</string>
     <string name="stats_parts">أجزاء SMS المستهلكة هذا الشهر</string>
-    <string name="stats_parts_value">%1$d جزء</string>
     <string name="stats_failed">نسبة الفشل هذا الشهر: %1$d%%</string>
     <string name="stats_top">أكثر من تراسلهم هذا الشهر</string>
-    <string name="stats_messages">%1$d رسالة</string>
     <string name="stats_none">لا توجد بيانات بعد</string>
 
     <!-- 1.2.0: crash log, updates, backup -->
@@ -468,7 +460,6 @@
     <string name="health_title">جاهزية برق</string>
     <string name="health_sub">افحص كل ما يحتاجه برق ليعمل بثبات، وأصلحه بلمسة</string>
     <string name="health_all_good">كل شيء جاهز. برق يعمل بكامل قوته.</string>
-    <string name="health_problems">%1$d أمور تحتاج انتباهك</string>
     <string name="health_checks">الفحوصات</string>
     <string name="health_info">معلومات</string>
     <string name="health_default">برق هو تطبيق الرسائل الافتراضي</string>
@@ -491,8 +482,6 @@
     <string name="send_limit_title">حد الإرسال</string>
     <string name="send_limit_sub">ارفع حد أندرويد لإرسال مئات الرسائل بدون توقف</string>
     <string name="limit_now">الحد الحالي</string>
-    <string name="limit_value">حوالي %1$d رسالة في الدقيقة</string>
-    <string name="limit_raised_value">مرفوع: %1$d رسالة في الدقيقة</string>
     <string name="limit_explain">هذا حد يضعه أندرويد لكل تطبيق. فوقه يتوقف الإرسال ويسأل أندرويد للسماح، لذلك يلتزم به برق. ارفعه مرة واحدة ليصبح الإرسال الجماعي سريعاً.</string>
     <string name="limit_raised_explain">الحد مرفوع، والإرسال الجماعي يعمل بأقصى سرعة يسمح بها المودم. هذا الإعداد عام ويفيد أي تطبيق إرسال آخر أيضاً.</string>
     <string name="limit_raise">رفع الحد</string>
@@ -566,17 +555,14 @@
     <string name="gateway_panel_hint">افتح هذا العنوان من أي جهاز على نفس الشبكة لتظهر لوحة الإرسال.</string>
     <!-- 1.5.0 -->
     <string name="gateway_stopped_title">البوابة توقفت</string>
-    <string name="gateway_stopped_text">في %1$d رسالة من البوابة بالانتظار. بدك تكمّل إرسالها؟</string>
     <string name="gateway_continue">إكمال الإرسال</string>
     <string name="gateway_cancel_rest">إلغاء الباقي</string>
     <string name="bulk_time_limit_title">الإرسال الجماعي توقف مؤقتاً</string>
-    <string name="bulk_time_limit_text">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في %1$d رسالة بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</string>
     <string name="gateway_card_title">بوابة برق</string>
     <string name="sim_n">شريحة %1$d</string>
     <string name="import_excel">استيراد من Excel</string>
     <string name="import_empty">ما لقينا أرقام بالملف. تأكد إنه فيه عمود أرقام الجوال</string>
     <string name="import_xls">صيغة Excel القديمة (.xls) مش مدعومة. احفظ الملف كـ .xlsx أو CSV وجرّب مرة ثانية</string>
-    <string name="import_found">لقينا %1$d رقم</string>
     <string name="import_skipped">حُذف %1$d مكرر · %2$d غير صالح</string>
     <string name="import_columns">عمود الاسم: %1$s · عمود الرقم: %2$s</string>
     <string name="import_more">و%1$d غيرهم…</string>
@@ -584,7 +570,6 @@
     <string name="import_save">حفظ المجموعة</string>
     <string name="name_insert">إدراج {الاسم}</string>
     <string name="name_preview">معاينة</string>
-    <string name="name_missing">%1$d بدون اسم: بتوصلهم الرسالة بدون الاسم</string>
     <string name="gateway_api_extra">وكمان من برق: عدة أرقام بطلب واحد (phones أو messages)، اختيار الشريحة (sim: 1 أو 2)، جدولة (send_at)، وكل رد فيه رقم الرسالة (id) لتسأل عن حالتها من ‎/api/message/ID‎.</string>
     <string name="lock_setting">قفل التطبيق</string>
     <string name="lock_setting_sub">يفتح ببصمة الإصبع أو الوجه أو رمز الهاتف المحفوظين بجوالك</string>
@@ -649,7 +634,6 @@
     <string name="failed_delete_all">حذف الكل (%1$d)</string>
     <string name="failed_delete_n">حذف (%1$d)</string>
     <string name="failed_delete_title">حذف الرسائل الفاشلة؟</string>
-    <string name="failed_delete_body">تُحذف %1$d رسالة فاشلة فقط، وتبقى المحادثات كما هي.</string>
     <string name="swipe_call">اتصال</string>
     <string name="swipe_call_none">لا يمكن الاتصال بهذا المرسل</string>
     <string name="sf_today">اليوم</string>
@@ -662,4 +646,132 @@
     <string name="sf_code">فيها رمز</string>
     <string name="sf_filters">تصفية النتائج</string>
     <string name="copy_number">نسخ الرقم</string>
+    <plurals name="spam_banner">
+        <item quantity="zero">لا محادثات سبام محجوبة</item>
+        <item quantity="one">محادثة سبام واحدة محجوبة</item>
+        <item quantity="two">محادثتا سبام محجوبتان</item>
+        <item quantity="few">%1$d محادثات سبام محجوبة</item>
+        <item quantity="many">%1$d محادثة سبام محجوبة</item>
+        <item quantity="other">%1$d محادثة سبام محجوبة</item>
+    </plurals>
+    <plurals name="status_sent_parts">
+        <item quantity="zero">SMS · بلا أجزاء</item>
+        <item quantity="one">SMS · جزء واحد</item>
+        <item quantity="two">SMS · جزءان</item>
+        <item quantity="few">SMS · %1$d أجزاء</item>
+        <item quantity="many">SMS · %1$d جزءاً</item>
+        <item quantity="other">SMS · %1$d جزء</item>
+    </plurals>
+    <plurals name="reply_memory_count">
+        <item quantity="zero">لا ردود متعلَّمة</item>
+        <item quantity="one">رد واحد متعلَّم</item>
+        <item quantity="two">ردّان متعلَّمان</item>
+        <item quantity="few">%1$d ردود متعلَّمة</item>
+        <item quantity="many">%1$d رداً متعلَّماً</item>
+        <item quantity="other">%1$d رد متعلَّم</item>
+    </plurals>
+    <plurals name="cooldown_value">
+        <item quantity="zero">بلا انتظار</item>
+        <item quantity="one">دقيقة واحدة</item>
+        <item quantity="two">دقيقتان</item>
+        <item quantity="few">%1$d دقائق</item>
+        <item quantity="many">%1$d دقيقة</item>
+        <item quantity="other">%1$d دقيقة</item>
+    </plurals>
+    <plurals name="notif_summary">
+        <item quantity="zero">لا رسائل جديدة</item>
+        <item quantity="one">رسائل جديدة في محادثة واحدة</item>
+        <item quantity="two">رسائل جديدة في محادثتين</item>
+        <item quantity="few">رسائل جديدة في %1$d محادثات</item>
+        <item quantity="many">رسائل جديدة في %1$d محادثة</item>
+        <item quantity="other">رسائل جديدة في %1$d محادثة</item>
+    </plurals>
+    <plurals name="group_members_count">
+        <item quantity="zero">لا أرقام</item>
+        <item quantity="one">رقم واحد</item>
+        <item quantity="two">رقمان</item>
+        <item quantity="few">%1$d أرقام</item>
+        <item quantity="many">%1$d رقماً</item>
+        <item quantity="other">%1$d رقم</item>
+    </plurals>
+    <plurals name="stats_parts_value">
+        <item quantity="zero">بلا أجزاء</item>
+        <item quantity="one">جزء واحد</item>
+        <item quantity="two">جزءان</item>
+        <item quantity="few">%1$d أجزاء</item>
+        <item quantity="many">%1$d جزءاً</item>
+        <item quantity="other">%1$d جزء</item>
+    </plurals>
+    <plurals name="stats_messages">
+        <item quantity="zero">لا رسائل</item>
+        <item quantity="one">رسالة واحدة</item>
+        <item quantity="two">رسالتان</item>
+        <item quantity="few">%1$d رسائل</item>
+        <item quantity="many">%1$d رسالة</item>
+        <item quantity="other">%1$d رسالة</item>
+    </plurals>
+    <plurals name="health_problems">
+        <item quantity="zero">لا أمور تحتاج انتباهك</item>
+        <item quantity="one">أمر واحد يحتاج انتباهك</item>
+        <item quantity="two">أمران يحتاجان انتباهك</item>
+        <item quantity="few">%1$d أمور تحتاج انتباهك</item>
+        <item quantity="many">%1$d أمراً تحتاج انتباهك</item>
+        <item quantity="other">%1$d أمر تحتاج انتباهك</item>
+    </plurals>
+    <plurals name="limit_value">
+        <item quantity="zero">لا رسائل في الدقيقة</item>
+        <item quantity="one">حوالي رسالة واحدة في الدقيقة</item>
+        <item quantity="two">حوالي رسالتين في الدقيقة</item>
+        <item quantity="few">حوالي %1$d رسائل في الدقيقة</item>
+        <item quantity="many">حوالي %1$d رسالة في الدقيقة</item>
+        <item quantity="other">حوالي %1$d رسالة في الدقيقة</item>
+    </plurals>
+    <plurals name="limit_raised_value">
+        <item quantity="zero">مرفوع: لا رسائل في الدقيقة</item>
+        <item quantity="one">مرفوع: رسالة واحدة في الدقيقة</item>
+        <item quantity="two">مرفوع: رسالتان في الدقيقة</item>
+        <item quantity="few">مرفوع: %1$d رسائل في الدقيقة</item>
+        <item quantity="many">مرفوع: %1$d رسالة في الدقيقة</item>
+        <item quantity="other">مرفوع: %1$d رسالة في الدقيقة</item>
+    </plurals>
+    <plurals name="gateway_stopped_text">
+        <item quantity="zero">لا رسائل من البوابة بالانتظار.</item>
+        <item quantity="one">في رسالة واحدة من البوابة بالانتظار. بدك تكمّل إرسالها؟</item>
+        <item quantity="two">في رسالتين من البوابة بالانتظار. بدك تكمّل إرسالهما؟</item>
+        <item quantity="few">في %1$d رسائل من البوابة بالانتظار. بدك تكمّل إرسالها؟</item>
+        <item quantity="many">في %1$d رسالة من البوابة بالانتظار. بدك تكمّل إرسالها؟</item>
+        <item quantity="other">في %1$d رسالة من البوابة بالانتظار. بدك تكمّل إرسالها؟</item>
+    </plurals>
+    <plurals name="import_found">
+        <item quantity="zero">ما لقينا أي رقم</item>
+        <item quantity="one">لقينا رقماً واحداً</item>
+        <item quantity="two">لقينا رقمين</item>
+        <item quantity="few">لقينا %1$d أرقام</item>
+        <item quantity="many">لقينا %1$d رقماً</item>
+        <item quantity="other">لقينا %1$d رقم</item>
+    </plurals>
+    <plurals name="name_missing">
+        <item quantity="zero">كلهم بأسماء</item>
+        <item quantity="one">واحد بدون اسم: بتوصله الرسالة بدون الاسم</item>
+        <item quantity="two">اثنان بدون اسم: بتوصلهم الرسالة بدون الاسم</item>
+        <item quantity="few">%1$d بدون اسم: بتوصلهم الرسالة بدون الاسم</item>
+        <item quantity="many">%1$d بدون اسم: بتوصلهم الرسالة بدون الاسم</item>
+        <item quantity="other">%1$d بدون اسم: بتوصلهم الرسالة بدون الاسم</item>
+    </plurals>
+    <plurals name="failed_delete_body">
+        <item quantity="zero">لا رسائل فاشلة للحذف.</item>
+        <item quantity="one">تُحذف رسالة فاشلة واحدة فقط، وتبقى المحادثات كما هي.</item>
+        <item quantity="two">تُحذف رسالتان فاشلتان فقط، وتبقى المحادثات كما هي.</item>
+        <item quantity="few">تُحذف %1$d رسائل فاشلة فقط، وتبقى المحادثات كما هي.</item>
+        <item quantity="many">تُحذف %1$d رسالة فاشلة فقط، وتبقى المحادثات كما هي.</item>
+        <item quantity="other">تُحذف %1$d رسالة فاشلة فقط، وتبقى المحادثات كما هي.</item>
+    </plurals>
+    <plurals name="bulk_time_limit_text">
+        <item quantity="zero">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. لا رسائل بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</item>
+        <item quantity="one">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في رسالة واحدة بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</item>
+        <item quantity="two">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في رسالتين بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</item>
+        <item quantity="few">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في %1$d رسائل بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</item>
+        <item quantity="many">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في %1$d رسالة بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</item>
+        <item quantity="other">أندرويد بيسمح للإرسال بالخلفية 6 ساعات باليوم، فوقّفه برق قبل ما يخلص الوقت. في %1$d رسالة بالانتظار. اضغط «إكمال الإرسال»، أو كمّل من بطاقة الإرسال جوّا برق.</item>
+    </plurals>
 </resources>

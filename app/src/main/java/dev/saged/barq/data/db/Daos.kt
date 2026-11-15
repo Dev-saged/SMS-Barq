@@ -27,7 +27,8 @@ interface ConversationDao {
           AND ((:category IS NULL AND category != 'SPAM') OR category = :category)
           AND (:unreadOnly = 0 OR unreadCount > 0)
           AND (:query = '' OR displayName LIKE '%' || :query || '%'
-               OR addresses LIKE '%' || :query || '%')
+               OR addresses LIKE '%' || :query || '%'
+               OR (:numberKey != '' AND REPLACE(REPLACE(REPLACE(addresses, ' ', ''), '-', ''), '+', '') LIKE '%' || :numberKey || '%'))
         ORDER BY pinned DESC,
                  (CASE WHEN draft IS NOT NULL AND draftAt > date THEN draftAt ELSE date END) DESC
         """
@@ -35,6 +36,7 @@ interface ConversationDao {
     fun inbox(
         category: String?,
         query: String,
+        numberKey: String,
         unreadOnly: Boolean,
     ): PagingSource<Int, ConversationEntity>
 

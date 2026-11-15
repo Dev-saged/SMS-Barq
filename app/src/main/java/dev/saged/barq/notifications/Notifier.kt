@@ -205,7 +205,7 @@ class Notifier @Inject constructor(
             .setSmallIcon(R.drawable.ic_stat_barq)
             .setColor(ContextCompat.getColor(context, R.color.brand))
             .setContentTitle(context.getString(R.string.app_name))
-            .setContentText(context.getString(R.string.notif_summary, active))
+            .setContentText(context.resources.getQuantityString(R.plurals.notif_summary, active, active))
             .setGroup(GROUP_MESSAGES)
             .setGroupSummary(true)
             .setGroupAlertBehavior(NotificationCompat.GROUP_ALERT_CHILDREN)
@@ -418,7 +418,7 @@ class Notifier @Inject constructor(
     fun notifyGatewayStopped(batchId: Long, pending: Int) = notifySendingStopped(
         batchId,
         context.getString(R.string.gateway_stopped_title),
-        context.getString(R.string.gateway_stopped_text, pending),
+        context.resources.getQuantityString(R.plurals.gateway_stopped_text, pending, pending),
     )
 
     /**
@@ -428,7 +428,7 @@ class Notifier @Inject constructor(
     fun notifyBulkTimeLimit(batchId: Long, pending: Int) = notifySendingStopped(
         batchId,
         context.getString(R.string.bulk_time_limit_title),
-        context.getString(R.string.bulk_time_limit_text, pending),
+        context.resources.getQuantityString(R.plurals.bulk_time_limit_text, pending, pending),
     )
 
     /** Shared by both cases above (one notification slot: the newest replaces the older one). */

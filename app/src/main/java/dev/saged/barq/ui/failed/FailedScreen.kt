@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.ConversationRepository
 import dev.saged.barq.data.db.BatchRow
 import dev.saged.barq.data.settings.AppSettings
@@ -200,7 +201,7 @@ fun FailedScreen(onBack: () -> Unit, openThread: (Long) -> Unit, vm: FailedViewM
         AlertDialog(
             onDismissRequest = { confirmDelete = false },
             title = { Text(stringResource(R.string.failed_delete_title)) },
-            text = { Text(stringResource(R.string.failed_delete_body, count)) },
+            text = { Text(pluralText(R.plurals.failed_delete_body, count, count)) },
             confirmButton = {
                 TextButton(onClick = { confirmDelete = false; vm.delete() }) {
                     Text(stringResource(R.string.delete), color = scheme.error)

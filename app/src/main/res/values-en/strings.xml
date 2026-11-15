@@ -27,7 +27,6 @@
     <string name="new_message">New message</string>
     <string name="new_code_from">New code · %1$s</string>
     <string name="code_card_hint">Copy and paste it — the code stays saved in the conversation</string>
-    <string name="spam_banner">%1$d spam conversations hidden</string>
     <string name="show">Show</string>
     <string name="not_default_banner">Barq is not the default messaging app — new messages will not reach it.</string>
     <string name="make_default">Enable</string>
@@ -103,7 +102,6 @@
     <string name="status_sending">Sending…</string>
     <string name="status_delivered">Delivered</string>
     <string name="status_not_delivered">Not delivered</string>
-    <string name="status_sent_parts">SMS · %1$d parts</string>
     <string name="to_label">To</string>
     <string name="recipient_hint">Name or number (separate numbers with commas)</string>
     <string name="bulk_hint">Each recipient gets a separate SMS (%1$d)</string>
@@ -223,7 +221,6 @@
     <string name="reply_memory">Reply memory</string>
     <string name="learn_replies">Learn from my replies</string>
     <string name="learn_replies_sub">Suggests replies above the message box and uses them for auto-reply. Works on your phone only.</string>
-    <string name="reply_memory_count">%1$d learned replies</string>
     <string name="reply_rebuild">Relearn from my messages</string>
     <string name="reply_rebuilding">Learning…</string>
     <string name="reply_clear">Clear what it learned</string>
@@ -240,7 +237,6 @@
     <string name="contacts_only">Contacts only</string>
     <string name="contacts_only_sub">Never replies to unsaved numbers</string>
     <string name="cooldown">Wait between replies</string>
-    <string name="cooldown_value">%1$d minutes</string>
     <string name="cooldown_instant">Instant: every message</string>
     <string name="time_window">Only during a time window</string>
     <string name="time_window_value">From %1$s to %2$s</string>
@@ -254,7 +250,6 @@
     <string name="add_contact">Add to contacts</string>
     <string name="channel_sending">Sending in progress</string>
     <string name="channel_conversation_desc">A sound and vibration just for this conversation</string>
-    <string name="notif_summary">New messages in %1$d conversations</string>
     <string name="bulk_preparing">Preparing the bulk send…</string>
     <string name="bulk_sending_title">Sending %1$d of %2$d</string>
     <string name="bulk_paused_title">Paused %1$d of %2$d</string>
@@ -293,7 +288,6 @@
     <string name="groups_hint">Create a group (like “Family” or “Customers”) and send to it from “New message” in one tap.</string>
     <string name="group_new">New group</string>
     <string name="group_name">Group name</string>
-    <string name="group_members_count">%1$d numbers</string>
     <string name="group_from_contacts">From contacts</string>
     <string name="group_paste">Paste numbers</string>
     <string name="group_paste_hint">One number per line, or separated by commas</string>
@@ -313,10 +307,8 @@
     <string name="stats_received">Received</string>
     <string name="stats_sent">Sent</string>
     <string name="stats_parts">SMS parts used this month</string>
-    <string name="stats_parts_value">%1$d parts</string>
     <string name="stats_failed">Failure rate this month: %1$d%%</string>
     <string name="stats_top">Who you message most this month</string>
-    <string name="stats_messages">%1$d messages</string>
     <string name="stats_none">No data yet</string>
     <string name="crash_log_title">Problem log</string>
     <string name="crash_log_sub">Copy it and send it to the developer when something goes wrong</string>
@@ -404,7 +396,6 @@
     <string name="health_title">Barq readiness</string>
     <string name="health_sub">Check everything Barq needs to work reliably, and fix it in one tap</string>
     <string name="health_all_good">Everything is ready. Barq is working at full strength.</string>
-    <string name="health_problems">%1$d things need your attention</string>
     <string name="health_checks">Checks</string>
     <string name="health_info">Information</string>
     <string name="health_default">Barq is the default messaging app</string>
@@ -425,8 +416,6 @@
     <string name="send_limit_title">Sending limit</string>
     <string name="send_limit_sub">Raise Android\'s limit to send hundreds of messages without stopping</string>
     <string name="limit_now">Current limit</string>
-    <string name="limit_value">About %1$d messages per minute</string>
-    <string name="limit_raised_value">Raised: %1$d messages per minute</string>
     <string name="limit_explain">Android sets this limit for every app. Above it, sending stops and Android asks for permission, so Barq stays under it. Raise it once and bulk sending becomes fast.</string>
     <string name="limit_raised_explain">The limit is raised, and bulk sending runs as fast as the modem allows. This setting is global and helps any other sending app too.</string>
     <string name="limit_raise">Raise limit</string>
@@ -507,17 +496,14 @@
     <string name="gateway_panel_hint">Open this address on any device on the same network to get the sending panel.</string>
     <!-- 1.5.0 -->
     <string name="gateway_stopped_title">The gateway stopped</string>
-    <string name="gateway_stopped_text">%1$d gateway messages are still waiting. Finish sending them?</string>
     <string name="gateway_continue">Finish sending</string>
     <string name="gateway_cancel_rest">Cancel the rest</string>
     <string name="bulk_time_limit_title">Bulk sending paused</string>
-    <string name="bulk_time_limit_text">Android allows background sending for 6 hours a day, so Barq paused it before the time ran out. %1$d messages are waiting. Tap “Finish sending”, or continue from the sending card in Barq.</string>
     <string name="gateway_card_title">Barq gateway</string>
     <string name="sim_n">SIM %1$d</string>
     <string name="import_excel">Import from Excel</string>
     <string name="import_empty">No numbers found in the file. Make sure it has a phone number column</string>
     <string name="import_xls">The old Excel format (.xls) is not supported. Save the file as .xlsx or CSV and try again</string>
-    <string name="import_found">Found %1$d numbers</string>
     <string name="import_skipped">Removed %1$d repeated · %2$d not valid</string>
     <string name="import_columns">Name column: %1$s · Number column: %2$s</string>
     <string name="import_more">and %1$d more…</string>
@@ -525,7 +511,6 @@
     <string name="import_save">Save group</string>
     <string name="name_insert">Insert the name {الاسم}</string>
     <string name="name_preview">Preview</string>
-    <string name="name_missing">%1$d have no name: they get the message without it</string>
     <string name="gateway_api_extra">Barq extras: many numbers in one request (phones or messages), SIM choice (sim: 1 or 2), scheduling (send_at), and every answer carries the message id so you can ask /api/message/ID for its status.</string>
     <string name="lock_setting">App lock</string>
     <string name="lock_setting_sub">Opens with the fingerprint, face or phone PIN saved on your phone</string>
@@ -590,7 +575,6 @@
     <string name="failed_delete_all">Delete all (%1$d)</string>
     <string name="failed_delete_n">Delete (%1$d)</string>
     <string name="failed_delete_title">Delete failed messages?</string>
-    <string name="failed_delete_body">Only the %1$d failed messages are deleted. Conversations stay as they are.</string>
     <string name="swipe_call">Call</string>
     <string name="swipe_call_none">Cannot call this sender</string>
     <string name="sf_today">Today</string>
@@ -603,4 +587,68 @@
     <string name="sf_code">Has code</string>
     <string name="sf_filters">Filter results</string>
     <string name="copy_number">Copy number</string>
+    <plurals name="spam_banner">
+        <item quantity="one">%1$d spam conversation hidden</item>
+        <item quantity="other">%1$d spam conversations hidden</item>
+    </plurals>
+    <plurals name="status_sent_parts">
+        <item quantity="one">SMS · %1$d part</item>
+        <item quantity="other">SMS · %1$d parts</item>
+    </plurals>
+    <plurals name="reply_memory_count">
+        <item quantity="one">%1$d learned reply</item>
+        <item quantity="other">%1$d learned replies</item>
+    </plurals>
+    <plurals name="cooldown_value">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <plurals name="notif_summary">
+        <item quantity="one">New messages in %1$d conversation</item>
+        <item quantity="other">New messages in %1$d conversations</item>
+    </plurals>
+    <plurals name="group_members_count">
+        <item quantity="one">%1$d number</item>
+        <item quantity="other">%1$d numbers</item>
+    </plurals>
+    <plurals name="stats_parts_value">
+        <item quantity="one">%1$d part</item>
+        <item quantity="other">%1$d parts</item>
+    </plurals>
+    <plurals name="stats_messages">
+        <item quantity="one">%1$d message</item>
+        <item quantity="other">%1$d messages</item>
+    </plurals>
+    <plurals name="health_problems">
+        <item quantity="one">%1$d thing needs your attention</item>
+        <item quantity="other">%1$d things need your attention</item>
+    </plurals>
+    <plurals name="limit_value">
+        <item quantity="one">About %1$d message per minute</item>
+        <item quantity="other">About %1$d messages per minute</item>
+    </plurals>
+    <plurals name="limit_raised_value">
+        <item quantity="one">Raised: %1$d message per minute</item>
+        <item quantity="other">Raised: %1$d messages per minute</item>
+    </plurals>
+    <plurals name="gateway_stopped_text">
+        <item quantity="one">%1$d gateway message is still waiting. Finish sending it?</item>
+        <item quantity="other">%1$d gateway messages are still waiting. Finish sending them?</item>
+    </plurals>
+    <plurals name="import_found">
+        <item quantity="one">Found %1$d number</item>
+        <item quantity="other">Found %1$d numbers</item>
+    </plurals>
+    <plurals name="name_missing">
+        <item quantity="one">%1$d has no name: it gets the message without it</item>
+        <item quantity="other">%1$d have no name: they get the message without it</item>
+    </plurals>
+    <plurals name="failed_delete_body">
+        <item quantity="one">Only the %1$d failed message is deleted. Conversations stay as they are.</item>
+        <item quantity="other">Only the %1$d failed messages are deleted. Conversations stay as they are.</item>
+    </plurals>
+    <plurals name="bulk_time_limit_text">
+        <item quantity="one">Android allows background sending for 6 hours a day, so Barq paused it before the time ran out. %1$d message is waiting. Tap “Finish sending”, or continue from the sending card in Barq.</item>
+        <item quantity="other">Android allows background sending for 6 hours a day, so Barq paused it before the time ran out. %1$d messages are waiting. Tap “Finish sending”, or continue from the sending card in Barq.</item>
+    </plurals>
 </resources>

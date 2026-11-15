@@ -134,6 +134,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationEntity
 import dev.saged.barq.data.db.done
@@ -312,7 +313,7 @@ fun InboxScreen(
                     onDelete = vm::deleteSelected,
                     onBlock = vm::blockSelected,
                     onCopyNumber = chosen.singleOrNull()?.let { c ->
-                        { NotificationActionReceiver.copyText(context, c.addresses); vm.clearSelection() }
+                        { NotificationActionReceiver.copyText(context, PhoneUtils.localJoined(c.addresses)); vm.clearSelection() }
                     },
                 )
             }
@@ -507,7 +508,7 @@ fun InboxScreen(
                 item(key = "spam", contentType = "card") {
                     InfoCard(
                         icon = Icons.Outlined.Shield,
-                        text = stringResource(R.string.spam_banner, spamCount),
+                        text = pluralText(R.plurals.spam_banner, spamCount, spamCount),
                         action = stringResource(R.string.show),
                         onAction = { vm.filter.value = Category.SPAM },
                     )

@@ -215,7 +215,7 @@ fun ThreadScreen(
                                 onClick = { conv?.let { openContact(it.threadId) } },
                                 onLongClick = {
                                     conv?.let {
-                                        NotificationActionReceiver.copyText(context, it.addresses)
+                                        NotificationActionReceiver.copyText(context, PhoneUtils.localJoined(it.addresses))
                                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     }
                                 },
@@ -236,9 +236,9 @@ fun ThreadScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 maxLines = 1, overflow = TextOverflow.Ellipsis,
                             )
-                            if (conv != null && conv.displayName != conv.addresses) {
+                            if (conv != null && conv.displayName != conv.addresses && conv.displayName.any { it.isLetter() }) {
                                 Text(
-                                    conv.addresses,
+                                    PhoneUtils.localJoined(conv.addresses),
                                     style = MaterialTheme.typography.labelMedium.copy(
                                         textDirection = TextDirection.Ltr,
                                         fontFeatureSettings = "tnum",
@@ -249,7 +249,7 @@ fun ThreadScreen(
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f))
                                         .clickable {
-                                            NotificationActionReceiver.copyText(context, conv.addresses)
+                                            NotificationActionReceiver.copyText(context, PhoneUtils.localJoined(conv.addresses))
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                         }
                                         .padding(horizontal = 6.dp, vertical = 2.dp),
@@ -391,7 +391,7 @@ fun ThreadScreen(
                                 cm.setPrimaryClip(ClipData.newPlainText("sms", m.body))
                             },
                             onCopyCode = { code -> NotificationActionReceiver.copyToClipboard(context, code) },
-                            onCopyNumber = { NotificationActionReceiver.copyText(context, m.address) },
+                            onCopyNumber = { NotificationActionReceiver.copyText(context, PhoneUtils.localPs(m.address)) },
                             onForward = { forward(m.body) },
                             onResend = { vm.resend(m.id) },
                             onDelete = { vm.deleteMessage(m.id) },

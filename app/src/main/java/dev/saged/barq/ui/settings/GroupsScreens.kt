@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.contacts.ContactEntry
 import dev.saged.barq.data.contacts.ContactsRepository
 import androidx.room.withTransaction
@@ -384,7 +385,7 @@ fun GroupsScreen(onBack: () -> Unit, openGroup: (Long) -> Unit, vm: GroupsViewMo
         }
         if (groups.isEmpty()) item { EmptyHint(stringResource(R.string.nothing_here)) }
         items(groups, key = { it.id }) { g ->
-            ListCard(g.name, stringResource(R.string.group_members_count, g.members), onClick = { openGroup(g.id) }) {
+            ListCard(g.name, pluralText(R.plurals.group_members_count, g.members, g.members), onClick = { openGroup(g.id) }) {
                 Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
@@ -482,7 +483,7 @@ fun GroupScreen(onBack: () -> Unit, pickContacts: (Long) -> Unit, vm: GroupsView
                 )
             }
             Text(
-                stringResource(R.string.group_members_count, members.size),
+                pluralText(R.plurals.group_members_count, members.size, members.size),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
@@ -710,7 +711,7 @@ private fun ImportDialog(fileName: String, result: SheetImport.Result, onDismiss
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Outlined.UploadFile, null, tint = scheme.primary) },
-        title = { Text(stringResource(R.string.import_found, result.people.size)) },
+        title = { Text(pluralText(R.plurals.import_found, result.people.size, result.people.size)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (result.repeated > 0 || result.invalid > 0) {

@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.saged.barq.R
+import dev.saged.barq.ui.components.pluralText
 import dev.saged.barq.data.contacts.ContactEntry
 import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.contacts.PhoneGroup
@@ -559,7 +560,7 @@ private fun NameTokenRow(text: String, recipients: List<Recipient>, onInsert: ()
                 )
                 if (missing > 0) {
                     Text(
-                        stringResource(R.string.name_missing, missing),
+                        pluralText(R.plurals.name_missing, missing, missing),
                         style = MaterialTheme.typography.labelSmall,
                         color = scheme.onSurfaceVariant,
                     )
