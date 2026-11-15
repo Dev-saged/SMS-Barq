@@ -588,4 +588,13 @@
         <item>Merci</item>
         <item>Occupé en ce moment</item>
     </string-array>
+    <string name="sf_today">Aujourd’hui</string>
+    <string name="sf_week">Cette semaine</string>
+    <string name="sf_month">Ce mois-ci</string>
+    <string name="sf_received">Reçus</string>
+    <string name="sf_sent">Envoyés</string>
+    <string name="sf_link">Avec lien</string>
+    <string name="sf_amount">Avec montant</string>
+    <string name="sf_code">Avec code</string>
+    <string name="sf_filters">Filtrer les résultats</string>
 </resources>

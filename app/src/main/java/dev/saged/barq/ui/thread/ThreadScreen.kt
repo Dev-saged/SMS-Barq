@@ -11,6 +11,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -300,7 +301,7 @@ fun ThreadScreen(
                     showCounter = settings.showCounter,
                     templates = templates.map { it.text },
                     suggestions = suggestions,
-                    onSuggestion = vm::insertTemplate,
+                    onSuggestion = vm::insertSuggestion,
                     sims = sims,
                     subId = subId,
                     onText = vm::onTextChange,
@@ -331,6 +332,7 @@ fun ThreadScreen(
         LazyColumn(
             state = listState,
             reverseLayout = true,
+            contentPadding = PaddingValues(vertical = 8.dp),
             modifier = Modifier.fillMaxSize().padding(padding),
         ) {
             items(
@@ -548,7 +550,7 @@ fun Composer(
             .background(scheme.background)
             .navigationBarsPadding()
             .imePadding()
-            .padding(start = 12.dp, end = 12.dp, top = 6.dp, bottom = 10.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         dev.saged.barq.ui.components.SimSwitch(sims, subId, onPickSim)

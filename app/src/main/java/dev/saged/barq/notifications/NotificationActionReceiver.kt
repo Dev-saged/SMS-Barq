@@ -73,6 +73,14 @@ class NotificationActionReceiver : BroadcastReceiver() {
         const val EXTRA_VALUE = "value"
         const val KEY_REPLY = "reply_text"
 
+        fun copyText(context: Context, text: String) {
+            val cm = context.getSystemService(ClipboardManager::class.java)
+            cm.setPrimaryClip(ClipData.newPlainText("text", text))
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+            }
+        }
+
         fun copyToClipboard(context: Context, code: String) {
             val cm = context.getSystemService(ClipboardManager::class.java)
             cm.setPrimaryClip(ClipData.newPlainText("OTP", PhoneUtils.normalizeDigits(code)))

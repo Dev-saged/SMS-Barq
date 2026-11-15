@@ -588,4 +588,13 @@
         <item>ধন্যবাদ</item>
         <item>এখন ব্যস্ত আছি</item>
     </string-array>
+    <string name="sf_today">আজ</string>
+    <string name="sf_week">এই সপ্তাহ</string>
+    <string name="sf_month">এই মাস</string>
+    <string name="sf_received">প্রাপ্ত</string>
+    <string name="sf_sent">পাঠানো</string>
+    <string name="sf_link">লিঙ্কসহ</string>
+    <string name="sf_amount">পরিমাণসহ</string>
+    <string name="sf_code">কোডসহ</string>
+    <string name="sf_filters">ফলাফল ফিল্টার</string>
 </resources>

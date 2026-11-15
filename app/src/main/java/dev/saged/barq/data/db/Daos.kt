@@ -210,6 +210,20 @@ interface MessageDao {
     )
     suspend fun search(match: String, limit: Int): List<SearchHit>
 
+    /** Latest messages of live conversations, for filter-only search (no text typed). */
+    @Query(
+        """
+        SELECT m.id AS id, m.threadId AS threadId, m.address AS address, m.body AS body, m.date AS date,
+               m.box AS box, c.displayName AS displayName, c.addresses AS addresses, c.category AS category
+        FROM messages m
+        JOIN conversations c ON c.threadId = m.threadId
+        WHERE c.deleted = 0 AND m.reactionTo = 0 AND NOT (m.box = 6 AND m.scheduledAt > 0)
+        ORDER BY m.date DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun recent(limit: Int): List<SearchHit>
+
     /** Search inside one conversation (newest first), for the search bar of a thread. */
     @Query(
         """
@@ -597,6 +611,12 @@ interface ReplyDao {
 
     @Query("UPDATE reply_memory SET uses = uses + 1, lastUsed = MAX(lastUsed, :at) WHERE incoming = :incoming AND reply = :reply")
     suspend fun bump(incoming: String, reply: String, at: Long): Int
+
+    @Query("UPDATE reply_memory SET uses = uses - 1 WHERE incoming = :incoming AND reply = :reply")
+    suspend fun demote(incoming: String, reply: String): Int
+
+    @Query("DELETE FROM reply_memory WHERE uses <= 0")
+    suspend fun deleteSpent()
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entry: ReplyMemoryEntity): Long

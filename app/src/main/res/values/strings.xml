@@ -652,4 +652,13 @@
     <string name="failed_delete_body">تُحذف %1$d رسالة فاشلة فقط، وتبقى المحادثات كما هي.</string>
     <string name="swipe_call">اتصال</string>
     <string name="swipe_call_none">لا يمكن الاتصال بهذا المرسل</string>
+    <string name="sf_today">اليوم</string>
+    <string name="sf_week">هذا الأسبوع</string>
+    <string name="sf_month">هذا الشهر</string>
+    <string name="sf_received">المستلمة</string>
+    <string name="sf_sent">المرسلة</string>
+    <string name="sf_link">فيها رابط</string>
+    <string name="sf_amount">فيها مبلغ</string>
+    <string name="sf_code">فيها رمز</string>
+    <string name="sf_filters">تصفية النتائج</string>
 </resources>

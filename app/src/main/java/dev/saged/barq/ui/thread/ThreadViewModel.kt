@@ -117,6 +117,7 @@ class ThreadViewModel @Inject constructor(
             if (last == null || last.box != Box.INBOX || last.category != Category.PERSONAL || !PhoneUtils.isReplyable(last.address)) {
                 emptyList()
             } else {
+                suggestedFor = last.body
                 replyEngine.suggest(last.body, 3).map { it.reply }
             }
         }
@@ -199,12 +200,26 @@ class ThreadViewModel @Inject constructor(
         viewModelScope.launch { conversations.setSubId(threadId, subId.value) }
     }
 
+    /** The text a chip answered, kept with the chip taken until the message is sent. */
+    @Volatile private var suggestedFor = ""
+    @Volatile private var pickedChip: Pair<String, String>? = null
+
+    fun insertSuggestion(reply: String) {
+        pickedChip = suggestedFor to reply
+        insertTemplate(reply)
+    }
+
     fun send(scheduledAt: Long = 0) {
         val body = text.value.trim()
         if (body.isEmpty()) return
+        val chip = pickedChip
+        pickedChip = null
         onTextChange("")
         viewModelScope.launch {
-            engine.sendToThread(threadId, body, subId.value.takeIf { it >= 0 }, scheduledAt)
+            val sent = engine.sendToThread(threadId, body, subId.value.takeIf { it >= 0 }, scheduledAt)
+            if (sent && scheduledAt == 0L && chip != null) {
+                runCatching { replyEngine.onSuggestionEdited(chip.first, chip.second, body) }
+            }
         }
     }
 
