@@ -582,6 +582,8 @@
     <string name="sf_code">কোডসহ</string>
     <string name="sf_filters">ফলাফল ফিল্টার</string>
     <string name="copy_number">নম্বর কপি করুন</string>
+    <string name="reply_block">এটি আর প্রস্তাব করবেন না</string>
+    <string name="reply_blocked_done">এই উত্তর আর প্রস্তাব করা হবে না</string>
     <plurals name="spam_banner">
         <item quantity="other">%1$dটি স্প্যাম কথোপকথন লুকানো হয়েছে</item>
     </plurals>

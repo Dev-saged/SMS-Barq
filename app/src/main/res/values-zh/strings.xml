@@ -582,6 +582,8 @@
     <string name="sf_code">含验证码</string>
     <string name="sf_filters">筛选结果</string>
     <string name="copy_number">复制号码</string>
+    <string name="reply_block">不再建议此回复</string>
+    <string name="reply_blocked_done">以后不会再建议此回复</string>
     <plurals name="spam_banner">
         <item quantity="other">已隐藏 %1$d 个垃圾短信对话</item>
     </plurals>

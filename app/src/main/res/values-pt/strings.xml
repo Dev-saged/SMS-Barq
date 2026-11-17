@@ -582,6 +582,8 @@
     <string name="sf_code">Com código</string>
     <string name="sf_filters">Filtrar resultados</string>
     <string name="copy_number">Copiar número</string>
+    <string name="reply_block">Não sugerir isto novamente</string>
+    <string name="reply_blocked_done">Esta resposta não será sugerida novamente</string>
     <plurals name="spam_banner">
         <item quantity="other">%1$d conversas de spam ocultas</item>
     </plurals>

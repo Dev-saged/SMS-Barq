@@ -43,6 +43,13 @@ class MaintenanceScheduler @Inject constructor(@ApplicationContext private val c
             .build()
         WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork("barq-db-compact", ExistingPeriodicWorkPolicy.KEEP, compact)
+
+        // Once a week, charging and idle: the reply memory reads what the user wrote since the last pass.
+        val learn = PeriodicWorkRequestBuilder<ReplyLearnWorker>(7, TimeUnit.DAYS)
+            .setConstraints(Constraints.Builder().setRequiresCharging(true).setRequiresDeviceIdle(true).build())
+            .build()
+        WorkManager.getInstance(context)
+            .enqueueUniquePeriodicWork("barq-reply-learn", ExistingPeriodicWorkPolicy.KEEP, learn)
     }
 }
 
@@ -115,4 +122,14 @@ class DbCompactWorker @AssistedInject constructor(
         }.onFailure { CrashLog.warn("db-compact", it) }
         Result.success()
     }
+}
+
+@HiltWorker
+class ReplyLearnWorker @AssistedInject constructor(
+    @Assisted context: Context,
+    @Assisted params: WorkerParameters,
+    private val engine: dev.saged.barq.domain.ReplyEngine,
+) : CoroutineWorker(context, params) {
+    override suspend fun doWork(): Result =
+        runCatching { engine.refresh() }.fold({ Result.success() }, { CrashLog.warn("reply-learn", it); Result.retry() })
 }

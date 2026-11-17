@@ -267,17 +267,64 @@ class ReplyIndexTest {
         assertNull(i.best("الاجتماع تاجل", now))
     }
 
-    @Test fun theUsersAddressHabitIsLearned() {
+    private fun said(incoming: String, reply: String, thread: Long, uses: Int = 1) =
+        Memory(ReplyText.key(incoming), reply, uses, now, thread)
+
+    @Test fun addressHabitBelongsToOnePerson() {
         val i = ReplyIndex(
             listOf(
-                memory("كيف حالك", "تمام يا غالي"),
-                memory("وين انت", "في الطريق يا غالي"),
-                memory("شو الاخبار", "كله تمام يا غالي"),
-                memory("مرحبا", "اهلا"),
+                said("كيف حالك", "تمام يا غالي", 7),
+                said("وين انت", "في الطريق يا غالي", 7),
+                said("شو الاخبار", "كله تمام", 7),
+                said("مرحبا", "اهلا", 9),
             ),
         )
-        assertEquals("غالي", i.addressTerm)
-        assertNull(index.addressTerm)
+        assertEquals("غالي", i.addressTerm(7))
+        assertNull(i.addressTerm(9))
+        assertNull(i.addressTerm(0))
+    }
+
+    @Test fun anotherPersonsEndearmentIsNeverCarriedOver() {
+        val i = ReplyIndex(listOf(said("كيف حالك", "تمام يا حبيبي", 7)))
+        assertEquals("تمام", i.suggest("كيف حالك", 1, now, threadId = 9).first().reply)
+        assertEquals("تمام يا حبيبي", i.suggest("كيف حالك", 1, now, threadId = 7).first().reply)
+        assertEquals("تمام", i.suggest("كيف حالك", 1, now).first().reply)
+    }
+
+    @Test fun aReplyThatIsOnlyAnEndearmentIsDropped() {
+        val i = ReplyIndex(listOf(said("كيف حالك", "يا حبيبي", 7)))
+        assertTrue(i.suggest("كيف حالك", 3, now, threadId = 9, withPopular = false).isEmpty())
+    }
+
+    @Test fun whatWasSaidToThisPersonComesFirst() {
+        val i = ReplyIndex(listOf(said("مساء الخير", "مساء الورد", 7), said("مساء الخير", "مساء النور", 9, uses = 2)))
+        assertEquals("مساء الورد", i.suggest("مساء الخير", 1, now, threadId = 7).first().reply)
+    }
+
+    @Test fun aBlockedReplyIsNotOfferedAgainForTheSameKindOfText() {
+        val blocked = ReplyBlocklist(listOf(ReplyText.key("كيف حالك") to "الحمد لله تمام"))
+        val i = ReplyIndex(listOf(memory("كيف حالك", "الحمد لله تمام", uses = 5), memory("كيف حالك", "بخير")), blocked)
+        val out = i.suggest("كيف حالك اليوم", 3, now, withPopular = false).map { it.reply }
+        assertEquals(listOf("بخير"), out)
+        assertTrue(i.isBlocked("كيف حالك", "الحمد لله تمام"))
+        assertFalse(i.isBlocked("وين انت", "الحمد لله تمام"))
+    }
+
+    @Test fun aReplyBlockedForThreeTextsIsBlockedEverywhere() {
+        val blocked = ReplyBlocklist(
+            listOf("كيف حالك", "وين انت", "شو الاخبار").map { ReplyText.key(it) to "تمام" },
+        )
+        assertTrue(blocked.blocks(ReplyText.key("مساء الخير"), "تمام"))
+        assertFalse(ReplyBlocklist(listOf(ReplyText.key("كيف حالك") to "تمام")).blocks(ReplyText.key("مساء الخير"), "تمام"))
+    }
+
+    @Test fun manyRowsStayFast() {
+        val rows = (0 until 20_000).map { memory("كلمة$it عادية وسؤال رقم${it % 50} هنا${it % 97}", "تمام ${it % 13}") } +
+            memory("كيف حالك", "الحمد لله تمام")
+        val big = ReplyIndex(rows)
+        val start = System.nanoTime()
+        assertEquals("الحمد لله تمام", big.best("كيف حالك", now)?.reply)
+        assertTrue((System.nanoTime() - start) / 1_000_000 < 1500)
     }
 
     @Test fun emptyMemorySuggestsNothing() {

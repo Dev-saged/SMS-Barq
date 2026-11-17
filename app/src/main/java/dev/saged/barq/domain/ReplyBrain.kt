@@ -5,7 +5,7 @@ import kotlin.math.ln
 import kotlin.math.sqrt
 
 /** A reply the user once wrote to an incoming text; [incoming] is already reduced to its words. */
-data class Memory(val incoming: String, val reply: String, val uses: Int, val lastUsed: Long)
+data class Memory(val incoming: String, val reply: String, val uses: Int, val lastUsed: Long, val threadId: Long = 0)
 
 /** [builtin]: not one of the user's replies but the ready-made answer for a recognised intent. */
 data class Suggestion(val reply: String, val score: Double, val popular: Boolean = false, val builtin: Boolean = false)
@@ -38,6 +38,21 @@ object ReplyText {
     }
 
     fun isLearnableIncoming(text: String): Boolean = key(text).length >= 2
+
+    /** Endearments the user may use with one person and never with another. */
+    val addressWords = listOf("غالي", "حبيبي", "عمري", "أخي", "خوي", "روحي", "قلبي", "باشا", "عزيزي")
+
+    private val addressRegex = Regex(
+        "(?<!\\p{L})(?:يا\\s+)?(?:" +
+            addressWords.flatMap { listOf(it, it.replace('أ', 'ا')) }.distinct().joinToString("|") { Regex.escape(it) } +
+            ")(?!\\p{L})",
+    )
+
+    /** [reply] without its endearment ("تمام يا غالي" → "تمام"), or null when nothing else is left. */
+    fun withoutAddress(reply: String): String? =
+        addressRegex.replace(reply, " ").replace(spaces, " ")
+            .trim { it.isWhitespace() || it == '،' || it == ',' || it == '-' }
+            .takeIf { r -> r.any { it.isLetter() } }
 
     /**
      * A reply may be reused for someone else only if it is generic: short, no digits (times,
@@ -92,6 +107,34 @@ object ReplyPairing {
 }
 
 /**
+ * Replies the user asked never to see again. A reply blocked for a text is also blocked for texts
+ * that say nearly the same, and once it has been blocked for several different texts it is
+ * blocked for every text. [blocked]: pairs of (incoming key, reply).
+ */
+class ReplyBlocklist(blocked: List<Pair<String, String>> = emptyList()) {
+    private val byReply: Map<String, List<Set<String>>> = blocked
+        .groupBy({ ReplyText.replyKey(it.second) }, { it.first.split(' ').filter(String::isNotEmpty).toSet() })
+    private val everywhere: Set<String> = byReply.filterValues { it.toSet().size >= EVERYWHERE_AFTER }.keys
+
+    fun blocks(incomingKey: String, reply: String): Boolean {
+        if (byReply.isEmpty()) return false
+        val k = ReplyText.replyKey(reply)
+        if (k in everywhere) return true
+        val said = byReply[k] ?: return false
+        val q = incomingKey.split(' ').filter(String::isNotEmpty).toSet()
+        return said.any { t ->
+            val union = (q + t).size
+            union > 0 && (q intersect t).size.toDouble() / union >= SAME_TEXT
+        }
+    }
+
+    private companion object {
+        const val EVERYWHERE_AFTER = 3
+        const val SAME_TEXT = 0.6
+    }
+}
+
+/**
  * Finds, among the user's own past replies, the ones that fit an incoming text.
  * Similarity = IDF-weighted word cosine (70%) + character-trigram overlap (30%); a reply's score
  * also rises with how often and how recently the user used it. Nothing leaves the phone.
@@ -100,23 +143,28 @@ object ReplyPairing {
  * of the user's habitual vocabulary (used in several replies, e.g. "تمام", "الحمد لله") or appear
  * in the incoming text itself. So "صحيح شو موضوع البطالة" is never sent to a blessing.
  */
-class ReplyIndex(memories: List<Memory>) {
+class ReplyIndex(memories: List<Memory>, private val blocked: ReplyBlocklist = ReplyBlocklist()) {
 
     private class Row(
         val memory: Memory,
         val tokens: Set<String>,
-        val grams: Set<String>,
         val intent: Intent?,
         val replyTokens: Set<String>,
+        val addressed: Boolean,
         var norm: Double = 0.0,
-    )
+    ) {
+        val grams: Set<String> by lazy { ReplyText.grams(memory.incoming) }
+    }
 
     private class Sim(val score: Double, val cosine: Double, val shared: Int, val exact: Boolean)
 
-    private val rows: List<Row> = memories.map { m ->
+    private val rows: List<Row> = memories.filterNot { blocked.blocks(it.incoming, it.reply) }.map { m ->
         val words = m.incoming.split(' ').filter { it.isNotEmpty() }
-        Row(m, words.toSet(), ReplyText.grams(m.incoming), ReplyIntents.specific(words), ReplyText.tokens(m.reply).toSet())
+        val replyTokens = ReplyText.tokens(m.reply).toSet()
+        Row(m, words.toSet(), ReplyIntents.specific(words), replyTokens, ADDRESS_TERMS.keys.any { it in replyTokens })
     }
+    private val byToken: Map<String, IntArray>
+    private val byIntent: Map<Intent, IntArray>
     private val idf: Map<String, Double>
     private val unseenIdf: Double
 
@@ -133,10 +181,18 @@ class ReplyIndex(memories: List<Memory>) {
         val used = HashMap<String, Int>()
         rows.forEach { r -> r.replyTokens.forEach { t -> used[t] = (used[t] ?: 0) + 1 } }
         generic = used.filterValues { it >= GENERIC_MIN_ROWS }.keys + COMMON
+        val tokenRows = HashMap<String, MutableList<Int>>()
+        val intentRows = HashMap<Intent, MutableList<Int>>()
+        rows.forEachIndexed { i, r ->
+            r.tokens.forEach { tokenRows.getOrPut(it) { ArrayList() } += i }
+            r.intent?.let { intentRows.getOrPut(it) { ArrayList() } += i }
+        }
+        byToken = tokenRows.mapValues { it.value.toIntArray() }
+        byIntent = intentRows.mapValues { it.value.toIntArray() }
     }
 
     private val popular: List<Suggestion> by lazy {
-        rows.groupBy { ReplyText.replyKey(it.memory.reply) }.values
+        rows.filterNot { it.addressed }.groupBy { ReplyText.replyKey(it.memory.reply) }.values
             .map { g -> Triple(g.maxByOrNull { it.memory.lastUsed }!!.memory.reply, g.sumOf { it.memory.uses }, g.maxOf { it.memory.lastUsed }) }
             .filter { (reply, uses, _) -> uses >= POPULAR_MIN_USES && reply.length <= POPULAR_MAX_LEN }
             .sortedWith(compareByDescending<Triple<String, Int, Long>> { it.second }.thenByDescending { it.third })
@@ -144,12 +200,30 @@ class ReplyIndex(memories: List<Memory>) {
             .map { Suggestion(it.first, 0.0, popular = true) }
     }
 
-    /** How the user usually addresses people ("غالي", "حبيبي"…), when it is a clear habit. */
-    val addressTerm: String? by lazy {
-        val counts = HashMap<String, Int>()
-        rows.forEach { r -> ADDRESS_TERMS.filter { it.key in r.replyTokens }.forEach { counts[it.value] = (counts[it.value] ?: 0) + 1 } }
-        counts.filter { it.value >= ADDRESS_MIN_USES && it.value * 5 >= rows.size }.maxByOrNull { it.value }?.key
+    private val rowsByThread: Map<Long, List<Row>> by lazy { rows.groupBy { it.memory.threadId } }
+    private val addressTerms = HashMap<Long, String?>()
+
+    /**
+     * How the user addresses this one person ("غالي", "حبيبي"…), only when their own conversation
+     * shows a clear habit; null (a plain reply, no endearment) for a stranger or an unknown thread.
+     */
+    fun addressTerm(threadId: Long): String? {
+        if (threadId <= 0L) return null
+        return synchronized(addressTerms) {
+            addressTerms.getOrPut(threadId) {
+                val mine = rowsByThread[threadId].orEmpty()
+                val total = mine.sumOf { it.memory.uses }
+                val counts = HashMap<String, Int>()
+                mine.forEach { r ->
+                    ADDRESS_TERMS.filter { it.key in r.replyTokens }.forEach { counts[it.value] = (counts[it.value] ?: 0) + r.memory.uses }
+                }
+                counts.filter { it.value >= ADDRESS_MIN_USES && it.value * 5 >= total }.maxByOrNull { it.value }?.key
+            }
+        }
     }
+
+    /** True when [reply] was blocked for texts like [incoming]. */
+    fun isBlocked(incoming: String, reply: String): Boolean = blocked.blocks(ReplyText.key(incoming), reply)
 
     val size: Int get() = rows.size
 
@@ -164,6 +238,7 @@ class ReplyIndex(memories: List<Memory>) {
         minScore: Double = SUGGEST_MIN,
         withPopular: Boolean = true,
         strict: Boolean = false,
+        threadId: Long = 0,
     ): List<Suggestion> {
         if (limit <= 0) return emptyList()
         val tokens = ReplyText.tokens(incoming)
@@ -174,7 +249,13 @@ class ReplyIndex(memories: List<Memory>) {
             val grams = ReplyText.grams(key)
             val norm = sqrt(set.sumOf { t -> (idf[t] ?: unseenIdf).let { it * it } })
             val intent = ReplyIntents.specific(tokens)
-            for (r in rows) {
+            val near = java.util.BitSet(rows.size)
+            for (t in set) byToken[t]?.forEach { near.set(it) }
+            if (intent != null) byIntent[intent]?.forEach { near.set(it) }
+            var at = near.nextSetBit(0)
+            while (at >= 0) {
+                val r = rows[at]
+                at = near.nextSetBit(at + 1)
                 val s = similarity(set, key, grams, norm, r)
                 // Same meaning in other words ("كيفك" / "شلونك" / "كيف الحال"): the user's habit still applies.
                 val sameIntent = intent != null && r.intent == intent
@@ -184,10 +265,16 @@ class ReplyIndex(memories: List<Memory>) {
                     if (!r.replyTokens.all { it in generic || it in set }) continue
                     if (strict && !sameIntent && !(s.cosine >= STRICT_COSINE && s.shared >= minOf(2, set.size))) continue
                 }
-                val score = sim * (0.8 + 0.2 * frequency(r.memory.uses)) * (0.85 + 0.15 * recency(now - r.memory.lastUsed))
+                // Another person's endearment is never carried over: it is dropped from the reply.
+                val reply = if (r.addressed && (threadId <= 0L || r.memory.threadId != threadId)) {
+                    ReplyText.withoutAddress(r.memory.reply) ?: continue
+                } else r.memory.reply
+                if (blocked.blocks(key, reply)) continue
+                val own = if (threadId > 0L && r.memory.threadId == threadId) SAME_PERSON else 1.0
+                val score = minOf(1.0, sim * (0.8 + 0.2 * frequency(r.memory.uses)) * (0.85 + 0.15 * recency(now - r.memory.lastUsed)) * own)
                 if (score < minScore) continue
-                val k = ReplyText.replyKey(r.memory.reply)
-                if ((best[k]?.score ?: -1.0) < score) best[k] = Suggestion(r.memory.reply, score)
+                val k = ReplyText.replyKey(reply)
+                if ((best[k]?.score ?: -1.0) < score) best[k] = Suggestion(reply, score)
             }
         }
         val out = best.values.sortedByDescending { it.score }.take(limit).toMutableList()
@@ -195,15 +282,15 @@ class ReplyIndex(memories: List<Memory>) {
             val seen = out.map { ReplyText.replyKey(it.reply) }.toMutableSet()
             for (p in popular) {
                 if (out.size >= limit) break
-                if (seen.add(ReplyText.replyKey(p.reply))) out += p
+                if (!blocked.blocks(ReplyText.key(incoming), p.reply) && seen.add(ReplyText.replyKey(p.reply))) out += p
             }
         }
         return out
     }
 
     /** The one reply confident enough to be sent without asking, or null. */
-    fun best(incoming: String, now: Long): Suggestion? =
-        suggest(incoming, 1, now, AUTO_MIN, withPopular = false, strict = true).firstOrNull()
+    fun best(incoming: String, now: Long, threadId: Long = 0): Suggestion? =
+        suggest(incoming, 1, now, AUTO_MIN, withPopular = false, strict = true, threadId = threadId).firstOrNull()
 
     private fun similarity(q: Set<String>, key: String, grams: Set<String>, qNorm: Double, r: Row): Sim {
         if (r.memory.incoming == key) return Sim(1.0, 1.0, q.size, true)
@@ -232,7 +319,9 @@ class ReplyIndex(memories: List<Memory>) {
         private const val GENERIC_MIN_ROWS = 3
         private const val POPULAR_MIN_USES = 3
         private const val POPULAR_MAX_LEN = 40
-        private const val ADDRESS_MIN_USES = 3
+        private const val ADDRESS_MIN_USES = 2
+        /** A reply the user already said to this same person is a little more likely to fit again. */
+        private const val SAME_PERSON = 1.12
         private const val DAY_MS = 86_400_000.0
 
         /** Everyday words that never make a reply off topic. */
@@ -245,7 +334,7 @@ class ReplyIndex(memories: List<Memory>) {
 
         /** Normalised word → the way it is written back. */
         private val ADDRESS_TERMS: Map<String, String> =
-            listOf("غالي", "حبيبي", "عمري", "أخي", "خوي", "روحي", "قلبي", "باشا", "عزيزي")
+            ReplyText.addressWords
                 .mapNotNull { raw -> ReplyText.tokens(raw).firstOrNull()?.let { it to raw } }.toMap()
     }
 }

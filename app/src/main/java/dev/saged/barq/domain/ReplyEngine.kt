@@ -6,17 +6,20 @@ import dev.saged.barq.data.db.Box
 import dev.saged.barq.data.db.Category
 import dev.saged.barq.data.db.ConversationDao
 import dev.saged.barq.data.db.MessageDao
+import dev.saged.barq.data.db.ReplyBlockEntity
 import dev.saged.barq.data.db.ReplyDao
 import dev.saged.barq.data.db.ReplyMemoryEntity
 import dev.saged.barq.data.settings.SettingsRepository
 import dev.saged.barq.di.AppScope
 import dev.saged.barq.util.CrashLog
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -44,16 +47,23 @@ class ReplyEngine @Inject constructor(
     private val lock = Mutex()
 
     private suspend fun index(): ReplyIndex = cached ?: lock.withLock {
-        cached ?: ReplyIndex(replies.all().map { Memory(it.incoming, it.reply, it.uses, it.lastUsed) }).also { cached = it }
+        cached ?: withContext(Dispatchers.Default) {
+            val blocked = replies.blocked().map { it.incoming to it.reply }
+            ReplyIndex(
+                replies.all().map { Memory(it.incoming, it.reply, it.uses, it.lastUsed, it.threadId) },
+                ReplyBlocklist(blocked),
+            )
+        }.also { cached = it }
     }
 
-    /** Chips for [incoming]; empty when learning is switched off. */
-    suspend fun suggest(incoming: String, limit: Int = 3): List<Suggestion> {
+    /** Chips for [incoming] said in [threadId]; empty when learning is switched off. */
+    suspend fun suggest(incoming: String, limit: Int = 3, threadId: Long = 0): List<Suggestion> {
         val s = settings.current()
         if (!s.learnReplies) return emptyList()
         val index = index()
-        val own = index.suggest(incoming, limit, System.currentTimeMillis())
-        val composed = ReplyIntents.reply(incoming, index.addressTerm, withBusy = false, tone = s.replyTone, seed = seed())
+        val own = index.suggest(incoming, limit, System.currentTimeMillis(), threadId = threadId)
+        val composed = ReplyIntents.reply(incoming, index.addressTerm(threadId), withBusy = false, tone = s.replyTone, seed = seed())
+            ?.takeUnless { index.isBlocked(incoming, it) }
             ?.let { Suggestion(it, 0.0, builtin = true) } ?: return own
         val sure = own.any { it.score >= ReplyIndex.AUTO_MIN }
         val merged = if (sure) own + composed else listOf(composed) + own
@@ -61,9 +71,9 @@ class ReplyEngine @Inject constructor(
     }
 
     /** The reply sent automatically, only when confident enough. */
-    suspend fun best(incoming: String): String? {
+    suspend fun best(incoming: String, threadId: Long = 0): String? {
         if (!settings.current().learnReplies) return null
-        return index().best(incoming, System.currentTimeMillis())?.reply
+        return index().best(incoming, System.currentTimeMillis(), threadId)?.reply
     }
 
     /** What the auto-reply does with an incoming text. */
@@ -92,8 +102,8 @@ class ReplyEngine @Inject constructor(
         if (answersMe && said.isEmpty()) return Answer.Silent
         val greeted = before.any { it.box != Box.INBOX && now - it.date < GREETED_MS && ReplyIntents.greets(it.body) }
         if (greeted && ReplyIntents.onlyGreets(incoming)) return Answer.Silent
-        if (!ReplyIntents.isGrave(incoming)) best(incoming)?.let { return Answer.Send(it) }
-        val address = if (s.learnReplies) index().addressTerm else null
+        if (!ReplyIntents.isGrave(incoming)) best(incoming, threadId)?.let { return Answer.Send(it) }
+        val address = if (s.learnReplies) index().addressTerm(threadId) else null
         val composed = ReplyIntents.reply(
             incoming, address, tone = s.replyTone, greeted = greeted,
             hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY), seed = seed(),
@@ -111,7 +121,7 @@ class ReplyEngine @Inject constructor(
         val index = index()
         val own = index.suggest(incoming, 3, System.currentTimeMillis(), withPopular = false)
         if (own.any { it.score >= ReplyIndex.AUTO_MIN } && !ReplyIntents.isGrave(incoming)) return own
-        val builtin = ReplyIntents.reply(incoming, index.addressTerm, tone = settings.current().replyTone, seed = seed())
+        val builtin = ReplyIntents.reply(incoming, null, tone = settings.current().replyTone, seed = seed())
             ?.let { Suggestion(it, 0.0, builtin = true) }
         return if (builtin == null) own else listOf(builtin) + own
     }
@@ -133,8 +143,8 @@ class ReplyEngine @Inject constructor(
         )
         val pair = walker.feed(Turn(incoming = false, body = mine.body, date = mine.date)) ?: return
         val key = ReplyText.key(pair.incoming)
-        if (replies.bump(key, pair.reply, pair.at) == 0) {
-            replies.insert(ReplyMemoryEntity(incoming = key, reply = pair.reply, uses = 1, lastUsed = pair.at))
+        if (replies.bump(key, pair.reply, threadId, pair.at) == 0) {
+            replies.insert(ReplyMemoryEntity(incoming = key, reply = pair.reply, uses = 1, lastUsed = pair.at, threadId = threadId))
             val over = replies.count() - MAX_ROWS
             if (over > 0) replies.prune(over)
         }
@@ -145,7 +155,7 @@ class ReplyEngine @Inject constructor(
      * The user took the chip [suggested] for [incoming] but sent [sent] instead: the chip loses a use
      * (and goes away when spent) and the corrected text gains one, so the next suggestion is closer.
      */
-    suspend fun onSuggestionEdited(incoming: String, suggested: String, sent: String) {
+    suspend fun onSuggestionEdited(incoming: String, suggested: String, sent: String, threadId: Long = 0) {
         if (!settings.current().learnReplies) return
         if (ReplyText.replyKey(suggested) == ReplyText.replyKey(sent)) return
         val key = ReplyText.key(incoming)
@@ -153,7 +163,21 @@ class ReplyEngine @Inject constructor(
         db.withTransaction {
             replies.demote(key, suggested)
             replies.deleteSpent()
-            replies.bump(key, sent.trim(), System.currentTimeMillis())
+            val at = System.currentTimeMillis()
+            if (ReplyText.isSafeReply(sent) && replies.bump(key, sent.trim(), threadId, at) == 0) {
+                replies.insert(ReplyMemoryEntity(incoming = key, reply = sent.trim(), uses = 1, lastUsed = at, threadId = threadId))
+            }
+        }
+        cached = null
+    }
+
+    /** "Don't suggest this again": [reply] is forgotten for texts like [incoming] and never learned back. */
+    suspend fun block(incoming: String, reply: String) {
+        val key = ReplyText.key(incoming)
+        if (key.isBlank()) return
+        db.withTransaction {
+            replies.block(ReplyBlockEntity(incoming = key, reply = reply, blockedAt = System.currentTimeMillis()))
+            replies.forget(key, reply)
         }
         cached = null
     }
@@ -163,26 +187,36 @@ class ReplyEngine @Inject constructor(
         scope.launch { runCatching { rebuildNow() }.onFailure { CrashLog.warn("reply-learn", it) } }
     }
 
+    /** Empty memory, or one learned before replies knew their person (2.4.0): read the history again. */
     fun rebuildIfEmpty() {
         scope.launch {
-            if (settings.current().learnReplies && replies.count() == 0) {
+            if (settings.current().learnReplies && (replies.count() == 0 || replies.countLegacy() > 0)) {
                 runCatching { rebuildNow() }.onFailure { CrashLog.warn("reply-learn", it) }
             }
         }
     }
 
+    /** The weekly pass: adds what the user wrote since the last one, keeping every correction made meanwhile. */
+    suspend fun refresh() {
+        if (!settings.current().learnReplies) return
+        rebuildNow(since = settings.current().replyLearnedAt)
+    }
+
     suspend fun clear() {
         replies.clear()
+        replies.clearBlocked()
         cached = null
     }
 
-    private suspend fun rebuildNow() {
+    private suspend fun rebuildNow(since: Long? = null) {
         if (!busy.compareAndSet(false, true)) return
         try {
             val solo = conversations.names()
                 .filter { PhoneUtils.splitAddresses(it.addresses).size == 1 }
                 .associate { it.threadId to ReplyText.nameWords(it.displayName) }
-            val found = HashMap<kotlin.Pair<String, String>, Memory>()
+            val blocked = ReplyBlocklist(replies.blocked().map { it.incoming to it.reply })
+            val started = System.currentTimeMillis()
+            val found = HashMap<Triple<String, String, Long>, Memory>()
             var thread = -1L
             var walker: ReplyPairing.Walker? = null
             var t = Long.MIN_VALUE
@@ -204,10 +238,12 @@ class ReplyEngine @Inject constructor(
                             eligible = row.category == Category.PERSONAL && PhoneUtils.isReplyable(row.address),
                         ),
                     ) ?: continue
+                    if (since != null && pair.at <= since) continue
                     val key = ReplyText.key(pair.incoming)
-                    val k = key to pair.reply
+                    if (blocked.blocks(key, pair.reply)) continue
+                    val k = Triple(key, pair.reply, thread)
                     val old = found[k]
-                    found[k] = Memory(key, pair.reply, (old?.uses ?: 0) + 1, maxOf(old?.lastUsed ?: 0L, pair.at))
+                    found[k] = Memory(key, pair.reply, (old?.uses ?: 0) + 1, maxOf(old?.lastUsed ?: 0L, pair.at), thread)
                 }
                 val last = page.last()
                 t = last.threadId; d = last.date; i = last.id
@@ -215,11 +251,19 @@ class ReplyEngine @Inject constructor(
             val kept = found.values
                 .sortedWith(compareByDescending<Memory> { it.uses }.thenByDescending { it.lastUsed })
                 .take(MAX_ROWS)
-                .map { ReplyMemoryEntity(incoming = it.incoming, reply = it.reply, uses = it.uses, lastUsed = it.lastUsed) }
+                .map { ReplyMemoryEntity(incoming = it.incoming, reply = it.reply, uses = it.uses, lastUsed = it.lastUsed, threadId = it.threadId) }
             db.withTransaction {
-                replies.clear()
-                replies.insertAll(kept)
+                if (since == null) {
+                    replies.clear()
+                    replies.insertAll(kept)
+                } else {
+                    // Pairs already known (learned live) stay as they are, so uses are never counted twice.
+                    kept.forEach { replies.insert(it) }
+                    val over = replies.count() - MAX_ROWS
+                    if (over > 0) replies.prune(over)
+                }
             }
+            settings.setReplyLearnedAt(started)
             cached = null
         } finally {
             busy.value = false
@@ -227,7 +271,7 @@ class ReplyEngine @Inject constructor(
     }
 
     private companion object {
-        const val MAX_ROWS = 4000
+        const val MAX_ROWS = 20_000
         const val PAGE = 2000
         const val CONTEXT_DEPTH = 8
         const val CONTEXT_MS = 12 * 60 * 60_000L
