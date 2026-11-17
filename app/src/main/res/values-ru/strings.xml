@@ -582,6 +582,8 @@
     <string name="sf_code">С кодом</string>
     <string name="sf_filters">Фильтр результатов</string>
     <string name="copy_number">Копировать номер</string>
+    <string name="reply_block">Больше не предлагать</string>
+    <string name="reply_blocked_done">Этот ответ больше не будет предлагаться</string>
     <plurals name="spam_banner">
         <item quantity="other">Скрыто спам-диалогов: %1$d</item>
     </plurals>

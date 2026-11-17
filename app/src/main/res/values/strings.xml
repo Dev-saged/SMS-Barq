@@ -646,6 +646,8 @@
     <string name="sf_code">فيها رمز</string>
     <string name="sf_filters">تصفية النتائج</string>
     <string name="copy_number">نسخ الرقم</string>
+    <string name="reply_block">لا تقترح هذا مجدداً</string>
+    <string name="reply_blocked_done">لن يُقترح هذا الرد مجدداً</string>
     <plurals name="spam_banner">
         <item quantity="zero">لا محادثات سبام محجوبة</item>
         <item quantity="one">محادثة سبام واحدة محجوبة</item>

@@ -70,6 +70,8 @@ data class AppSettings(
     val onboardingDone: Boolean = false,
     /** Last bulk send, shown as a progress card until dismissed (0 = none). Not backed up. */
     val lastBatchId: Long = 0,
+    /** When the reply memory last read the history (the weekly pass only adds what is newer). */
+    val replyLearnedAt: Long = 0,
     /** Bulk-send explanation (Android asks once to allow many messages) was shown. */
     val bulkIntroShown: Boolean = false,
     /** Temporary failures (no signal, Android's limit…) are retried automatically. */
@@ -143,6 +145,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val lastBackupAt = longPreferencesKey("last_backup_at")
         val onboardingDone = booleanPreferencesKey("onboarding_done")
         val lastBatchId = longPreferencesKey("last_batch_id")
+        val replyLearnedAt = longPreferencesKey("reply_learned_at")
         val bulkIntroShown = booleanPreferencesKey("bulk_intro_shown")
         val autoRetry = booleanPreferencesKey("auto_retry")
         val respectLimit = booleanPreferencesKey("respect_limit")
@@ -198,6 +201,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             lastBackupAt = p[K.lastBackupAt] ?: d.lastBackupAt,
             onboardingDone = p[K.onboardingDone] ?: d.onboardingDone,
             lastBatchId = p[K.lastBatchId] ?: d.lastBatchId,
+            replyLearnedAt = p[K.replyLearnedAt] ?: d.replyLearnedAt,
             bulkIntroShown = p[K.bulkIntroShown] ?: d.bulkIntroShown,
             autoRetry = p[K.autoRetry] ?: d.autoRetry,
             respectLimit = p[K.respectLimit] ?: d.respectLimit,
@@ -256,6 +260,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
     suspend fun setLastBackupAt(v: Long) = set(K.lastBackupAt, v)
     suspend fun setOnboardingDone(v: Boolean) = set(K.onboardingDone, v)
     suspend fun setLastBatchId(v: Long) = set(K.lastBatchId, v)
+    suspend fun setReplyLearnedAt(v: Long) = set(K.replyLearnedAt, v)
     suspend fun setBulkIntroShown(v: Boolean) = set(K.bulkIntroShown, v)
     suspend fun setAutoRetry(v: Boolean) = set(K.autoRetry, v)
     suspend fun setRespectLimit(v: Boolean) = set(K.respectLimit, v)

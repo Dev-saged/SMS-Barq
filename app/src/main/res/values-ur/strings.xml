@@ -582,6 +582,8 @@
     <string name="sf_code">کوڈ والے</string>
     <string name="sf_filters">نتائج فلٹر کریں</string>
     <string name="copy_number">نمبر کاپی کریں</string>
+    <string name="reply_block">اسے دوبارہ تجویز نہ کریں</string>
+    <string name="reply_blocked_done">یہ جواب دوبارہ تجویز نہیں کیا جائے گا</string>
     <plurals name="spam_banner">
         <item quantity="other">%1$d اسپام گفتگو چھپائی گئیں</item>
     </plurals>

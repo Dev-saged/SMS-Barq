@@ -611,8 +611,23 @@ interface ReplyDao {
     @Query("SELECT COUNT(*) FROM reply_memory")
     suspend fun count(): Int
 
-    @Query("UPDATE reply_memory SET uses = uses + 1, lastUsed = MAX(lastUsed, :at) WHERE incoming = :incoming AND reply = :reply")
-    suspend fun bump(incoming: String, reply: String, at: Long): Int
+    @Query("SELECT COUNT(*) FROM reply_memory WHERE threadId = 0")
+    suspend fun countLegacy(): Int
+
+    @Query("UPDATE reply_memory SET uses = uses + 1, lastUsed = MAX(lastUsed, :at) WHERE incoming = :incoming AND reply = :reply AND threadId = :threadId")
+    suspend fun bump(incoming: String, reply: String, threadId: Long, at: Long): Int
+
+    @Query("SELECT * FROM reply_blocked")
+    suspend fun blocked(): List<ReplyBlockEntity>
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun block(entry: ReplyBlockEntity): Long
+
+    @Query("DELETE FROM reply_memory WHERE incoming = :incoming AND reply = :reply")
+    suspend fun forget(incoming: String, reply: String)
+
+    @Query("DELETE FROM reply_blocked")
+    suspend fun clearBlocked()
 
     @Query("UPDATE reply_memory SET uses = uses - 1 WHERE incoming = :incoming AND reply = :reply")
     suspend fun demote(incoming: String, reply: String): Int

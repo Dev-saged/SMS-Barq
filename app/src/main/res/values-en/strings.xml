@@ -587,6 +587,8 @@
     <string name="sf_code">Has code</string>
     <string name="sf_filters">Filter results</string>
     <string name="copy_number">Copy number</string>
+    <string name="reply_block">Don\'t suggest this again</string>
+    <string name="reply_blocked_done">This reply won\'t be suggested again</string>
     <plurals name="spam_banner">
         <item quantity="one">%1$d spam conversation hidden</item>
         <item quantity="other">%1$d spam conversations hidden</item>

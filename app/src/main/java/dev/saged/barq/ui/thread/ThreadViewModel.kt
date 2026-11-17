@@ -108,17 +108,20 @@ class ThreadViewModel @Inject constructor(
         settingsRepository.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
 
     /** Up to three replies in the user's own words, offered while the last message is from the other person. */
+    private val suggestionsRefresh = MutableStateFlow(0)
+
     val suggestions: StateFlow<List<String>> = combine(
         messageDao.observeLatestVisible(threadId),
         settingsRepository.settings.map { it.learnReplies }.distinctUntilChanged(),
         replyEngine.count,
-    ) { last, on, _ -> last.takeIf { on } }
+        suggestionsRefresh,
+    ) { last, on, _, _ -> last.takeIf { on } }
         .mapLatest { last ->
             if (last == null || last.box != Box.INBOX || last.category != Category.PERSONAL || !PhoneUtils.isReplyable(last.address)) {
                 emptyList()
             } else {
                 suggestedFor = last.body
-                replyEngine.suggest(last.body, 3).map { it.reply }
+                replyEngine.suggest(last.body, 3, threadId).map { it.reply }
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -204,6 +207,15 @@ class ThreadViewModel @Inject constructor(
     @Volatile private var suggestedFor = ""
     @Volatile private var pickedChip: Pair<String, String>? = null
 
+    /** "Don't suggest this again": the chip is forgotten for texts like the one it answered. */
+    fun blockSuggestion(reply: String) {
+        val incoming = suggestedFor
+        viewModelScope.launch {
+            runCatching { replyEngine.block(incoming, reply) }
+            suggestionsRefresh.value++
+        }
+    }
+
     fun insertSuggestion(reply: String) {
         pickedChip = suggestedFor to reply
         insertTemplate(reply)
@@ -218,7 +230,7 @@ class ThreadViewModel @Inject constructor(
         viewModelScope.launch {
             val sent = engine.sendToThread(threadId, body, subId.value.takeIf { it >= 0 }, scheduledAt)
             if (sent && scheduledAt == 0L && chip != null) {
-                runCatching { replyEngine.onSuggestionEdited(chip.first, chip.second, body) }
+                runCatching { replyEngine.onSuggestionEdited(chip.first, chip.second, body, threadId) }
             }
         }
     }

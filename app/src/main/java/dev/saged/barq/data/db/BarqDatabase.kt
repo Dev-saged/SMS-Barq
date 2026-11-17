@@ -35,12 +35,13 @@ class Converters {
         CategoryRuleEntity::class,
         TemplateEntity::class,
         ReplyMemoryEntity::class,
+        ReplyBlockEntity::class,
         TrashedMessageEntity::class,
         AutoReplyLogEntity::class,
         SendGroupEntity::class,
         SendGroupMemberEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -56,7 +57,7 @@ abstract class BarqDatabase : RoomDatabase() {
     abstract fun trash(): TrashDao
 
     companion object {
-        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6)
+        val ALL_MIGRATIONS: Array<Migration> = arrayOf(Migration1To2, Migration2To3, Migration3To4, Migration4To5, Migration5To6, Migration6To7)
     }
 }
 
@@ -178,5 +179,19 @@ object Migration5To6 : Migration(5, 6) {
                 "`starred` INTEGER NOT NULL, `deletedAt` INTEGER NOT NULL)"
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_trashed_messages_deletedAt` ON `trashed_messages` (`deletedAt`)")
+    }
+}
+
+/** Version 6 → 7 (Barq 2.4.0): replies remember who they were said to; "don't suggest this again" list. */
+object Migration6To7 : Migration(6, 7) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE `reply_memory` ADD COLUMN `threadId` INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("DROP INDEX IF EXISTS `index_reply_memory_incoming_reply`")
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_reply_memory_incoming_reply_threadId` ON `reply_memory` (`incoming`, `reply`, `threadId`)")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `reply_blocked` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                "`incoming` TEXT NOT NULL, `reply` TEXT NOT NULL, `blockedAt` INTEGER NOT NULL)"
+        )
+        db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_reply_blocked_incoming_reply` ON `reply_blocked` (`incoming`, `reply`)")
     }
 }

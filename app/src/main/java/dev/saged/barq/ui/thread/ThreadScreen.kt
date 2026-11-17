@@ -59,6 +59,7 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -90,6 +91,10 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import android.widget.Toast
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDirection
@@ -327,6 +332,7 @@ fun ThreadScreen(
                     templates = templates.map { it.text },
                     suggestions = suggestions,
                     onSuggestion = vm::insertSuggestion,
+                    onBlockSuggestion = vm::blockSuggestion,
                     sims = sims,
                     subId = subId,
                     onText = vm::onTextChange,
@@ -573,6 +579,7 @@ fun Composer(
     onTemplate: (String) -> Unit,
     suggestions: List<String> = emptyList(),
     onSuggestion: (String) -> Unit = {},
+    onBlockSuggestion: (String) -> Unit = {},
     onPickSim: (Int) -> Unit,
     onSchedule: () -> Unit,
     onSend: () -> Unit,
@@ -593,16 +600,16 @@ fun Composer(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                val context = LocalContext.current
                 suggestions.forEachIndexed { i, r ->
-                    AssistChip(
+                    SuggestionChip(
+                        text = r,
+                        first = i == 0,
                         onClick = { onSuggestion(r) },
-                        label = { Text(r, maxLines = 1) },
-                        leadingIcon = if (i == 0) {
-                            { Icon(BIcons.Sparkle, null, Modifier.size(16.dp), tint = scheme.primary) }
-                        } else null,
-                        shape = RoundedCornerShape(18.dp),
-                        colors = AssistChipDefaults.assistChipColors(containerColor = scheme.primaryContainer, labelColor = scheme.onPrimaryContainer),
-                        border = null,
+                        onBlock = {
+                            onBlockSuggestion(r)
+                            Toast.makeText(context, R.string.reply_blocked_done, Toast.LENGTH_SHORT).show()
+                        },
                     )
                 }
             }
@@ -670,6 +677,40 @@ fun Composer(
             ) {
                 Icon(Icons.AutoMirrored.Outlined.Send, stringResource(R.string.send))
             }
+        }
+    }
+}
+
+/** A reply chip: tap to use it, long-press (or the accessibility action) to never see it again. */
+@Composable
+private fun SuggestionChip(text: String, first: Boolean, onClick: () -> Unit, onBlock: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    val haptic = LocalHapticFeedback.current
+    var menu by remember { mutableStateOf(false) }
+    val blockLabel = stringResource(R.string.reply_block)
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = { haptic.performHapticFeedback(HapticFeedbackType.LongPress); menu = true },
+            )
+            .semantics { customActions = listOf(CustomAccessibilityAction(blockLabel) { onBlock(); true }) },
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(18.dp))
+                .background(scheme.primaryContainer)
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            if (first) Icon(BIcons.Sparkle, null, Modifier.size(16.dp), tint = scheme.primary)
+            Text(text, maxLines = 1, style = MaterialTheme.typography.labelLarge, color = scheme.onPrimaryContainer)
+        }
+        DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text(blockLabel) }, onClick = { menu = false; onBlock() })
         }
     }
 }

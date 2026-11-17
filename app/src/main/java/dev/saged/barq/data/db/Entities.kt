@@ -193,7 +193,7 @@ data class TemplateEntity(
 /** A reply the user wrote to an incoming text: the engine's memory (words only, never the full text). */
 @Entity(
     tableName = "reply_memory",
-    indices = [Index(value = ["incoming", "reply"], unique = true), Index(value = ["lastUsed"])],
+    indices = [Index(value = ["incoming", "reply", "threadId"], unique = true), Index(value = ["lastUsed"])],
 )
 data class ReplyMemoryEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -202,6 +202,17 @@ data class ReplyMemoryEntity(
     val reply: String,
     val uses: Int,
     val lastUsed: Long,
+    /** The conversation the reply was said in (0 = unknown, rows from before 2.4.0). */
+    @ColumnInfo(defaultValue = "0") val threadId: Long = 0,
+)
+
+/** A suggestion the user asked never to see again for texts like [incoming]. */
+@Entity(tableName = "reply_blocked", indices = [Index(value = ["incoming", "reply"], unique = true)])
+data class ReplyBlockEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val incoming: String,
+    val reply: String,
+    val blockedAt: Long,
 )
 
 /** What the learner reads from the history. */
