@@ -648,6 +648,35 @@
     <string name="copy_number">نسخ الرقم</string>
     <string name="reply_block">لا تقترح هذا مجدداً</string>
     <string name="reply_blocked_done">لن يُقترح هذا الرد مجدداً</string>
+    <string name="bulk_review_title">مراجعة قبل الإرسال</string>
+    <string name="bulk_review_sim">الشريحة: %1$s</string>
+    <string name="bulk_review_time">المدة المتوقعة: نحو %1$s</string>
+    <string name="bulk_review_quick">سريع: لا انتظار متوقع</string>
+    <string name="bulk_review_noname">%1$d بلا اسم: يصلهم نص الرسالة بدون الاسم</string>
+    <plurals name="bulk_review_recipients">
+        <item quantity="zero">لا مستلمين</item>
+        <item quantity="one">مستلم واحد</item>
+        <item quantity="two">مستلمان</item>
+        <item quantity="few">%1$d مستلمين</item>
+        <item quantity="many">%1$d مستلماً</item>
+        <item quantity="other">%1$d مستلم</item>
+    </plurals>
+    <plurals name="bulk_review_total">
+        <item quantity="zero">لا رسائل</item>
+        <item quantity="one">رسالة SMS واحدة في المجموع</item>
+        <item quantity="two">رسالتا SMS في المجموع</item>
+        <item quantity="few">%1$d رسائل SMS في المجموع</item>
+        <item quantity="many">%1$d رسالة SMS في المجموع</item>
+        <item quantity="other">%1$d رسالة SMS في المجموع</item>
+    </plurals>
+    <plurals name="bulk_review_minutes">
+        <item quantity="zero">أقل من دقيقة</item>
+        <item quantity="one">دقيقة واحدة</item>
+        <item quantity="two">دقيقتين</item>
+        <item quantity="few">%1$d دقائق</item>
+        <item quantity="many">%1$d دقيقة</item>
+        <item quantity="other">%1$d دقيقة</item>
+    </plurals>
     <plurals name="spam_banner">
         <item quantity="zero">لا محادثات سبام محجوبة</item>
         <item quantity="one">محادثة سبام واحدة محجوبة</item>

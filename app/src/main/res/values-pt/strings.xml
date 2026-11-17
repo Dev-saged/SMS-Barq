@@ -584,6 +584,20 @@
     <string name="copy_number">Copiar número</string>
     <string name="reply_block">Não sugerir isto novamente</string>
     <string name="reply_blocked_done">Esta resposta não será sugerida novamente</string>
+    <string name="bulk_review_title">Revisar antes de enviar</string>
+    <string name="bulk_review_sim">SIM: %1$s</string>
+    <string name="bulk_review_time">Tempo estimado: cerca de %1$s</string>
+    <string name="bulk_review_quick">Rápido: sem espera</string>
+    <string name="bulk_review_noname">%1$d sem nome: receberão a mensagem sem ele</string>
+    <plurals name="bulk_review_recipients">
+        <item quantity="other">%1$d destinatários</item>
+    </plurals>
+    <plurals name="bulk_review_total">
+        <item quantity="other">%1$d SMS no total</item>
+    </plurals>
+    <plurals name="bulk_review_minutes">
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
     <plurals name="spam_banner">
         <item quantity="other">%1$d conversas de spam ocultas</item>
     </plurals>

@@ -584,6 +584,20 @@
     <string name="copy_number">نمبر کاپی کریں</string>
     <string name="reply_block">اسے دوبارہ تجویز نہ کریں</string>
     <string name="reply_blocked_done">یہ جواب دوبارہ تجویز نہیں کیا جائے گا</string>
+    <string name="bulk_review_title">بھیجنے سے پہلے جانچیں</string>
+    <string name="bulk_review_sim">سم: %1$s</string>
+    <string name="bulk_review_time">متوقع وقت: تقریباً %1$s</string>
+    <string name="bulk_review_quick">تیز: انتظار نہیں</string>
+    <string name="bulk_review_noname">%1$d کا نام نہیں: انہیں نام کے بغیر پیغام ملے گا</string>
+    <plurals name="bulk_review_recipients">
+        <item quantity="other">%1$d وصول کنندگان</item>
+    </plurals>
+    <plurals name="bulk_review_total">
+        <item quantity="other">کل %1$d ایس ایم ایس</item>
+    </plurals>
+    <plurals name="bulk_review_minutes">
+        <item quantity="other">%1$d منٹ</item>
+    </plurals>
     <plurals name="spam_banner">
         <item quantity="other">%1$d اسپام گفتگو چھپائی گئیں</item>
     </plurals>

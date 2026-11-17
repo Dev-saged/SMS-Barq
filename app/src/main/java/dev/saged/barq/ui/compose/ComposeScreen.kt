@@ -73,6 +73,8 @@ import dev.saged.barq.data.contacts.ContactsRepository
 import dev.saged.barq.data.contacts.PhoneGroup
 import dev.saged.barq.data.contacts.PhoneGroups
 import dev.saged.barq.data.db.GroupDao
+import dev.saged.barq.domain.BulkPlan
+import dev.saged.barq.sms.SendLimit
 import dev.saged.barq.data.db.SendGroupWithCount
 import dev.saged.barq.data.db.TemplateDao
 import dev.saged.barq.data.settings.SettingsRepository
@@ -107,6 +109,7 @@ class ComposeViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val simRepository: SimRepository,
     private val phoneGroups: PhoneGroups,
+    private val sendLimit: SendLimit,
     templateDao: TemplateDao,
 ) : ViewModel() {
 
@@ -266,10 +269,18 @@ class ComposeViewModel @Inject constructor(
         subId.value = list[(i + 1).mod(list.size)].subId
     }
 
-    /** True when this send needs the one-time explanation about bulk sending first. */
-    fun needsBulkIntro(): Boolean {
+    /** True when the send goes to many people and so gets the review first. */
+    fun isBulk(): Boolean {
         addTyped()
-        return recipients.value.size > 1 && settings.value?.bulkIntroShown != true
+        return recipients.value.size > 1
+    }
+
+    /** What the send will do: messages in all, people without a name, the least time Android's limit allows. */
+    fun review(): BulkPlan.Review {
+        val limit = sendLimit.current()
+        return BulkPlan.review(
+            recipients.value.map { it.name }, text.value, if (limit.raised) 0 else limit.perMinute,
+        ) { runCatching { SmsMessage.calculateLength(it, false)[0] }.getOrDefault(1) }
     }
 
     fun bulkIntroSeen() {
@@ -324,6 +335,7 @@ fun ComposeScreen(
     val templates by vm.templates.collectAsStateWithLifecycle()
     val sims by vm.sims.collectAsStateWithLifecycle()
     val subId by vm.subId.collectAsStateWithLifecycle()
+    val appSettings by vm.settings.collectAsStateWithLifecycle()
     var showSchedule by remember { mutableStateOf(false) }
     var bulkIntro by remember { mutableStateOf<Long?>(null) }
     val focus = remember { FocusRequester() }
@@ -345,7 +357,7 @@ fun ComposeScreen(
         }
     }
     fun trySend(at: Long) {
-        if (vm.needsBulkIntro()) bulkIntro = at else vm.send(at, afterSend)
+        if (vm.isBulk()) bulkIntro = at else vm.send(at, afterSend)
     }
 
     Scaffold(
@@ -508,10 +520,46 @@ fun ComposeScreen(
         )
     }
     bulkIntro?.let { at ->
+        val review = remember(at) { vm.review() }
+        val simLabel = sims.takeIf { it.size > 1 }?.firstOrNull { it.subId == subId }?.label
         AlertDialog(
             onDismissRequest = { bulkIntro = null },
-            title = { Text(stringResource(R.string.bulk_intro_title)) },
-            text = { Text(stringResource(R.string.bulk_intro_text)) },
+            title = { Text(stringResource(R.string.bulk_review_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        pluralText(R.plurals.bulk_review_recipients, review.recipients, review.recipients),
+                        style = MaterialTheme.typography.titleSmall,
+                    )
+                    Text(pluralText(R.plurals.bulk_review_total, review.parts, review.parts))
+                    if (simLabel != null) Text(stringResource(R.string.bulk_review_sim, simLabel))
+                    if (at == 0L) {
+                        Text(
+                            if (review.minutes <= 0) stringResource(R.string.bulk_review_quick)
+                            else stringResource(
+                                R.string.bulk_review_time, pluralText(R.plurals.bulk_review_minutes, review.minutes, review.minutes),
+                            ),
+                        )
+                    }
+                    if (review.unnamed > 0) {
+                        Text(stringResource(R.string.bulk_review_noname, review.unnamed), color = MaterialTheme.colorScheme.error)
+                    }
+                    Text(
+                        review.preview,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 4,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f))
+                            .padding(12.dp),
+                    )
+                    if (appSettings?.bulkIntroShown != true) {
+                        Text(stringResource(R.string.bulk_intro_title), style = MaterialTheme.typography.labelLarge)
+                        Text(stringResource(R.string.bulk_intro_text), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     bulkIntro = null

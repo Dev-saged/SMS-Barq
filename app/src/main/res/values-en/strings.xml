@@ -589,6 +589,23 @@
     <string name="copy_number">Copy number</string>
     <string name="reply_block">Don\'t suggest this again</string>
     <string name="reply_blocked_done">This reply won\'t be suggested again</string>
+    <string name="bulk_review_title">Review before sending</string>
+    <string name="bulk_review_sim">SIM: %1$s</string>
+    <string name="bulk_review_time">Expected time: about %1$s</string>
+    <string name="bulk_review_quick">Fast: no waiting expected</string>
+    <string name="bulk_review_noname">%1$d without a name: they get the message without it</string>
+    <plurals name="bulk_review_recipients">
+        <item quantity="one">%1$d recipient</item>
+        <item quantity="other">%1$d recipients</item>
+    </plurals>
+    <plurals name="bulk_review_total">
+        <item quantity="one">%1$d SMS message in total</item>
+        <item quantity="other">%1$d SMS messages in total</item>
+    </plurals>
+    <plurals name="bulk_review_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
     <plurals name="spam_banner">
         <item quantity="one">%1$d spam conversation hidden</item>
         <item quantity="other">%1$d spam conversations hidden</item>
