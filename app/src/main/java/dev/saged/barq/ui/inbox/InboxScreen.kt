@@ -233,7 +233,6 @@ fun InboxScreen(
     var filtersOpen by rememberSaveable { mutableStateOf(false) }
     val textSearch = query.isNotBlank()
     val searching = textSearch || searchFilters.active
-    val convCount = if (searching && !textSearch) 0 else pagingItems.itemCount
     val readAllDone = stringResource(R.string.unread_all_done)
 
     // The "Unread" shortcut on the home screen opens the inbox straight on this view.
@@ -338,6 +337,7 @@ fun InboxScreen(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(bottom = 96.dp + LocalBottomBarInset.current),
         ) {
+            val convCount = if (searching && !textSearch) 0 else pagingItems.itemCount
             if (!isDefault) {
                 item(key = "default", contentType = "card") {
                     InfoCard(
