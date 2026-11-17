@@ -101,6 +101,15 @@ class MigrationTest {
             .allowMainThreadQueries().build().apply { openHelper.writableDatabase; close() }
         SQLiteDatabase.openOrCreateDatabase(file, null).use { db ->
             db.execSQL("DROP TABLE `trashed_messages`")
+            // Version 5 also had the reply memory without the person column and no block list.
+            db.execSQL("DROP TABLE `reply_blocked`")
+            db.execSQL("DROP TABLE `reply_memory`")
+            db.execSQL(
+                "CREATE TABLE `reply_memory` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `incoming` TEXT NOT NULL, " +
+                    "`reply` TEXT NOT NULL, `uses` INTEGER NOT NULL, `lastUsed` INTEGER NOT NULL)",
+            )
+            db.execSQL("CREATE UNIQUE INDEX `index_reply_memory_incoming_reply` ON `reply_memory` (`incoming`, `reply`)")
+            db.execSQL("CREATE INDEX `index_reply_memory_lastUsed` ON `reply_memory` (`lastUsed`)")
             db.version = 5
         }
         val room = Room.databaseBuilder(context, BarqDatabase::class.java, file.absolutePath)
