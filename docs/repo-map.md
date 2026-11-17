@@ -56,6 +56,7 @@ Keep under 5KB. No code. Update by 2 lines after every change.
 - الأرقام الفلسطينية ← 05x (PhoneUtils.localPs)؛ matchKey آخر 9 خانات.
 
 ## Solved bugs (never reintroduce)
+- Solved bug (2.2.1) InboxScreen انهيار IndexOutOfBounds "index N in ItemSnapshotList of size N": السبب convCount خارج LazyColumn (قيمة قديمة)؛ الإصلاح: اقرأ pagingItems.itemCount داخل محتوى LazyColumn دائماً، ولا تمرّره كمتغير من التركيب.
 - بناء 1.7.0: serialization 1.13 وcoroutines 1.11 مبنيتان بـKotlin 2.4 فتفشل مع المترجم 2.2.21 (Incompatible classes). ثبّت 1.10.0 و1.10.2 حتى الانتقال إلى AGP 9/Kotlin 2.4.
 - «لا يظهر تحديث»: المستودع private فيرجع 404 لأي طلب بلا دخول (api وgithub.com)؛ يلزم مستودع عام. الفحص الآن 3 طبقات (version.json ← تحويل /releases/latest ← API) ويعرض السبب؛ المقارنة versionName ثم versionCode.
 - سجل المكالمات يفتح المحادثة المفتوحة: launchSingleTop على thread/{id}؛ احذف المفتوحة قبل navigate (BarqNavHost).
