@@ -22,7 +22,7 @@ Output: no greetings or filler. Max 3 bullets of explanation. One-line summary b
 - Version: bump APP_VERSION and version.json (vMAJOR.MINOR.PATCH) on substantive changes.
 
 ## Stack
-- Native Android: Kotlin + Jetpack Compose, minSdk 26, compileSdk 36, targetSdk 36. No WebView, no WebToApp.
+- Native Android: Kotlin + Jetpack Compose, minSdk 26, compileSdk 37, targetSdk 36. No WebView, no WebToApp.
 - APK built by GitHub Actions (.github/workflows/build.yml); signing via KEYSTORE_BASE64 + SIGNING_* secrets (أو keystore.properties في المستودع الخاص).
 - DI: Hilt + KSP. Serialization: kotlinx.serialization. Offline first: كل network call في try/catch.
 - رفع المشروع zip من الهاتف مدعوم: الـworkflow يفكّه تلقائياً ويكوّم.
