@@ -584,6 +584,20 @@
     <string name="copy_number">Копировать номер</string>
     <string name="reply_block">Больше не предлагать</string>
     <string name="reply_blocked_done">Этот ответ больше не будет предлагаться</string>
+    <string name="bulk_review_title">Проверка перед отправкой</string>
+    <string name="bulk_review_sim">SIM: %1$s</string>
+    <string name="bulk_review_time">Ожидаемое время: около %1$s</string>
+    <string name="bulk_review_quick">Быстро: ожидание не требуется</string>
+    <string name="bulk_review_noname">%1$d без имени: получат сообщение без имени</string>
+    <plurals name="bulk_review_recipients">
+        <item quantity="other">Получателей: %1$d</item>
+    </plurals>
+    <plurals name="bulk_review_total">
+        <item quantity="other">Всего SMS: %1$d</item>
+    </plurals>
+    <plurals name="bulk_review_minutes">
+        <item quantity="other">%1$d мин.</item>
+    </plurals>
     <plurals name="spam_banner">
         <item quantity="other">Скрыто спам-диалогов: %1$d</item>
     </plurals>

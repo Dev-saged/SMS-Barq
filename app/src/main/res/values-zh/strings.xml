@@ -584,6 +584,20 @@
     <string name="copy_number">复制号码</string>
     <string name="reply_block">不再建议此回复</string>
     <string name="reply_blocked_done">以后不会再建议此回复</string>
+    <string name="bulk_review_title">发送前确认</string>
+    <string name="bulk_review_sim">SIM 卡：%1$s</string>
+    <string name="bulk_review_time">预计用时：约 %1$s</string>
+    <string name="bulk_review_quick">很快，无需等待</string>
+    <string name="bulk_review_noname">%1$d 人没有姓名：将收到不含姓名的短信</string>
+    <plurals name="bulk_review_recipients">
+        <item quantity="other">%1$d 位收件人</item>
+    </plurals>
+    <plurals name="bulk_review_total">
+        <item quantity="other">共 %1$d 条短信</item>
+    </plurals>
+    <plurals name="bulk_review_minutes">
+        <item quantity="other">%1$d 分钟</item>
+    </plurals>
     <plurals name="spam_banner">
         <item quantity="other">已隐藏 %1$d 个垃圾短信对话</item>
     </plurals>
